@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<div style="max-height: 606px;max-width:1356px;overflow: scroll;">
+<canvas id="myCanvas" width="20000" height="10000" style="border:1px solid #000000;">
+Your browser does not support the HTML canvas tag.
+</canvas>
+</div>
+
+
+<script>
+var c = document.getElementById("myCanvas");
+var ctx = c.getContext("2d");
+var x = 0, y = 0;
+var endx = 20000, endy = 10000;
+var stepx = 100, stepy = 100;
+var divx = stepx*3, divy = stepy*3;
+var spacex = stepx/10 , spacey = stepy / 1.1;
+ctx = c.getContext("2d");
+for(x = 0; x < endx; x+=stepx)
+{
+   ctx.beginPath();
+   ctx.lineWidth = 1;
+   if((x%divx) == 0){ctx.lineWidth = 10;}
+   ctx.moveTo(x, y);
+   ctx.lineTo(x, endy);
+   ctx.stroke();
+}
+x = 0;
+ for(y = 0; y < endy; y+=stepy)
+ {
+   ctx.beginPath();
+   if(y%divy == 0){ctx.lineWidth = 10;}
+   else{ctx.lineWidth = 1;}
+   ctx.moveTo(x, y);
+   ctx.lineTo(endx, y);
+   ctx.stroke();
+ }
+var fonstSize = (stepx+stepy)/9;
+ctx.font = fonstSize.toString()+"px Arial";
+var text = "", row = 0, col = 0;
+for(x = 0; x < endx; x+=stepx)
+{
+    for(y = 0; y < endy; y+=stepy)
+    {
+        col = (x % divx)/stepx;
+        row = (y % divy)/stepy;
+        //text = row.toString()+":"+col.toString();
+        text = grid(row, col).toString();
+        ctx.fillText(text, x+spacex, y+spacey);
+        if(row == 0 && col == 0)
+        {
+            text = gridx(x/divx).toString();
+            ctx.fillText(text, x+spacex, y+(stepy*.3));
+            text = gridy(y/divy).toString();
+            ctx.fillText(text, x+spacex+spacex+spacex, y+(stepy*.3));
+        }
+    }
+}
+
+function grid(row, col)
+{
+    var arr= [[1, 2,3], [8, 9, 4], [7, 6, 5]];
+    return arr[row][col]
+}
+function gridx(col)
+{
+    var arr= ["A", "B", "C", "D", "E", "F", "G" ,"H", "I", "J", "K", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "w", "X", "Y","Z"];
+    return arr[col%arr.length]
+}
+function gridy(row)
+{
+    return row;
+}
+</script>
+
+
+</body>
+</html>
+
