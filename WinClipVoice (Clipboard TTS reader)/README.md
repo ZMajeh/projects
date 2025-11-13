@@ -1,6 +1,6 @@
-# <h1>PoshSpeak: Windows Clipboard TTS Reader</h1>
+# <h1>WinClipVoice: Windows Clipboard TTS Reader</h1>
 
-<p>PoshSpeak is a simple, lightweight utility written entirely in <strong>PowerShell</strong> that monitors your Windows clipboard for new text content and automatically reads it aloud using the built-in Windows Text-to-Speech (TTS) engine.</p>
+<p>WinClipVoice is a simple, lightweight utility written entirely in <strong>PowerShell</strong> that monitors your Windows clipboard for new text content and automatically reads it aloud using the built-in Windows Text-to-Speech (TTS) engine.</p>
 
 <p>It features a graphical user interface (GUI) with buttons to manually paste, read the current text, or stop the speech. A background timer constantly checks the clipboard for changes.</p>
 
@@ -29,11 +29,11 @@
 
 <h3>1. Save the Code</h3>
 
-<p>Save the entire script provided previously into a file with a <code>.ps1</code> extension. For this example, let's assume you save it as <code>PoshSpeak.ps1</code>.</p>
+<p>Save the entire script provided previously into a file with a <code>.ps1</code> extension. For this example, let's assume you save it as <code>WinClipVoice.ps1</code>.</p>
 
 <h3>2. Execute via Command Prompt or Run</h3>
 
 <p>Open a standard Command Prompt (<code>cmd</code>) or the Run dialog (<kbd>Win</kbd> + <kbd>R</kbd>), navigate to the script's directory, and use the following command:</p>
 
 ```bash
-powershell -sta -File "C:\Path\To\PoshSpeak.ps1"
+powershell -sta -File "C:\Path\To\WinClipVoice.ps1"
