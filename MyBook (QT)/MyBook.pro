@@ -23,3 +23,4 @@ FORMS    += startmain.ui \
     bookviewer.ui
 
 CONFIG += console
+CONFIG += release
