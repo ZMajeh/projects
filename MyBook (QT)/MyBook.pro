@@ -12,10 +12,14 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         startmain.cpp \
-    bookviewer.cpp
+    bookviewer.cpp \
+    utils.cpp
 
 HEADERS  += startmain.h \
-    bookviewer.h
+    bookviewer.h \
+    utils.h
 
 FORMS    += startmain.ui \
     bookviewer.ui
+
+CONFIG += console

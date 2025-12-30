@@ -14,6 +14,35 @@ QWidget* startMain::getBook(QString path)
     connect(b1,SIGNAL(clicked()),this,SLOT(on_book_click()));
     out1->addWidget(b1);
     out->setLayout(out1);
+
+    QLabel *infoLabel = new QLabel();
+    //out1->addStretch();
+    QDir bookDir(path);
+    bookDir.setFilter(QDir::Files);
+    int pages = bookDir.count();
+    QFileInfo dirInfo(path);
+    QString sizeStr;
+    qint64 totalSize = 0;
+    foreach(QString file, bookDir.entryList()) {
+        totalSize += QFileInfo(bookDir.filePath(file)).size();
+    }
+    if(totalSize > 1024*1024) {
+        sizeStr = QString::number(totalSize / (1024.0*1024.0), 'f', 1) + " MB";
+    } else {
+        sizeStr = QString::number(totalSize / 1024.0, 'f', 1) + " KB";
+    }
+    infoLabel->setText(QString("Pages: %1 | Size: %2").arg(pages).arg(sizeStr));
+    infoLabel->setAlignment(Qt::AlignCenter);
+    infoLabel->setStyleSheet("color: white; font-weight: bold; background-color: rgba(0,0,0,150);");
+    out1->addWidget(infoLabel);
+
+    // Ensure only the first widget expands vertically
+    b1->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    infoLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    infoLabel->setMaximumHeight(infoLabel->sizeHint().height());
+    out1->setStretch(0, 1);
+    out1->setStretch(1, 0);
+
     return out;
 }
 
@@ -40,7 +69,14 @@ void startMain::readBooks(QGridLayout * layout)
     else
     {
         dir->cd("Books");
-        foreach(QFileInfo file,dir->entryInfoList())
+        // Set up the "Natural Sort" collator
+        QFileInfoList fileList = dir->entryInfoList();
+
+        // Perform the sort
+        // Use qSort (standard in Qt 4) with the custom helper
+        qSort(fileList.begin(), fileList.end(), bookUtils::naturalLessThan);
+
+        foreach(QFileInfo file, fileList)
         {
             if(i++<2)continue;
             qDebug()<<file.absoluteFilePath();
@@ -108,6 +144,7 @@ void startMain::on_actionDecrease_row_size_triggered()
     if(colSize>1)colSize--;
     init();
 }
+
 void startMain::on_adder_click()
 {
     QDir *dir=new QDir("./Books");
@@ -115,7 +152,22 @@ void startMain::on_adder_click()
     char buff[100];
     QString name="Book "+QString(itoa(num,buff,10));
     qDebug()<<name<<" is getting created";
-    if(dir->mkdir(name))
+
+    // Find unique folder name
+    bool created = false;
+    int tries = 0;
+    while(!created && tries < 10000) {
+        if(dir->mkdir(name)) {
+            created = true;
+        } else {
+            num++;
+            tries++;
+            name = "Book " + QString(itoa(num, buff, 10));
+        }
+    }
+
+    // Verify creation
+    if(dir->exists(name))
         init();
     else qDebug()<<name<<" is invalid file directory";
 }
