@@ -2,16 +2,37 @@
 #define STARTMAIN_H
 
 #include <QMainWindow>
-#include<QDir>
-#include<QFile>
-#include<QVBoxLayout>
-#include<QtCore>
-#include<QPushButton>
-#include<QWidget>
-#include<QGraphicsPixmapItem>
-#include<QGraphicsView>
-#include<QDebug>
-#include<bookviewer.h>
+#include <QToolButton>
+#include <QProgressDialog>
+#include <QThread>
+#include <QPrinter>
+#include <QPainter>
+#include <QDir>
+#include <QFileInfoList>
+#include <QMessageBox>
+#include <QFileDialog>
+#include <QImage>
+#include <QBuffer>
+#include<utils.h>
+
+
+class ExportWorker : public QThread {
+    Q_OBJECT
+public:
+    ExportWorker(QString dirPath, QString savePath, QObject *parent = 0);
+
+signals:
+    void progress(int value);
+    void finished(QString pdfPath);
+    void error(QString message);
+
+protected:
+    void run();
+
+private:
+    QString m_dirPath;
+    QString m_savePath;
+};
 
 namespace Ui {
     class startMain;
@@ -31,6 +52,7 @@ public:
     void cleanUI();
     void readBooks(QGridLayout * layout);
     void addBooks();
+    void exportDirToPdf(QString dirPath);
 
 private:
     Ui::startMain *ui;
@@ -42,8 +64,19 @@ private slots:
     void on_actionDecrease_row_size_triggered();
     void on_actionIncrease_row_size_triggered();
 public Q_SLOTS:
-    void on_adder_click();
-    void on_book_click();
+    void adderClicked();
+    void bookClicked();
+
+private slots:
+    void onDownloadBtnClicked();
+    void onExportProgress(int value);
+    void onExportFinished(QString pdfPath);
+    void onExportError(QString message);
+
+private:
+    QToolButton *downloadBtn;
+    QProgressDialog *progressDialog;
+
 };
 
 #endif // STARTMAIN_H

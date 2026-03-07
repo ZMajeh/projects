@@ -1,17 +1,7 @@
 #ifndef BOOKVIEWER_H
 #define BOOKVIEWER_H
 
-#include <QDialog>
-#include<QDir>
-#include<QFile>
-#include<QVBoxLayout>
-#include<QtCore>
-#include<QPushButton>
-#include<QWidget>
-#include<QGraphicsPixmapItem>
-#include<QGraphicsView>
-#include<QDebug>
-#include<bookviewer.h>
+#include<utils.h>
 namespace Ui {
     class BookViewer;
 }
