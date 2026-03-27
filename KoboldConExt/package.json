@@ -3,7 +3,8 @@
   "name": "koboldcpp",
   "displayName": "KoboldCPP by Majeh",
   "description": "Connects your Kobold AI to your VSC to autocomplete code. Recommend an Nvidia card or a gfx1032+ AMD card.",
-  "version": "0.0.1",
+  "version": "0.0.2",
+  "publisher": "Majeh",
   "author": "Majeh",
   "license": "MIT",
   "repository": {
@@ -11,6 +12,7 @@
     "url": "https://github.com/Majeh/KoboldConExt.git"
   },
   "icon": "media/icon.png",
+  "preview": true,
   "engines": {
     "vscode": "^1.82.0"
   },
@@ -57,10 +59,10 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
-    "compile": "webpack",
+    "vscode:prepublish": "npm run compile",
+    "compile": "webpack --mode production",
     "watch": "webpack --watch",
-    "package": "webpack --mode production --devtool hidden-source-map",
+    "package": "vsce package",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
@@ -75,6 +77,7 @@
     "@typescript-eslint/eslint-plugin": "^6.7.3",
     "@typescript-eslint/parser": "^6.7.3",
     "@vscode/test-electron": "^2.3.4",
+    "@vscode/vsce": "^2.22.0",
     "eslint": "^8.50.0",
     "glob": "^10.3.3",
     "mocha": "^10.2.0",
