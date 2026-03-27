@@ -1,0 +1,1532 @@
+2026-03-27 12:46:40,268 INFO Incoming request: method=POST path=/v1/complete
+2026-03-27 12:46:40,270 INFO Mapped payload: model=claude-2.1 stream=True max_tokens=80
+2026-03-27 12:46:40,530 INFO Target response status: 200
+2026-03-27 12:53:43,963 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 12:53:43,964 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 12:53:44,187 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 12:53:44,190 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=True
+2026-03-27 12:53:44,392 INFO Target response status: 200
+2026-03-27 12:53:45,602 INFO Target response status: 200
+2026-03-27 12:53:45,604 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 12:53:45,604 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 12:53:47,206 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 12:53:47,207 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 12:53:48,172 INFO Target response status: 200
+2026-03-27 12:53:49,576 INFO Target response status: 200
+2026-03-27 12:54:03,877 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 12:54:03,877 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 12:54:04,075 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 12:54:04,076 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=True
+2026-03-27 12:54:04,275 INFO Target response status: 200
+2026-03-27 12:54:07,902 INFO Target response status: 200
+2026-03-27 12:54:07,904 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 12:54:07,904 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 12:54:11,092 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 12:54:11,092 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 12:54:14,183 INFO Target response status: 200
+2026-03-27 12:54:16,159 INFO Target response status: 200
+2026-03-27 13:00:52,234 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:00:52,235 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=True
+2026-03-27 13:00:52,465 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:00:52,466 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:00:52,667 INFO Target response status: 200
+2026-03-27 13:00:53,787 INFO Target response status: 200
+2026-03-27 13:00:53,789 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:00:53,789 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:00:55,132 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:00:55,132 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 13:00:55,900 INFO Target response status: 200
+2026-03-27 13:00:56,979 INFO Target response status: 200
+2026-03-27 13:01:07,023 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:01:07,023 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:01:07,225 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:01:07,226 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=True
+2026-03-27 13:01:07,424 INFO Target response status: 200
+2026-03-27 13:01:09,500 INFO Target response status: 200
+2026-03-27 13:01:09,503 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:01:09,503 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:01:11,712 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:01:11,712 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 13:01:13,521 INFO Target response status: 200
+2026-03-27 13:01:15,501 INFO Target response status: 200
+2026-03-27 13:05:06,820 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:05:06,820 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:05:07,021 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:05:07,022 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=True
+2026-03-27 13:05:07,220 INFO Target response status: 200
+2026-03-27 13:05:08,119 INFO Target response status: 200
+2026-03-27 13:05:08,122 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:05:08,123 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:05:09,697 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:05:09,698 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 13:05:10,548 INFO Target response status: 200
+2026-03-27 13:05:11,699 INFO Target response status: 200
+2026-03-27 13:05:21,455 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:05:21,456 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=True
+2026-03-27 13:05:21,648 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:05:21,649 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:05:21,842 INFO Target response status: 200
+2026-03-27 13:05:23,552 INFO Target response status: 200
+2026-03-27 13:05:23,554 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:05:23,554 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:05:25,637 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:05:25,638 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 13:05:28,132 INFO Target response status: 200
+2026-03-27 13:05:29,965 INFO Target response status: 200
+2026-03-27 13:07:27,512 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:07:27,513 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:07:27,727 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:07:27,727 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=True
+2026-03-27 13:07:27,933 INFO Target response status: 200
+2026-03-27 13:07:29,032 INFO Target response status: 200
+2026-03-27 13:07:29,033 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:07:29,033 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:07:30,637 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:07:30,638 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 13:07:31,462 INFO Target response status: 200
+2026-03-27 13:07:32,856 INFO Target response status: 200
+2026-03-27 13:07:45,118 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:07:45,118 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:07:45,512 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:07:45,513 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=True
+2026-03-27 13:07:45,838 INFO Target response status: 200
+2026-03-27 13:07:46,960 INFO Target response status: 200
+2026-03-27 13:07:46,964 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:07:46,964 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:07:48,428 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:07:48,429 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 13:07:49,195 INFO Target response status: 200
+2026-03-27 13:07:50,433 INFO Target response status: 200
+2026-03-27 13:08:04,933 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:08:04,934 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:08:05,139 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:08:05,140 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:08:05,343 INFO Target response status: 200
+2026-03-27 13:08:05,931 INFO Target response status: 200
+2026-03-27 13:08:05,934 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:08:05,935 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:08:07,080 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:08:07,080 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:08:08,055 INFO Target response status: 200
+2026-03-27 13:08:08,862 INFO Target response status: 200
+2026-03-27 13:09:31,024 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:09:31,024 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 13:09:32,653 INFO Target response status: 200
+2026-03-27 13:11:43,693 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:11:43,694 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:11:43,892 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:11:43,893 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:11:44,091 INFO Target response status: 200
+2026-03-27 13:11:45,139 INFO Target response status: 200
+2026-03-27 13:11:45,140 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:11:45,141 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:11:46,608 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:11:46,609 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:11:47,371 INFO Target response status: 200
+2026-03-27 13:11:48,617 INFO Target response status: 200
+2026-03-27 13:11:58,087 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:11:58,087 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 13:11:59,778 INFO Target response status: 200
+2026-03-27 13:13:36,198 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:13:36,198 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 13:13:37,795 INFO Target response status: 200
+2026-03-27 13:13:45,291 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:13:45,292 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:13:45,488 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:13:45,488 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:13:45,684 INFO Target response status: 200
+2026-03-27 13:13:47,133 INFO Target response status: 200
+2026-03-27 13:13:47,137 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:13:47,138 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:13:48,256 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:13:48,256 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:13:49,459 INFO Target response status: 200
+2026-03-27 13:13:50,246 INFO Target response status: 200
+2026-03-27 13:15:58,292 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:15:58,293 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 13:16:00,054 INFO Target response status: 200
+2026-03-27 13:16:23,027 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:16:23,027 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:16:23,230 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:16:23,230 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:16:23,421 INFO Target response status: 200
+2026-03-27 13:16:24,527 INFO Target response status: 200
+2026-03-27 13:16:24,529 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:16:24,530 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:16:26,052 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:16:26,053 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:16:26,823 INFO Target response status: 200
+2026-03-27 13:16:28,099 INFO Target response status: 200
+2026-03-27 13:19:18,050 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:19:18,050 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:19:18,253 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:19:18,254 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:19:18,452 INFO Target response status: 200
+2026-03-27 13:19:19,557 INFO Target response status: 200
+2026-03-27 13:19:19,559 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:19:19,559 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:19:20,928 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:19:20,930 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:19:21,693 INFO Target response status: 200
+2026-03-27 13:19:22,971 INFO Target response status: 200
+2026-03-27 13:19:32,575 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:19:32,575 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:19:32,782 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:19:32,782 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:19:33,008 INFO Target response status: 200
+2026-03-27 13:19:34,553 INFO Target response status: 200
+2026-03-27 13:19:34,556 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:19:34,556 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:19:36,190 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:19:36,190 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:19:38,273 INFO Target response status: 200
+2026-03-27 13:19:39,732 INFO Target response status: 200
+2026-03-27 13:20:13,466 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:20:13,466 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 13:20:16,196 INFO Target response status: 200
+2026-03-27 13:22:43,500 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:22:43,500 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:22:43,704 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:22:43,704 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:22:43,893 INFO Target response status: 200
+2026-03-27 13:22:44,976 INFO Target response status: 200
+2026-03-27 13:22:44,977 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:22:44,977 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:22:46,894 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:22:46,894 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:22:47,734 INFO Target response status: 200
+2026-03-27 13:22:49,168 INFO Target response status: 200
+2026-03-27 13:22:56,987 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:22:56,988 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:22:57,189 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:22:57,189 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:22:57,392 INFO Target response status: 200
+2026-03-27 13:22:58,105 INFO Target response status: 200
+2026-03-27 13:22:58,107 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:22:58,109 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:22:59,183 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:22:59,183 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:23:00,474 INFO Target response status: 200
+2026-03-27 13:23:01,332 INFO Target response status: 200
+2026-03-27 13:23:17,501 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:23:17,501 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:23:17,698 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:23:17,699 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:23:17,888 INFO Target response status: 200
+2026-03-27 13:23:20,293 INFO Target response status: 200
+2026-03-27 13:23:20,296 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:23:20,297 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:23:22,058 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:23:22,058 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:23:24,124 INFO Target response status: 200
+2026-03-27 13:23:25,475 INFO Target response status: 200
+2026-03-27 13:23:31,493 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:23:31,494 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 13:23:33,087 INFO Target response status: 200
+2026-03-27 13:25:49,560 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:25:49,560 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:25:49,774 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:25:49,775 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:25:49,979 INFO Target response status: 200
+2026-03-27 13:25:51,084 INFO Target response status: 200
+2026-03-27 13:25:51,086 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:25:51,086 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:25:52,888 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:25:52,889 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:25:53,612 INFO Target response status: 200
+2026-03-27 13:25:55,179 INFO Target response status: 200
+2026-03-27 13:26:01,242 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:26:01,242 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 13:26:02,946 INFO Target response status: 200
+2026-03-27 13:28:09,578 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:28:09,578 INFO Mapped /v1/messages -> target model=claude-opus-4-6 stream=False
+2026-03-27 13:28:11,531 INFO Target response status: 200
+2026-03-27 13:30:05,421 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:30:05,422 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:30:05,623 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:30:05,624 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 13:30:05,832 INFO Target response status: 200
+2026-03-27 13:30:07,426 INFO Target response status: 200
+2026-03-27 13:30:07,429 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:30:07,429 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:30:08,542 INFO Incoming /v1/messages request beta=True path=/v1/messages
+2026-03-27 13:30:08,542 INFO Mapped /v1/messages -> target model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 13:30:09,840 INFO Target response status: 200
+2026-03-27 13:30:10,645 INFO Target response status: 200
+2026-03-27 13:50:13,861 ERROR Target request failed
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 124, in fail_after
+    yield cancel_scope
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 34, in read
+    return await self._stream.receive(max_bytes=max_bytes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1284, in receive
+    await self._protocol.read_event.wait()
+  File "C:\Python314\Lib\asyncio\locks.py", line 213, in wait
+    await fut
+asyncio.exceptions.CancelledError: Cancelled via cancel scope 245b90a0b90; reason: deadline exceeded
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 10, in map_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 32, in read
+    with anyio.fail_after(timeout):
+         ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 127, in fail_after
+    raise TimeoutError
+TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 60, in map_httpcore_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 353, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 253, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 237, in handle_async_request
+    response = await connection.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection.py", line 90, in handle_async_request
+    return await self._connection.handle_async_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 112, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 91, in handle_async_request
+    ) = await self._receive_response_headers(**kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 155, in _receive_response_headers
+    event = await self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 191, in _receive_event
+    data = await self._network_stream.read(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.READ_NUM_BYTES, timeout=timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 31, in read
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc)
+httpcore.ReadTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\proxy_server.py", line 278, in proxy_messages
+    resp = await client.post(KOBOLD_BASE_URL, json=target_payload, headers=headers, timeout=60.0)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1848, in post
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+    ...<13 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1530, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1617, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1645, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1682, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1719, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 352, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 77, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout
+2026-03-27 13:50:50,988 ERROR Target request failed
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 124, in fail_after
+    yield cancel_scope
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 34, in read
+    return await self._stream.receive(max_bytes=max_bytes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1284, in receive
+    await self._protocol.read_event.wait()
+  File "C:\Python314\Lib\asyncio\locks.py", line 213, in wait
+    await fut
+asyncio.exceptions.CancelledError: Cancelled via cancel scope 245b9028290; reason: deadline exceeded
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 10, in map_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 32, in read
+    with anyio.fail_after(timeout):
+         ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 127, in fail_after
+    raise TimeoutError
+TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 60, in map_httpcore_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 353, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 253, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 237, in handle_async_request
+    response = await connection.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection.py", line 90, in handle_async_request
+    return await self._connection.handle_async_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 112, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 91, in handle_async_request
+    ) = await self._receive_response_headers(**kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 155, in _receive_response_headers
+    event = await self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 191, in _receive_event
+    data = await self._network_stream.read(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.READ_NUM_BYTES, timeout=timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 31, in read
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc)
+httpcore.ReadTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\proxy_server.py", line 278, in proxy_messages
+    resp = await client.post(KOBOLD_BASE_URL, json=target_payload, headers=headers, timeout=60.0)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1848, in post
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+    ...<13 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1530, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1617, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1645, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1682, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1719, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 352, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 77, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout
+2026-03-27 13:51:14,750 ERROR Target request failed
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 124, in fail_after
+    yield cancel_scope
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 34, in read
+    return await self._stream.receive(max_bytes=max_bytes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1284, in receive
+    await self._protocol.read_event.wait()
+  File "C:\Python314\Lib\asyncio\locks.py", line 213, in wait
+    await fut
+asyncio.exceptions.CancelledError: Cancelled via cancel scope 245b90a1550; reason: deadline exceeded
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 10, in map_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 32, in read
+    with anyio.fail_after(timeout):
+         ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 127, in fail_after
+    raise TimeoutError
+TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 60, in map_httpcore_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 353, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 253, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 237, in handle_async_request
+    response = await connection.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection.py", line 90, in handle_async_request
+    return await self._connection.handle_async_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 112, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 91, in handle_async_request
+    ) = await self._receive_response_headers(**kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 155, in _receive_response_headers
+    event = await self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 191, in _receive_event
+    data = await self._network_stream.read(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.READ_NUM_BYTES, timeout=timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 31, in read
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc)
+httpcore.ReadTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\proxy_server.py", line 278, in proxy_messages
+    resp = await client.post(KOBOLD_BASE_URL, json=target_payload, headers=headers, timeout=60.0)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1848, in post
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+    ...<13 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1530, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1617, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1645, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1682, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1719, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 352, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 77, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout
+2026-03-27 13:51:51,782 ERROR Target request failed
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 124, in fail_after
+    yield cancel_scope
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 34, in read
+    return await self._stream.receive(max_bytes=max_bytes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1284, in receive
+    await self._protocol.read_event.wait()
+  File "C:\Python314\Lib\asyncio\locks.py", line 213, in wait
+    await fut
+asyncio.exceptions.CancelledError: Cancelled via cancel scope 245b90a1b50; reason: deadline exceeded
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 10, in map_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 32, in read
+    with anyio.fail_after(timeout):
+         ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 127, in fail_after
+    raise TimeoutError
+TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 60, in map_httpcore_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 353, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 253, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 237, in handle_async_request
+    response = await connection.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection.py", line 90, in handle_async_request
+    return await self._connection.handle_async_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 112, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 91, in handle_async_request
+    ) = await self._receive_response_headers(**kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 155, in _receive_response_headers
+    event = await self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 191, in _receive_event
+    data = await self._network_stream.read(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.READ_NUM_BYTES, timeout=timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 31, in read
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc)
+httpcore.ReadTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\proxy_server.py", line 278, in proxy_messages
+    resp = await client.post(KOBOLD_BASE_URL, json=target_payload, headers=headers, timeout=60.0)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1848, in post
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+    ...<13 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1530, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1617, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1645, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1682, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1719, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 352, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 77, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout
+2026-03-27 13:52:16,089 ERROR Target request failed
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 124, in fail_after
+    yield cancel_scope
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 34, in read
+    return await self._stream.receive(max_bytes=max_bytes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1284, in receive
+    await self._protocol.read_event.wait()
+  File "C:\Python314\Lib\asyncio\locks.py", line 213, in wait
+    await fut
+asyncio.exceptions.CancelledError: Cancelled via cancel scope 245b90a22d0; reason: deadline exceeded
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 10, in map_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 32, in read
+    with anyio.fail_after(timeout):
+         ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 127, in fail_after
+    raise TimeoutError
+TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 60, in map_httpcore_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 353, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 253, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 237, in handle_async_request
+    response = await connection.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection.py", line 90, in handle_async_request
+    return await self._connection.handle_async_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 112, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 91, in handle_async_request
+    ) = await self._receive_response_headers(**kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 155, in _receive_response_headers
+    event = await self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 191, in _receive_event
+    data = await self._network_stream.read(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.READ_NUM_BYTES, timeout=timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 31, in read
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc)
+httpcore.ReadTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\proxy_server.py", line 278, in proxy_messages
+    resp = await client.post(KOBOLD_BASE_URL, json=target_payload, headers=headers, timeout=60.0)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1848, in post
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+    ...<13 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1530, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1617, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1645, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1682, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1719, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 352, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 77, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout
+2026-03-27 13:52:53,176 ERROR Target request failed
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 124, in fail_after
+    yield cancel_scope
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 34, in read
+    return await self._stream.receive(max_bytes=max_bytes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1284, in receive
+    await self._protocol.read_event.wait()
+  File "C:\Python314\Lib\asyncio\locks.py", line 213, in wait
+    await fut
+asyncio.exceptions.CancelledError: Cancelled via cancel scope 245b90a28d0; reason: deadline exceeded
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 10, in map_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 32, in read
+    with anyio.fail_after(timeout):
+         ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 127, in fail_after
+    raise TimeoutError
+TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 60, in map_httpcore_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 353, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 253, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 237, in handle_async_request
+    response = await connection.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection.py", line 90, in handle_async_request
+    return await self._connection.handle_async_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 112, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 91, in handle_async_request
+    ) = await self._receive_response_headers(**kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 155, in _receive_response_headers
+    event = await self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 191, in _receive_event
+    data = await self._network_stream.read(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.READ_NUM_BYTES, timeout=timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 31, in read
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc)
+httpcore.ReadTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\proxy_server.py", line 278, in proxy_messages
+    resp = await client.post(KOBOLD_BASE_URL, json=target_payload, headers=headers, timeout=60.0)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1848, in post
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+    ...<13 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1530, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1617, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1645, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1682, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1719, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 352, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 77, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout
+2026-03-27 13:53:18,492 ERROR Target request failed
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 124, in fail_after
+    yield cancel_scope
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 34, in read
+    return await self._stream.receive(max_bytes=max_bytes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1284, in receive
+    await self._protocol.read_event.wait()
+  File "C:\Python314\Lib\asyncio\locks.py", line 213, in wait
+    await fut
+asyncio.exceptions.CancelledError: Cancelled via cancel scope 245b90a3050; reason: deadline exceeded
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 10, in map_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 32, in read
+    with anyio.fail_after(timeout):
+         ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 127, in fail_after
+    raise TimeoutError
+TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 60, in map_httpcore_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 353, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 253, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 237, in handle_async_request
+    response = await connection.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection.py", line 90, in handle_async_request
+    return await self._connection.handle_async_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 112, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 91, in handle_async_request
+    ) = await self._receive_response_headers(**kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 155, in _receive_response_headers
+    event = await self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\http11.py", line 191, in _receive_event
+    data = await self._network_stream.read(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.READ_NUM_BYTES, timeout=timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 31, in read
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc)
+httpcore.ReadTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\proxy_server.py", line 278, in proxy_messages
+    resp = await client.post(KOBOLD_BASE_URL, json=target_payload, headers=headers, timeout=60.0)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1848, in post
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+    ...<13 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1530, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1617, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1645, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1682, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1719, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 352, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 77, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout
+2026-03-27 14:06:54,952 INFO Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 14:06:54,969 INFO Starting stream to target: http://localhost:5001/v1/chat/completions
+2026-03-27 14:06:55,288 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:06:55,290 INFO Starting stream to target: http://localhost:5001/v1/chat/completions
+2026-03-27 14:06:56,273 INFO Stream complete
+2026-03-27 14:06:56,279 INFO Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:06:57,781 INFO Stream complete
+2026-03-27 14:06:57,788 INFO Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:07:07,709 INFO Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 14:07:07,711 INFO Starting stream to target: http://localhost:5001/v1/chat/completions
+2026-03-27 14:07:08,018 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:07:08,020 INFO Starting stream to target: http://localhost:5001/v1/chat/completions
+2026-03-27 14:07:37,763 INFO Stream complete
+2026-03-27 14:07:37,767 INFO Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:08:17,194 INFO Stream complete
+2026-03-27 14:08:17,200 INFO Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:08:47,185 INFO Request: model=claude-opus-4-6 stream=False
+2026-03-27 14:09:33,610 INFO Request: model=claude-opus-4-6 stream=False
+2026-03-27 14:10:10,070 INFO Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 14:10:10,072 INFO Starting stream to target: http://localhost:5001/v1/chat/completions
+2026-03-27 14:10:10,377 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:10:10,380 INFO Starting stream to target: http://localhost:5001/v1/chat/completions
+2026-03-27 14:10:18,875 INFO Stream complete
+2026-03-27 14:10:18,879 INFO Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:10:53,733 INFO Stream complete
+2026-03-27 14:10:53,742 INFO Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:31:13,410 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 14:31:13,646 INFO Native Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:31:15,032 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:31:17,467 INFO Native Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:31:41,772 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 14:31:41,965 INFO Native Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:32:04,104 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:32:15,454 INFO Native Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:33:41,811 INFO Native Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:34:25,959 INFO Native Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:37:13,914 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 14:37:14,122 INFO Native Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:37:15,404 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:37:17,184 INFO Native Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:37:25,466 INFO Native Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:37:25,467 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 14:37:27,835 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:37:30,713 INFO Native Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:37:41,900 INFO Native Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:37:41,900 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 14:37:43,491 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:37:45,511 INFO Native Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:38:08,113 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 14:38:08,311 INFO Native Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:38:09,688 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:38:10,982 INFO Native Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:38:39,309 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 14:38:39,502 INFO Native Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:38:40,810 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:38:42,055 INFO Native Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:39:32,094 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 14:39:32,330 INFO Native Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:39:33,765 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:39:35,076 INFO Native Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:41:59,486 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 14:41:59,720 INFO Native Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:42:00,981 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:42:02,652 INFO Native Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:42:37,395 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 14:42:37,631 INFO Native Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:42:40,175 ERROR Stream failed: All connection attempts failed
+2026-03-27 14:42:40,177 ERROR Stream failed: All connection attempts failed
+2026-03-27 14:42:40,186 INFO Native Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:42:40,391 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:42:42,879 ERROR Native request failed
+  | ExceptionGroup: multiple connection attempts failed (2 sub-exceptions)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_sockets.py", line 182, in try_connect
+    |     stream = await asynclib.connect_tcp(remote_host, remote_port, local_address)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2646, in connect_tcp
+    |     await get_running_loop().create_connection(
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |         StreamProtocol, host, port, local_addr=local_address
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ),
+    |     ^
+    |   File "C:\Python314\Lib\asyncio\base_events.py", line 1168, in create_connection
+    |     raise exceptions[0]
+    |   File "C:\Python314\Lib\asyncio\base_events.py", line 1143, in create_connection
+    |     sock = await self._connect_sock(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |         exceptions, addrinfo, laddr_infos)
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Python314\Lib\asyncio\base_events.py", line 1042, in _connect_sock
+    |     await self.sock_connect(sock, address)
+    |   File "C:\Python314\Lib\asyncio\proactor_events.py", line 728, in sock_connect
+    |     return await self._proactor.connect(sock, address)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Python314\Lib\asyncio\windows_events.py", line 804, in _poll
+    |     value = callback(transferred, key, ov)
+    |   File "C:\Python314\Lib\asyncio\windows_events.py", line 600, in finish_connect
+    |     ov.getresult()
+    |     ~~~~~~~~~~~~^^
+    | ConnectionRefusedError: [WinError 1225] The remote computer refused the network connection
+    +---------------- 2 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_sockets.py", line 182, in try_connect
+    |     stream = await asynclib.connect_tcp(remote_host, remote_port, local_address)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2646, in connect_tcp
+    |     await get_running_loop().create_connection(
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |         StreamProtocol, host, port, local_addr=local_address
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ),
+    |     ^
+    |   File "C:\Python314\Lib\asyncio\base_events.py", line 1168, in create_connection
+    |     raise exceptions[0]
+    |   File "C:\Python314\Lib\asyncio\base_events.py", line 1143, in create_connection
+    |     sock = await self._connect_sock(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |         exceptions, addrinfo, laddr_infos)
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Python314\Lib\asyncio\base_events.py", line 1042, in _connect_sock
+    |     await self.sock_connect(sock, address)
+    |   File "C:\Python314\Lib\asyncio\proactor_events.py", line 728, in sock_connect
+    |     return await self._proactor.connect(sock, address)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Python314\Lib\asyncio\windows_events.py", line 804, in _poll
+    |     value = callback(transferred, key, ov)
+    |   File "C:\Python314\Lib\asyncio\windows_events.py", line 600, in finish_connect
+    |     ov.getresult()
+    |     ~~~~~~~~~~~~^^
+    | ConnectionRefusedError: [WinError 1225] The remote computer refused the network connection
+    +------------------------------------
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 10, in map_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 111, in connect_tcp
+    stream: anyio.abc.ByteStream = await anyio.connect_tcp(
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_sockets.py", line 248, in connect_tcp
+    raise OSError("All connection attempts failed") from cause
+OSError: All connection attempts failed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 60, in map_httpcore_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 353, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 253, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 237, in handle_async_request
+    response = await connection.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection.py", line 86, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection.py", line 63, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection.py", line 111, in _connect
+    stream = await self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\auto.py", line 29, in connect_tcp
+    return await self._backend.connect_tcp(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        host, port, timeout=timeout, local_address=local_address
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 109, in connect_tcp
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc)
+httpcore.ConnectError: All connection attempts failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\proxy_server.py", line 181, in proxy_messages
+    resp = await client.post(gen_url, json=native_payload, timeout=300.0)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1848, in post
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+    ...<13 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1530, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1617, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1645, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1682, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1719, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 352, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 77, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectError: All connection attempts failed
+2026-03-27 14:42:42,898 ERROR Native request failed
+  | ExceptionGroup: multiple connection attempts failed (2 sub-exceptions)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_sockets.py", line 182, in try_connect
+    |     stream = await asynclib.connect_tcp(remote_host, remote_port, local_address)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2646, in connect_tcp
+    |     await get_running_loop().create_connection(
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |         StreamProtocol, host, port, local_addr=local_address
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ),
+    |     ^
+    |   File "C:\Python314\Lib\asyncio\base_events.py", line 1168, in create_connection
+    |     raise exceptions[0]
+    |   File "C:\Python314\Lib\asyncio\base_events.py", line 1143, in create_connection
+    |     sock = await self._connect_sock(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |         exceptions, addrinfo, laddr_infos)
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Python314\Lib\asyncio\base_events.py", line 1042, in _connect_sock
+    |     await self.sock_connect(sock, address)
+    |   File "C:\Python314\Lib\asyncio\proactor_events.py", line 728, in sock_connect
+    |     return await self._proactor.connect(sock, address)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Python314\Lib\asyncio\windows_events.py", line 804, in _poll
+    |     value = callback(transferred, key, ov)
+    |   File "C:\Python314\Lib\asyncio\windows_events.py", line 600, in finish_connect
+    |     ov.getresult()
+    |     ~~~~~~~~~~~~^^
+    | ConnectionRefusedError: [WinError 1225] The remote computer refused the network connection
+    +---------------- 2 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_sockets.py", line 182, in try_connect
+    |     stream = await asynclib.connect_tcp(remote_host, remote_port, local_address)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2646, in connect_tcp
+    |     await get_running_loop().create_connection(
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |         StreamProtocol, host, port, local_addr=local_address
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ),
+    |     ^
+    |   File "C:\Python314\Lib\asyncio\base_events.py", line 1168, in create_connection
+    |     raise exceptions[0]
+    |   File "C:\Python314\Lib\asyncio\base_events.py", line 1143, in create_connection
+    |     sock = await self._connect_sock(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |         exceptions, addrinfo, laddr_infos)
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Python314\Lib\asyncio\base_events.py", line 1042, in _connect_sock
+    |     await self.sock_connect(sock, address)
+    |   File "C:\Python314\Lib\asyncio\proactor_events.py", line 728, in sock_connect
+    |     return await self._proactor.connect(sock, address)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Python314\Lib\asyncio\windows_events.py", line 804, in _poll
+    |     value = callback(transferred, key, ov)
+    |   File "C:\Python314\Lib\asyncio\windows_events.py", line 600, in finish_connect
+    |     ov.getresult()
+    |     ~~~~~~~~~~~~^^
+    | ConnectionRefusedError: [WinError 1225] The remote computer refused the network connection
+    +------------------------------------
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 10, in map_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 111, in connect_tcp
+    stream: anyio.abc.ByteStream = await anyio.connect_tcp(
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\anyio\_core\_sockets.py", line 248, in connect_tcp
+    raise OSError("All connection attempts failed") from cause
+OSError: All connection attempts failed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 60, in map_httpcore_exceptions
+    yield
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 353, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 253, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 237, in handle_async_request
+    response = await connection.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection.py", line 86, in handle_async_request
+    raise exc
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection.py", line 63, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_async\connection.py", line 111, in _connect
+    stream = await self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\auto.py", line 29, in connect_tcp
+    return await self._backend.connect_tcp(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        host, port, timeout=timeout, local_address=local_address
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\backends\asyncio.py", line 109, in connect_tcp
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc)
+httpcore.ConnectError: All connection attempts failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\mundh\kobold\proxy_server.py", line 181, in proxy_messages
+    resp = await client.post(gen_url, json=native_payload, timeout=300.0)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1848, in post
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+    ...<13 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1530, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1617, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1645, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1682, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_client.py", line 1719, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 352, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\mundh\kobold\.venv\Lib\site-packages\httpx\_transports\default.py", line 77, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectError: All connection attempts failed
+2026-03-27 14:42:43,471 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:42:43,726 INFO Native Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:43:34,010 INFO Native Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:43:34,211 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 14:43:44,886 INFO Native Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:44:09,364 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:45:31,756 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 14:45:31,981 INFO Native Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 14:45:33,205 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 14:45:34,456 INFO Native Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 14:49:46,614 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True max_len=3990
+2026-03-27 14:49:46,823 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=3404
+2026-03-27 14:49:48,146 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False max_len=3990
+2026-03-27 14:49:49,495 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=3404
+2026-03-27 14:50:01,701 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True max_len=3988
+2026-03-27 14:50:01,902 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=3387
+2026-03-27 14:50:04,541 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False max_len=3988
+2026-03-27 14:50:06,896 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=3387
+2026-03-27 14:50:21,968 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=2917
+2026-03-27 14:50:48,881 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=2917
+2026-03-27 14:51:43,327 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True max_len=3982
+2026-03-27 14:51:43,522 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=1732
+2026-03-27 14:51:51,847 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False max_len=3982
+2026-03-27 14:52:20,618 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=1732
+2026-03-27 14:53:53,344 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=3874
+2026-03-27 14:53:55,018 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=3874
+2026-03-27 14:54:07,385 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=3874
+2026-03-27 14:54:10,267 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=3874
+2026-03-27 14:54:30,905 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=3874
+2026-03-27 14:54:32,208 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=3874
+2026-03-27 14:56:30,337 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=417
+2026-03-27 14:56:30,532 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True max_len=3982
+2026-03-27 14:56:36,043 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=417
+2026-03-27 14:57:00,210 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False max_len=3982
+2026-03-27 14:57:44,665 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=3402
+2026-03-27 14:57:46,557 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=3402
+2026-03-27 14:57:59,979 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=3364
+2026-03-27 14:58:26,208 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=3364
+2026-03-27 14:59:18,560 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=2342
+2026-03-27 14:59:36,852 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=2342
+2026-03-27 15:00:53,548 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=1691
+2026-03-27 15:00:55,387 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=1691
+2026-03-27 15:01:25,146 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=1691
+2026-03-27 15:01:26,792 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=1691
+2026-03-27 15:01:50,543 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=1684
+2026-03-27 15:02:03,507 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=1684
+2026-03-27 17:26:10,902 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True max_len=3990
+2026-03-27 17:26:11,519 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=3360
+2026-03-27 17:26:14,264 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False max_len=3990
+2026-03-27 17:26:18,382 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=3360
+2026-03-27 17:26:42,052 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=3342
+2026-03-27 17:26:59,458 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=3342
+2026-03-27 17:27:23,184 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=2783
+2026-03-27 17:27:25,790 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=2783
+2026-03-27 17:29:42,101 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=313
+2026-03-27 17:29:55,036 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=313
+2026-03-27 17:44:22,312 INFO Native Request: model=claude-haiku-4-5-20251001 stream=True max_len=3990
+2026-03-27 17:44:22,776 INFO Native Request: model=claude-sonnet-4-6 stream=True max_len=3404
+2026-03-27 17:44:24,932 INFO Native Request: model=claude-haiku-4-5-20251001 stream=False max_len=3990
+2026-03-27 17:44:26,384 INFO Native Request: model=claude-sonnet-4-6 stream=False max_len=3404
+2026-03-27 17:47:55,836 INFO Native Request: model=claude-opus-4-6 stream=False max_len=1024
+2026-03-27 17:48:21,553 INFO Native Request: model=claude-opus-4-6 stream=True max_len=1024
+2026-03-27 17:50:58,620 INFO Request: source=unknown model=claude-sonnet-4-6 stream=True
+2026-03-27 17:51:01,812 INFO Request: source=unknown model=claude-sonnet-4-6 stream=False
+2026-03-27 17:52:21,990 INFO Request: source=unknown model=claude-opus-4-6 stream=True
+2026-03-27 17:52:53,785 INFO Request: source=unknown model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 17:52:53,790 INFO Request: source=unknown model=claude-sonnet-4-6 stream=True
+2026-03-27 17:52:57,115 INFO Request: source=unknown model=claude-sonnet-4-6 stream=False
+2026-03-27 17:52:59,906 INFO Request: source=unknown model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 17:55:58,593 INFO Request: source=unknown model=claude-sonnet-4-6 stream=True
+2026-03-27 17:56:01,578 INFO Request: source=unknown model=claude-sonnet-4-6 stream=False
+2026-03-27 18:05:10,127 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:05:10,136 INFO Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 18:05:11,288 INFO Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 18:05:12,277 INFO Request: model=claude-haiku-4-5-20251001 stream=False
+2026-03-27 18:07:27,785 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:07:29,796 INFO Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 18:07:49,464 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:08:11,421 INFO Request: model=claude-sonnet-4-6 stream=False
+2026-03-27 18:13:30,084 INFO Request: model=claude-opus-4-6 stream=True
+2026-03-27 18:14:00,548 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:14:53,378 INFO Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 18:14:53,722 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:15:00,535 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:15:50,577 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:15:50,849 INFO Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 18:16:18,844 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:16:19,121 INFO Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 18:16:28,836 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:16:29,121 INFO Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 18:16:49,983 INFO Request: model=claude-opus-4-6 stream=True
+2026-03-27 18:17:43,982 INFO Request: model=claude-opus-4-6 stream=True
+2026-03-27 18:18:12,212 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:18:12,492 INFO Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 18:18:27,227 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:18:27,502 INFO Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 18:19:29,646 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:24:07,722 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:25:17,442 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:28:35,865 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:28:40,277 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:34:28,997 INFO Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 18:34:29,330 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:35:11,684 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:35:58,802 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:36:15,527 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:36:28,163 INFO Request: model=claude-haiku-4-5-20251001 stream=True
+2026-03-27 18:36:28,468 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:37:48,385 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:38:13,514 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:42:45,184 INFO Request: model=claude-sonnet-4-6 stream=True
+2026-03-27 18:42:48,517 INFO Request: model=claude-sonnet-4-6 stream=True

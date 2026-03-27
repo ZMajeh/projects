@@ -1,0 +1,204 @@
+import os
+import json
+import asyncio
+import logging
+from typing import Optional, AsyncGenerator
+
+from fastapi import FastAPI, Request, Header, HTTPException
+from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+import httpx
+from dotenv import load_dotenv
+
+# Load .env if present
+load_dotenv()
+
+# Logging
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+logger = logging.getLogger("cloudcode-kobold-proxy")
+
+app = FastAPI(title="CloudCode ↔ KoboldCPP Proxy")
+
+# CORS - adjust origins as needed
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.getenv("CORS_ALLOW_ORIGINS", "*").split(","),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Configuration via environment variables
+KOBOLD_BASE_URL = os.getenv("KOBOLD_BASE_URL", "http://localhost:5001/v1/chat/completions")
+# If Kobold requires a key or header, set KOBOLD_API_KEY and KOBOLD_API_KEY_HEADER
+KOBOLD_API_KEY = os.getenv("KOBOLD_API_KEY", "")
+KOBOLD_API_KEY_HEADER = os.getenv("KOBOLD_API_KEY_HEADER", "x-api-key")
+
+# Cloud Code mapping config
+# Cloud Code will POST to this proxy with an Anthropic-like body:
+# { "prompt": "...", "model": "...", "max_tokens": 512, "stream": true }
+# The proxy will map that to KoboldCPP's expected schema.
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "koboldcpp")
+
+# Optional transform hook environment variable names
+SYSTEM_PROMPT = os.getenv("SYSTEM_PROMPT", "")
+
+# Helper: build headers for Kobold
+def build_kobold_headers(incoming_headers: dict) -> dict:
+    headers = {"Content-Type": "application/json"}
+    if KOBOLD_API_KEY:
+        headers[KOBOLD_API_KEY_HEADER] = KOBOLD_API_KEY
+    # Optionally forward a trace id or auth from incoming request
+    trace_id = incoming_headers.get("x-request-id") or incoming_headers.get("x-trace-id")
+    if trace_id:
+        headers["x-request-id"] = trace_id
+    return headers
+
+# Map Cloud Code / Anthropic style payload to KoboldCPP payload
+def map_cloud_to_kobold(payload: dict) -> dict:
+    """
+    Expected Cloud Code payload examples:
+    - Anthropic style: {"prompt": "Hello", "model": "claude-2", "max_tokens": 512, "stream": true}
+    - Chat style: {"messages": [{"role":"user","content":"Hi"}], "stream": true}
+    This function normalizes to KoboldCPP expected fields.
+    """
+    # If user provided messages, use them; else wrap prompt into messages
+    messages = payload.get("messages")
+    if not messages:
+        prompt = payload.get("prompt", "")
+        if SYSTEM_PROMPT:
+            messages = [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ]
+        else:
+            messages = [{"role": "user", "content": prompt}]
+
+    kobold_payload = {
+        "model": payload.get("model", DEFAULT_MODEL),
+        # Many Kobold/Llama endpoints accept "messages" or "prompt"; adapt both
+        "messages": messages,
+        # Map token limits
+        "max_tokens": payload.get("max_tokens", payload.get("max_tokens_to_sample", 512)),
+        # Kobold may accept temperature, top_p, etc.
+        "temperature": payload.get("temperature", 0.7),
+        "top_p": payload.get("top_p", 0.95),
+        # Stream flag
+        "stream": bool(payload.get("stream", False)),
+    }
+
+    # Remove None values
+    return {k: v for k, v in kobold_payload.items() if v is not None}
+
+# Helper to wrap Kobold stream chunks into Cloud Code friendly SSE events
+def format_sse_event(event: str, data: str) -> str:
+    # Each SSE event: "event: <event>\ndata: <json>\n\n"
+    # Keep data as a single-line JSON string
+    safe_data = data.replace("\n", "\\n")
+    return f"event: {event}\ndata: {safe_data}\n\n"
+
+# Stream generator that proxies Kobold stream to client
+async def kobold_stream_generator(kobold_payload: dict, incoming_headers: dict) -> AsyncGenerator[bytes, None]:
+    headers = build_kobold_headers(incoming_headers)
+    timeout = None  # streaming, so no timeout
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        try:
+            # Use streaming POST to Kobold
+            async with client.stream("POST", KOBOLD_BASE_URL, json=kobold_payload, headers=headers) as resp:
+                if resp.status_code >= 400:
+                    text = await resp.aread()
+                    logger.error("Kobold returned error %s: %s", resp.status_code, text.decode(errors="ignore"))
+                    # Send an error SSE event then close
+                    yield format_sse_event("error", json.dumps({"status": resp.status_code, "body": text.decode(errors="ignore")})).encode()
+                    return
+
+                # If not streaming, read full body and return once
+                if not kobold_payload.get("stream", False):
+                    body = await resp.aread()
+                    # Wrap in a final event
+                    yield format_sse_event("response", body.decode(errors="ignore")).encode()
+                    return
+
+                # Streaming mode: iterate over lines/chunks
+                async for chunk in resp.aiter_bytes():
+                    if not chunk:
+                        continue
+                    try:
+                        text = chunk.decode(errors="ignore")
+                    except Exception:
+                        text = str(chunk)
+                    # Kobold streaming formats vary. We forward raw chunk as 'delta' events.
+                    # If chunk looks like JSON lines, try to parse and reformat.
+                    try:
+                        # Attempt to parse JSON if chunk is JSON-like
+                        parsed = json.loads(text)
+                        data = json.dumps(parsed, ensure_ascii=False)
+                    except Exception:
+                        data = text
+                    yield format_sse_event("delta", data).encode()
+                # After stream ends, send done event
+                yield format_sse_event("done", json.dumps({"status": "complete"})).encode()
+        except httpx.RequestError as e:
+            logger.exception("Request to Kobold failed")
+            yield format_sse_event("error", json.dumps({"error": str(e)})).encode()
+        except Exception as e:
+            logger.exception("Unexpected error in kobold_stream_generator")
+            yield format_sse_event("error", json.dumps({"error": str(e)})).encode()
+
+# Health check
+@app.get("/health")
+async def health():
+    return {"status": "ok", "kobold_base_url": KOBOLD_BASE_URL}
+
+# Main proxy endpoint
+@app.post("/v1/complete")
+async def proxy_complete(request: Request, x_api_key: Optional[str] = Header(None)):
+    """
+    Accepts Cloud Code / Anthropic-like requests and proxies them to KoboldCPP.
+    Returns streaming SSE events when stream=true, else returns JSON.
+    """
+    incoming_headers = {k.lower(): v for k, v in request.headers.items()}
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    # Map payload
+    kobold_payload = map_cloud_to_kobold(payload)
+    logger.info("Mapped payload: %s", {k: kobold_payload.get(k) for k in ("model", "max_tokens", "stream")})
+
+    # If stream requested, return SSE streaming response
+    if kobold_payload.get("stream", False):
+        generator = kobold_stream_generator(kobold_payload, incoming_headers)
+        return StreamingResponse(generator, media_type="text/event-stream")
+    else:
+        # Non-streaming: call Kobold and return JSON
+        headers = build_kobold_headers(incoming_headers)
+        async with httpx.AsyncClient() as client:
+            try:
+                resp = await client.post(KOBOLD_BASE_URL, json=kobold_payload, headers=headers, timeout=30.0)
+            except httpx.RequestError as e:
+                logger.exception("Kobold request failed")
+                raise HTTPException(status_code=502, detail=str(e))
+            if resp.status_code >= 400:
+                logger.error("Kobold returned %s: %s", resp.status_code, resp.text)
+                raise HTTPException(status_code=resp.status_code, detail=resp.text)
+            # Return Kobold JSON directly but wrapped to Cloud Code style if needed
+            try:
+                body = resp.json()
+            except Exception:
+                body = {"raw": resp.text}
+            # Optionally reformat to Anthropic-like response
+            return JSONResponse(content={"id": body.get("id", None), "output": body})
+
+# Optional endpoint to translate without proxying (dry-run)
+@app.post("/v1/translate")
+async def translate_only(request: Request):
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+    kobold_payload = map_cloud_to_kobold(payload)
+    return JSONResponse(content=kobold_payload)
+
+# Run with: uvicorn proxy_server:app --host 0.0.0.0 --port 8080
