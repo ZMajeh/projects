@@ -5,6 +5,12 @@
   "description": "Connects your Kobold AI to your VSC to autocomplete code. Recommend an Nvidia card or a gfx1032+ AMD card.",
   "version": "0.0.1",
   "author": "Majeh",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Majeh/KoboldConExt.git"
+  },
+  "icon": "media/icon.png",
   "engines": {
     "vscode": "^1.82.0"
   },

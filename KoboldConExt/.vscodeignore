@@ -1,0 +1,11 @@
+node_modules
+src
+.vscode
+.gitignore
+webpack.config.js
+tsconfig.json
+package-lock.json
+GEMINI.md
+README.md
+out
+images
