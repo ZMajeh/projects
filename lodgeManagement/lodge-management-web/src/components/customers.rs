@@ -8,7 +8,7 @@ use crate::utils::{wait_for_bridge, calculate_age};
 pub fn CustomerForm(
     editing_id: Memo<Option<String>>,
     on_success: Callback<()>,
-    initial_data: Option<Customer>,
+    #[prop(optional)] initial_data: Option<Customer>,
 ) -> impl IntoView {
     let (name, set_name) = create_signal(initial_data.as_ref().map(|c| c.full_name.clone()).unwrap_or_default());
     let (phone, set_phone) = create_signal(initial_data.as_ref().map(|c| c.phone.clone()).unwrap_or_default());
@@ -104,7 +104,7 @@ pub fn CustomerForm(
             </div>
             <button type="submit" style="width: 100%; margin-top: 20px; background-color: #27ae60;">{move || if editing_id.get().is_some() { "Update" } else { "Save Verified Guest" }}</button>
             
-            {move || if show_manual_verify.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 4000;"><div class="card" style="max-width: 300px; text-align: center; padding: 1.5rem;"><h3>"Verified?"</h3><div style="display: flex; gap: 10px; margin-top: 20px;"><button on:click=move |_| { set_is_verified.set(true); set_show_manual_verify.set(false); } style="background: green; flex: 1;">"YES"</button><button on:click=move |_| set_show_manual_verify.set(false) style="background: red; flex: 1;">"NO"</button></div></div></div> }.into_view() } else { view! {}.into_view() }}
+            {move || if show_manual_verify.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 4000;"><div class="card" style="max-width: 300px; text-align: center; padding: 1.5rem;"><h3>"Verified?"</h3><div style="display: flex; gap: 10px; margin-top: 20px;"><button type="button" on:click=move |_| { set_is_verified.set(true); set_show_manual_verify.set(false); } style="background: green; flex: 1;">"YES"</button><button type="button" on:click=move |_| set_show_manual_verify.set(false) style="background: red; flex: 1;">"NO"</button></div></div></div> }.into_view() } else { view! {}.into_view() }}
             {move || if camera_active.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 4000; padding: 1rem;"><video id="cam-preview-modal" style="width: 100%; max-width: 400px; border: 2px solid white;"></video><div style="margin-top: 20px; display: flex; gap: 10px;"><button type="button" on:click=move |_| { spawn_local(async move { wait_for_bridge().await; if let Ok(data_js) = take_snapshot("cam-preview-modal".to_string()).await { if let Some(data) = data_js.as_string() { if capture_target.get() == "photo" { set_photo.set(Some(data)); } else { set_id_card.set(Some(data.clone())); process_id_ocr(data); } } } let _ = stop_camera().await; set_camera_active.set(false); }); } style="background: green;">"CAPTURE"</button><button type="button" on:click=move |_| { spawn_local(async move { let _ = stop_camera().await; set_camera_active.set(false); }); } style="background: red;">"CLOSE"</button></div></div> }.into_view() } else { view! {}.into_view() }}
         </form>
     }
@@ -125,6 +125,7 @@ pub fn Customers() -> impl IntoView {
     let (search_query, set_search_query) = create_signal("".to_string());
     let (editing_id, set_editing_id) = create_signal(None::<String>);
     let (editing_data, set_editing_data) = create_signal(None::<Customer>);
+    let (confirm_delete_id, set_confirm_delete_id) = create_signal(None::<String>);
 
     let load_customers = move |q: String| {
         spawn_local(async move {
@@ -148,10 +149,13 @@ pub fn Customers() -> impl IntoView {
         window().scroll_to_with_x_and_y(0.0, 0.0);
     };
 
-    let on_delete = move |id: String| {
-        if window().confirm_with_message("Delete?").unwrap_or(false) {
-            spawn_local(async move { wait_for_bridge().await; let _ = delete_customer_js(id).await; load_customers(search_query.get_untracked()); });
-        }
+    let on_delete_final = move |id: String| {
+        spawn_local(async move {
+            wait_for_bridge().await;
+            let _ = delete_customer_js(id).await;
+            set_confirm_delete_id.set(None);
+            load_customers(search_query.get_untracked());
+        });
     };
 
     view! {
@@ -177,7 +181,47 @@ pub fn Customers() -> impl IntoView {
 
             <div style="margin: 2rem 0;"><input type="text" placeholder="Search..." on:input=move |ev| set_search_query.set(event_target_value(&ev)) /></div>
             <h3>"Guest Directory"</h3>
-            {move || if loading.get() { view! { <p>"Loading..."</p> }.into_view() } else { view! { <table><thead><tr><th>"Name"</th><th>"Aadhaar"</th><th>"Status"</th><th>"Actions"</th></tr></thead><tbody><For each=move || customers.get() key=|c| c.id.clone().unwrap_or_default() children=move |c| { let c_cloned = c.clone(); let id_cloned = c.id.clone().unwrap_or_default(); view! { <tr><td><strong>{c.full_name.clone()}</strong></td><td>{c.aadhaar.clone()}</td><td>{if c.verified { "✅" } else { "⚠️" }}</td><td><button on:click=move |_| on_edit(c_cloned.clone()) style="padding: 5px 10px; margin-right: 5px; font-size: 0.8rem; background: #3498db;">"Edit"</button><button on:click=move |_| on_delete(id_cloned.clone()) style="padding: 5px 10px; font-size: 0.8rem; background: #e74c3c;">"Del"</button></td></tr> } } /></tbody></table> }.into_view() }}
+            {move || if loading.get() { view! { <p>"Loading..."</p> }.into_view() } else { view! { 
+                <table>
+                    <thead><tr><th>"Name"</th><th>"Aadhaar"</th><th>"Status"</th><th>"Actions"</th></tr></thead>
+                    <tbody>
+                        <For each=move || customers.get() key=|c| c.id.clone().unwrap_or_default() children=move |c| { 
+                            let c_cloned = c.clone(); 
+                            let id_cloned = c.id.clone().unwrap_or_default(); 
+                            let id_c = id_cloned.clone();
+                            
+                            view! { 
+                                <tr>
+                                    <td><strong>{c.full_name.clone()}</strong></td>
+                                    <td>{c.aadhaar.clone()}</td>
+                                    <td>{if c.verified { "✅" } else { "⚠️" }}</td>
+                                    <td>
+                                        {move || if confirm_delete_id.get() == Some(id_c.clone()) {
+                                            let id_final = id_c.clone();
+                                            view! {
+                                                <div style="display: flex; gap: 5px; align-items: center;">
+                                                    <span style="font-size: 0.7rem; color: red;">"Sure?"</span>
+                                                    <button on:click=move |_| on_delete_final(id_final.clone()) style="padding: 2px 8px; font-size: 0.7rem; background: #e74c3c;">"YES"</button>
+                                                    <button on:click=move |_| set_confirm_delete_id.set(None) style="padding: 2px 8px; font-size: 0.7rem; background: #6c757d;">"NO"</button>
+                                                </div>
+                                            }.into_view()
+                                        } else {
+                                            let c_edit = c_cloned.clone();
+                                            let id_del = id_c.clone();
+                                            view! {
+                                                <div style="display: flex; gap: 5px;">
+                                                    <button on:click=move |_| on_edit(c_edit.clone()) style="padding: 5px 10px; font-size: 0.8rem; background: #3498db;">"Edit"</button>
+                                                    <button on:click=move |_| set_confirm_delete_id.set(Some(id_del.clone())) style="padding: 5px 10px; font-size: 0.8rem; background: #e74c3c;">"Del"</button>
+                                                </div>
+                                            }.into_view()
+                                        }}
+                                    </td>
+                                </tr> 
+                            } 
+                        } />
+                    </tbody>
+                </table> 
+            }.into_view() }}
         </div>
     }
 }

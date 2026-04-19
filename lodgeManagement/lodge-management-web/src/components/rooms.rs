@@ -18,6 +18,7 @@ pub fn Rooms() -> impl IntoView {
     let (number, set_number) = create_signal("".to_string());
     let (room_type, set_room_type) = create_signal("Delux".to_string());
     let (editing_id, set_editing_id) = create_signal(None::<String>);
+    let (confirm_delete_id, set_confirm_delete_id) = create_signal(None::<String>);
 
     let load_rooms = move || {
         spawn_local(async move {
@@ -51,10 +52,8 @@ pub fn Rooms() -> impl IntoView {
         window().scroll_to_with_x_and_y(0.0, 0.0);
     };
 
-    let on_delete = move |id: String| {
-        if window().confirm_with_message("Delete?").unwrap_or(false) {
-            spawn_local(async move { wait_for_bridge().await; let _ = delete_room_js(id).await; load_rooms(); });
-        }
+    let on_delete_final = move |id: String| {
+        spawn_local(async move { wait_for_bridge().await; let _ = delete_room_js(id).await; load_rooms(); });
     };
 
     view! {
@@ -92,14 +91,32 @@ pub fn Rooms() -> impl IntoView {
                             <For each=move || rooms.get() key=|room| room.id.clone().unwrap_or_default() children=move |room| {
                                 let r_cloned = room.clone();
                                 let id_cloned = room.id.clone().unwrap_or_default();
+                                let id_c = id_cloned.clone();
                                 view! {
                                     <tr>
                                         <td>{room.number.clone()}</td>
                                         <td>{room.room_type.clone()}</td>
                                         <td><span style=format!("padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; background-color: {}; color: white;", if room.status == "Available" { "#27ae60" } else { "#e67e22" })>{room.status.clone()}</span></td>
                                         <td>
-                                            <button on:click=move |_| on_edit(r_cloned.clone()) style="padding: 5px 10px; margin-right: 5px; font-size: 0.8rem; background: #3498db;">"Edit"</button>
-                                            <button on:click=move |_| on_delete(id_cloned.clone()) style="padding: 5px 10px; font-size: 0.8rem; background: #e74c3c;">"Del"</button>
+                                            {move || if confirm_delete_id.get() == Some(id_c.clone()) {
+                                                let id_final = id_c.clone();
+                                                view! {
+                                                    <div style="display: flex; gap: 5px; align-items: center;">
+                                                        <span style="font-size: 0.7rem; color: red;">"Sure?"</span>
+                                                        <button on:click=move |_| on_delete_final(id_final.clone()) style="padding: 2px 8px; font-size: 0.7rem; background: #e74c3c;">"YES"</button>
+                                                        <button on:click=move |_| set_confirm_delete_id.set(None) style="padding: 2px 8px; font-size: 0.7rem; background: #6c757d;">"NO"</button>
+                                                    </div>
+                                                }.into_view()
+                                            } else {
+                                                let r_edit = r_cloned.clone();
+                                                let id_del = id_c.clone();
+                                                view! {
+                                                    <div style="display: flex; gap: 5px;">
+                                                        <button on:click=move |_| on_edit(r_edit.clone()) style="padding: 5px 10px; font-size: 0.8rem; background: #3498db;">"Edit"</button>
+                                                        <button on:click=move |_| set_confirm_delete_id.set(Some(id_del.clone())) style="padding: 5px 10px; font-size: 0.8rem; background: #e74c3c;">"Del"</button>
+                                                    </div>
+                                                }.into_view()
+                                            }}
                                         </td>
                                     </tr>
                                 }
