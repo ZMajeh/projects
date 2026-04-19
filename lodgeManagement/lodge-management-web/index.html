@@ -11,6 +11,7 @@
                 --sidebar-bg: #2c3e50;
                 --bg: #f8f9fa;
                 --text: #333;
+                --sidebar-width: 250px;
             }
             body {
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -18,20 +19,49 @@
                 background-color: var(--bg);
                 color: var(--text);
                 height: 100vh;
-                overflow: hidden;
             }
             .app-layout {
                 display: flex;
                 height: 100vh;
+                position: relative;
             }
+            
+            /* Sidebar / Mobile Menu */
             .sidebar {
-                width: 250px;
+                width: var(--sidebar-width);
                 background-color: var(--sidebar-bg);
                 color: white;
                 display: flex;
                 flex-direction: column;
                 padding: 1rem;
+                transition: transform 0.3s ease;
+                z-index: 1001;
             }
+
+            /* Responsive Mobile Sidebar */
+            @media (max-width: 768px) {
+                .sidebar {
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    bottom: 0;
+                    transform: translateX(-100%);
+                }
+                .sidebar.open {
+                    transform: translateX(0);
+                }
+                .sidebar-overlay {
+                    display: none;
+                    position: fixed;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    background: rgba(0,0,0,0.5);
+                    z-index: 1000;
+                }
+                .sidebar-overlay.show {
+                    display: block;
+                }
+            }
+
             .sidebar h2 {
                 font-size: 1.2rem;
                 margin-bottom: 2rem;
@@ -51,48 +81,87 @@
                 background-color: #34495e;
                 color: white;
             }
+
+            /* Content Area */
             .content {
                 flex: 1;
-                padding: 2rem;
+                padding: 1rem;
                 overflow-y: auto;
+                width: 100%;
             }
+            
+            /* Header for Mobile */
+            .mobile-header {
+                display: none;
+                background: white;
+                padding: 0.5rem 1rem;
+                border-bottom: 1px solid #ddd;
+                align-items: center;
+                justify-content: space-between;
+            }
+            @media (max-width: 768px) {
+                .mobile-header { display: flex; }
+                .content { padding-top: 0; }
+            }
+
             .container {
                 max-width: 1000px;
                 margin: 0 auto;
                 background: white;
-                padding: 2rem;
+                padding: 1rem;
                 border-radius: 8px;
                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             }
+            
             .card {
                 background: white;
-                padding: 1.5rem;
+                padding: 1rem;
                 border-radius: 8px;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.05);
                 margin-bottom: 1rem;
             }
+
+            /* Forms & Tables */
+            .grid-form {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 15px;
+            }
+            @media (max-width: 600px) {
+                .grid-form { grid-template-columns: 1fr; }
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                display: block;
+                overflow-x: auto;
+            }
+
             button {
-                padding: 0.6rem 1.2rem;
+                padding: 0.8rem 1.2rem;
                 font-size: 1rem;
                 background-color: var(--primary);
                 color: white;
                 border: none;
                 border-radius: 4px;
                 cursor: pointer;
-                transition: opacity 0.2s;
             }
-            button:hover {
-                opacity: 0.9;
-            }
-            button:disabled {
-                background-color: #ccc;
-                cursor: not-allowed;
-            }
+            button:disabled { background-color: #ccc; }
+            
             input, select {
-                padding: 0.6rem;
+                padding: 0.8rem;
                 border: 1px solid #ddd;
                 border-radius: 4px;
-                margin-bottom: 1rem;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            
+            /* Camera Utility */
+            .camera-modal video {
+                width: 95%;
+                max-width: 600px;
+                border-radius: 8px;
             }
         </style>
     </head>
