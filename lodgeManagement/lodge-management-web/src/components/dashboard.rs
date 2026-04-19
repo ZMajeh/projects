@@ -4,9 +4,9 @@ use wasm_bindgen::prelude::*;
 use crate::models::{User, Room, Booking, NewBooking, NewRoom, Customer};
 use crate::utils::{clear_user, wait_for_bridge};
 use crate::api::{sign_out_user, add_booking_js, update_room_js};
-use crate::components::rooms::fetch_rooms;
-use crate::components::bookings::fetch_bookings;
-use crate::components::customers::fetch_customers;
+use crate::components::rooms::{fetch_rooms, Rooms};
+use crate::components::bookings::{fetch_bookings, Bookings};
+use crate::components::customers::Customers;
 
 #[component]
 pub fn DashboardHome() -> impl IntoView {
@@ -18,7 +18,6 @@ pub fn DashboardHome() -> impl IntoView {
     let (customers, set_customers) = create_signal(Vec::<Customer>::new());
     let (loading, set_loading) = create_signal(true);
 
-    // Modal States
     let (show_book_modal, set_show_book_modal) = create_signal(None::<Room>);
     let (show_edit_modal, set_show_edit_modal) = create_signal(None::<Room>);
 
@@ -53,7 +52,7 @@ pub fn DashboardHome() -> impl IntoView {
         <div class="card">
             <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 2rem;">
                 <h2>"Lodge Occupancy Overview"</h2>
-                <div style="display: flex; align-items: center; gap: 15px; background: #fff; padding: 10px 20px; border-radius: 50px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                <div style="display: flex; align-items: center; gap: 15px; background: #fff; padding: 10px 20px; border-radius: 50px;">
                     <button on:click=move |_| navigate_day(-1.0) style="background: none; color: var(--primary); font-weight: bold; font-size: 1.2rem; border: none; cursor: pointer;">"←"</button>
                     <input type="date" 
                         on:input=move |ev| set_selected_date.set(event_target_value(&ev))
@@ -73,24 +72,25 @@ pub fn DashboardHome() -> impl IntoView {
                             let room_id = r.id.clone().unwrap_or_default();
                             let r_cloned = r.clone();
                             let r_cloned_2 = r.clone();
+                            let rid_c = room_id.clone();
                             
                             view! {
-                                <div style=move || format!("border: 1px solid #eee; border-radius: 12px; padding: 15px; text-align: center; background: #fff; border-top: 8px solid {}; shadow: 0 4px 6px rgba(0,0,0,0.05);", 
-                                    if is_occupied(room_id.clone()) { "#e74c3c" } else { "#27ae60" }
+                                <div style=move || format!("border: 1px solid #eee; border-radius: 12px; padding: 15px; text-align: center; background: #fff; border-top: 8px solid {};", 
+                                    if is_occupied(rid_c.clone()) { "#e74c3c" } else { "#27ae60" }
                                 )>
                                     <strong style="font-size: 1.3rem; display: block; margin-bottom: 5px;">"Room " {r.number.clone()}</strong>
                                     <span style="font-size: 0.8rem; color: #7f8c8d; background: #f8f9fa; padding: 2px 8px; border-radius: 10px;">{r.room_type.clone()}</span>
                                     
                                     <div style=move || format!("margin: 15px 0; font-size: 0.8rem; font-weight: bold; color: {};", 
-                                        if is_occupied(room_id.clone()) { "#e74c3c" } else { "#27ae60" }
+                                        if is_occupied(rid_c.clone()) { "#e74c3c" } else { "#27ae60" }
                                     )>
-                                        {move || if is_occupied(room_id.clone()) { "● OCCUPIED" } else { "● AVAILABLE" }}
+                                        {move || if is_occupied(rid_c.clone()) { "● OCCUPIED" } else { "● AVAILABLE" }}
                                     </div>
 
                                     <div style="display: flex; gap: 8px; margin-top: 10px;">
                                         <button 
                                             on:click=move |_| set_show_book_modal.set(Some(r_cloned.clone()))
-                                            disabled=move || is_occupied(room_id.clone())
+                                            disabled=move || is_occupied(rid_c.clone())
                                             style="flex: 1; padding: 8px; font-size: 0.75rem; background: #27ae60;"
                                         >
                                             "Book"
@@ -121,17 +121,17 @@ pub fn DashboardHome() -> impl IntoView {
                     ev.prevent_default();
                     set_saving.set(true);
                     let c_id = sel_cust.get();
-                    let cust = customers.get_untracked().into_iter().find(|c| c.id.as_deref() == Some(&c_id));
+                    let rid = r_id.clone();
+                    let rnum = r_num.clone();
+                    let date = selected_date.get_untracked();
+                    let cout = check_out.get();
+                    let cust_opt = customers.get_untracked().into_iter().find(|c| c.id.as_deref() == Some(&c_id));
                     
-                    if let Some(c) = cust {
+                    if let Some(c) = cust_opt {
                         let new_booking = NewBooking {
-                            room_id: r_id.clone(),
-                            customer_id: c_id,
-                            customer_name: c.full_name,
-                            room_number: r_num.clone(),
-                            check_in_date: selected_date.get_untracked(),
-                            check_out_date: check_out.get(),
-                            status: "Checked-In".to_string(),
+                            room_id: rid, customer_id: c_id, customer_name: c.full_name,
+                            room_number: rnum, check_in_date: date,
+                            check_out_date: cout, status: "Checked-In".to_string(),
                         };
                         spawn_local(async move {
                             wait_for_bridge().await;
@@ -154,7 +154,7 @@ pub fn DashboardHome() -> impl IntoView {
                                         <input type="text" value=room.number.clone() disabled style="background: #eee;" />
                                     </div>
                                     <div>
-                                        <label style="font-size: 0.8rem; font-weight: bold;">"Check-in Date (Today)"</label>
+                                        <label style="font-size: 0.8rem; font-weight: bold;">"Check-in Date"</label>
                                         <input type="text" value=selected_date.get() disabled style="background: #eee;" />
                                     </div>
                                     <div>
@@ -167,13 +167,13 @@ pub fn DashboardHome() -> impl IntoView {
                                         </select>
                                     </div>
                                     <div>
-                                        <label style="font-size: 0.8rem; font-weight: bold;">"Check-out Date (Estimate)"</label>
+                                        <label style="font-size: 0.8rem; font-weight: bold;">"Check-out Date"</label>
                                         <input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) required />
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 10px; margin-top: 25px;">
                                     <button type="submit" disabled=saving style="flex: 1; background: #27ae60;">
-                                        {move || if saving.get() { "Saving..." } else { "Confirm Booking" }}
+                                        {move || if saving.get() { "Saving..." } else { "Confirm" }}
                                     </button>
                                     <button type="button" on:click=move |_| set_show_book_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button>
                                 </div>
@@ -186,21 +186,23 @@ pub fn DashboardHome() -> impl IntoView {
             // --- QUICK ROOM EDIT MODAL ---
             {move || show_edit_modal.get().map(|room| {
                 let r_id = room.id.clone().unwrap_or_default();
+                let r_num = room.number.clone();
+                let r_status = room.status.clone();
                 let (r_type, set_r_type) = create_signal(room.room_type.clone());
                 let (saving, set_saving) = create_signal(false);
 
                 let handle_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default();
                     set_saving.set(true);
-                    let updated_room = NewRoom {
-                        number: room.number.clone(),
-                        room_type: r_type.get(),
-                        status: room.status.clone(),
-                    };
+                    let rid = r_id.clone();
+                    let rnum = r_num.clone();
+                    let rstat = r_status.clone();
+                    let rtype = r_type.get();
+                    let updated_room = NewRoom { number: rnum, room_type: rtype, status: rstat };
                     spawn_local(async move {
                         wait_for_bridge().await;
                         let js_val = serde_wasm_bindgen::to_value(&updated_room).unwrap();
-                        let _ = update_room_js(r_id, js_val).await;
+                        let _ = update_room_js(rid, js_val).await;
                         set_show_edit_modal.set(None);
                         load_data();
                     });
@@ -209,15 +211,15 @@ pub fn DashboardHome() -> impl IntoView {
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
                         <div class="card" style="width: 100%; max-width: 400px; padding: 2rem;">
-                            <h3>"Edit Room Settings"</h3>
+                            <h3>"Edit Room"</h3>
                             <form on:submit=handle_update>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
                                     <div>
-                                        <label style="font-size: 0.8rem; font-weight: bold;">"Room Number (Fixed)"</label>
+                                        <label style="font-size: 0.8rem; font-weight: bold;">"Room Number"</label>
                                         <input type="text" value=room.number.clone() disabled style="background: #eee;" />
                                     </div>
                                     <div>
-                                        <label style="font-size: 0.8rem; font-weight: bold;">"Change Room Category"</label>
+                                        <label style="font-size: 0.8rem; font-weight: bold;">"Category"</label>
                                         <select on:change=move |ev| set_r_type.set(event_target_value(&ev)) prop:value=r_type>
                                             <option value="Delux">"Delux"</option>
                                             <option value="AC">"AC"</option>
@@ -227,7 +229,7 @@ pub fn DashboardHome() -> impl IntoView {
                                 </div>
                                 <div style="display: flex; gap: 10px; margin-top: 25px;">
                                     <button type="submit" disabled=saving style="flex: 1; background: #3498db;">
-                                        {move || if saving.get() { "Updating..." } else { "Save Changes" }}
+                                        {move || if saving.get() { "Saving..." } else { "Save" }}
                                     </button>
                                     <button type="button" on:click=move |_| set_show_edit_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button>
                                 </div>
