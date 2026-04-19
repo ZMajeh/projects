@@ -349,34 +349,35 @@
             // OCR Bridge using Tesseract.js
             import "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
             window.extractAadhaar = async (base64Image) => {
-                console.log("OCR: Starting Aadhaar and Name extraction...");
+                console.log("OCR: Starting enhanced extraction...");
                 try {
                     const worker = await Tesseract.createWorker('eng');
                     const { data: { text } } = await worker.recognize(base64Image);
                     await worker.terminate();
 
-                    console.log("OCR Raw Text:", text);
+                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
                     
-                    // Regex to find 12-digit numbers
-                    const idMatches = text.replace(/\s/g, '').match(/\d{12}/);
-                    const aadhaar = idMatches ? idMatches[0] : null;
+                    // 1. Extract 12-digit ID (handles spaces like 7012 5536 7225)
+                    const idMatch = text.replace(/[^0-9]/g, '').match(/\d{12}/);
+                    const aadhaar = idMatch ? idMatch[0] : null;
 
-                    // Improved Name Extraction Strategy:
-                    // Usually name is in uppercase on the second or third line
-                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+                    // 2. Extract DOB
+                    const dobMatch = text.match(/\d{2}\/\d{2}\/\d{4}/);
+                    const dob = dobMatch ? dobMatch[0] : null;
+
+                    // 3. Extract Name (Usually the line immediately before the one containing DOB)
                     let name = null;
-                    
-                    for (let line of lines) {
-                        // Ignore lines that contain known Aadhaar keywords
-                        if (/GOVERNMENT|INDIA|DOB|YEAR|MALE|FEMALE|Address|Unique/i.test(line)) continue;
-                        // Names are usually 2-3 words, all caps or Title Case
-                        if (/^[A-Z\s]+$/.test(line) && line.split(' ').length >= 2) {
-                            name = line;
+                    for (let i = 0; i < lines.length; i++) {
+                        if (lines[i].includes("DOB") || lines[i].includes("Year of Birth")) {
+                            if (i > 0) {
+                                // Clean up prefix garbage like "g " or "® "
+                                name = lines[i-1].replace(/^[^a-zA-Z]+/, '').trim();
+                            }
                             break;
                         }
                     }
 
-                    return { aadhaar, name, raw_text: text };
+                    return { aadhaar, name, dob, raw_text: text };
                 } catch (err) {
                     console.error("OCR Error:", err);
                     throw err;

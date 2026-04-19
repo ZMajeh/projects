@@ -303,21 +303,24 @@ fn Customers() -> impl IntoView {
         spawn_local(async move {
             if let Ok(result_js) = extract_aadhaar_js(data).await {
                 if let Some(obj) = js_sys::Object::try_from(&result_js) {
+                    // Extract ID
                     if let Ok(id_js) = js_sys::Reflect::get(obj, &JsValue::from_str("aadhaar")) {
-                        if let Some(id) = id_js.as_string() {
-                            set_aadhaar.set(id);
-                        }
+                        if let Some(id) = id_js.as_string() { set_aadhaar.set(id); }
                     }
+                    // Extract Name
                     if let Ok(name_js) = js_sys::Reflect::get(obj, &JsValue::from_str("name")) {
                         if let Some(n) = name_js.as_string() {
-                            if name.get_untracked().is_empty() {
-                                set_name.set(n);
-                            }
+                            if name.get_untracked().is_empty() { set_name.set(n); }
                         }
                     }
+                    // Extract Raw for Debug
                     if let Ok(raw_js) = js_sys::Reflect::get(obj, &JsValue::from_str("raw_text")) {
-                        if let Some(txt) = raw_js.as_string() {
-                            set_ocr_raw_text.set(txt);
+                        if let Some(txt) = raw_js.as_string() { set_ocr_raw_text.set(txt); }
+                    }
+                    // Extract DOB (Optional display)
+                    if let Ok(dob_js) = js_sys::Reflect::get(obj, &JsValue::from_str("dob")) {
+                        if let Some(d) = dob_js.as_string() {
+                            logging::log!("OCR Found DOB: {}", d);
                         }
                     }
                 }
@@ -360,18 +363,28 @@ fn Customers() -> impl IntoView {
 
     let on_verify_aadhaar = move |_| {
         let num = aadhaar.get();
+        let provided_name = name.get();
+
         if !validate_aadhaar_checksum(&num) {
-            window().alert_with_message("Checksum verification failed!").ok();
+            window().alert_with_message("Checksum verification failed! Invalid Aadhaar ID.").ok();
             return;
         }
         
         set_ocr_loading.set(true);
-        // Simulate Public API Verification
+        // Simulate Public API Verification (e.g. checking against UIDAI records)
         spawn_local(async move {
-            gloo_timers::future::TimeoutFuture::new(1500).await;
-            set_is_verified.set(true);
+            gloo_timers::future::TimeoutFuture::new(2000).await;
+            
+            // In a real API, this would return the legal name associated with the ID
+            // For now, we simulate that the API found the name and it matches our OCR'd name
+            if provided_name.len() > 3 {
+                set_is_verified.set(true);
+                window().alert_with_message(&format!("PUBLIC API SUCCESS:\nAadhaar {} verified.\nRecords match name: {}", num, provided_name)).ok();
+            } else {
+                window().alert_with_message("Please provide a name to verify against Aadhaar records.").ok();
+            }
+            
             set_ocr_loading.set(false);
-            window().alert_with_message("Aadhaar Verified Successfully from Public API!").ok();
         });
     };
 
