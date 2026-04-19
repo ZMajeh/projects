@@ -134,6 +134,9 @@
                 box-sizing: border-box;
             }
         </style>
+        
+        <!-- Load Tesseract as Global -->
+        <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     </head>
     <body>
         <div id="main"></div>
@@ -142,7 +145,6 @@
             import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
             import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
             import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-            import Tesseract from "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
 
             const firebaseConfig = {
                 apiKey: "AIzaSyB_UNAaB6Enl87Yiw3zQONsjqITtYKKP_Y",
@@ -234,6 +236,7 @@
 
             // --- OCR BRIDGE ---
             window.extractAadhaar = async (base64Image) => {
+                // Using global Tesseract
                 const worker = await Tesseract.createWorker('eng');
                 const { data: { text } } = await worker.recognize(base64Image);
                 await worker.terminate();
@@ -267,7 +270,7 @@
 
             // Signal that everything is ready
             window.bridgeReady = true;
-            console.log("JS Bridge initialized and ready.");
+            console.log("JS Bridge fully initialized.");
         </script>
     </body>
 </html>
