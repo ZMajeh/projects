@@ -518,8 +518,9 @@ fn Customers() -> impl IntoView {
                 <table>
                     <thead>
                         <tr style="background-color: #f2f2f2; text-align: left;">
-                            <th style="padding: 12px; border: 1px solid #ddd;">"Name"</th>
+                            <th style="padding: 12px; border: 1px solid #ddd;">"Name / Details"</th>
                             <th style="padding: 12px; border: 1px solid #ddd;">"Aadhaar"</th>
+                            <th style="padding: 12px; border: 1px solid #ddd;">"Contact"</th>
                             <th style="padding: 12px; border: 1px solid #ddd;">"Status"</th>
                             <th style="padding: 12px; border: 1px solid #ddd;">"Actions"</th>
                         </tr>
@@ -533,9 +534,13 @@ fn Customers() -> impl IntoView {
                                 <tr>
                                     <td style="padding: 12px; border: 1px solid #ddd;">
                                         <strong>{c.full_name.clone()}</strong><br/>
-                                        <small>{c.phone.clone()} " / " {c.age.clone().unwrap_or_else(|| "??".to_string())} {c.gender.clone().unwrap_or_else(|| "??".to_string())}</small>
+                                        <small>{c.age.clone().unwrap_or_else(|| "??".to_string())} {c.gender.clone().unwrap_or_else(|| "??".to_string())}</small>
                                     </td>
                                     <td style="padding: 12px; border: 1px solid #ddd;">{c.aadhaar.clone()}</td>
+                                    <td style="padding: 12px; border: 1px solid #ddd;">
+                                        {c.phone.clone()}<br/>
+                                        <small style="color: #666;">{c.email.clone()}</small>
+                                    </td>
                                     <td style="padding: 12px; border: 1px solid #ddd;">
                                         {if c.verified {
                                             view! { <span style="color: green; font-weight: bold;">"✅ Verified"</span> }.into_view()
