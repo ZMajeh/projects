@@ -38,7 +38,7 @@ pub fn DashboardHome() -> impl IntoView {
         set_selected_date.set(new_date.to_iso_string().as_string().unwrap()[..10].to_string());
     };
 
-    let is_occupied = move |room_id: String| {
+    let is_occupied = move |room_id: &str| {
         let date_str = selected_date.get();
         bookings.get().iter().any(|b| {
             b.room_id == room_id && 
@@ -72,25 +72,30 @@ pub fn DashboardHome() -> impl IntoView {
                             let room_id = r.id.clone().unwrap_or_default();
                             let r_cloned = r.clone();
                             let r_cloned_2 = r.clone();
-                            let rid_c = room_id.clone();
                             
                             view! {
-                                <div style=move || format!("border: 1px solid #eee; border-radius: 12px; padding: 15px; text-align: center; background: #fff; border-top: 8px solid {};", 
-                                    if is_occupied(rid_c.clone()) { "#e74c3c" } else { "#27ae60" }
-                                )>
+                                <div style=move || {
+                                    let occupied = is_occupied(&room_id);
+                                    format!("border: 1px solid #eee; border-radius: 12px; padding: 15px; text-align: center; background: #fff; border-top: 8px solid {};", 
+                                        if occupied { "#e74c3c" } else { "#27ae60" }
+                                    )
+                                }>
                                     <strong style="font-size: 1.3rem; display: block; margin-bottom: 5px;">"Room " {r.number.clone()}</strong>
                                     <span style="font-size: 0.8rem; color: #7f8c8d; background: #f8f9fa; padding: 2px 8px; border-radius: 10px;">{r.room_type.clone()}</span>
                                     
-                                    <div style=move || format!("margin: 15px 0; font-size: 0.8rem; font-weight: bold; color: {};", 
-                                        if is_occupied(rid_c.clone()) { "#e74c3c" } else { "#27ae60" }
-                                    )>
-                                        {move || if is_occupied(rid_c.clone()) { "● OCCUPIED" } else { "● AVAILABLE" }}
+                                    <div style=move || {
+                                        let occupied = is_occupied(&room_id);
+                                        format!("margin: 15px 0; font-size: 0.8rem; font-weight: bold; color: {};", 
+                                            if occupied { "#e74c3c" } else { "#27ae60" }
+                                        )
+                                    }>
+                                        {move || if is_occupied(&room_id) { "● OCCUPIED" } else { "● AVAILABLE" }}
                                     </div>
 
                                     <div style="display: flex; gap: 8px; margin-top: 10px;">
                                         <button 
                                             on:click=move |_| set_show_book_modal.set(Some(r_cloned.clone()))
-                                            disabled=move || is_occupied(rid_c.clone())
+                                            disabled=move || is_occupied(&room_id)
                                             style="flex: 1; padding: 8px; font-size: 0.75rem; background: #27ae60;"
                                         >
                                             "Book"
@@ -161,9 +166,16 @@ pub fn DashboardHome() -> impl IntoView {
                                         <label style="font-size: 0.8rem; font-weight: bold;">"Select Guest"</label>
                                         <select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) required>
                                             <option value="">"Choose guest..."</option>
-                                            <For each=move || customers.get() key=|c| c.id.clone().unwrap_or_default() children=|c| {
-                                                view! { <option value=c.id.clone()>{c.full_name.clone()} {if c.verified { "✅" } else { "⚠️" }}</option> }
-                                            } />
+                                            {move || {
+                                                customers.get().into_iter()
+                                                    .map(|c| {
+                                                        let cid = c.id.clone().unwrap_or_default();
+                                                        let cname = c.full_name.clone();
+                                                        let ver = if c.verified { "✅" } else { "⚠️" };
+                                                        view! { <option value=cid>{cname} " " {ver}</option> }
+                                                    })
+                                                    .collect_view()
+                                            }}
                                         </select>
                                     </div>
                                     <div>
