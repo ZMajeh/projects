@@ -15,24 +15,32 @@ use crate::components::bookings::Bookings;
 #[component]
 fn App() -> impl IntoView {
     let (user, set_user) = create_signal(get_saved_user());
+    let on_login = Callback::new(move |u| set_user.set(Some(u)));
+    let on_logout = Callback::new(move |_| set_user.set(None));
 
     view! {
         <Router>
-            <main>
-                {move || match user.get() {
-                    None => view! { <Login on_login=Callback::new(move |u| set_user.set(Some(u)))/> }.into_view(),
-                    Some(u) => view! { 
-                        <DashboardLayout user=u on_logout=Callback::new(move |_| set_user.set(None))>
-                            <Routes>
-                                <Route path="" view=DashboardHome />
-                                <Route path="rooms" view=Rooms />
-                                <Route path="customers" view=Customers />
-                                <Route path="bookings" view=Bookings />
-                            </Routes>
-                        </DashboardLayout>
-                    }.into_view(),
-                }}
-            </main>
+            <Routes>
+                // Public Route
+                <Route path="/login" view=move || view! { <Login on_login=on_login /> } />
+
+                // Protected Routes inside DashboardLayout
+                <Route 
+                    path="/" 
+                    view=move || {
+                        if let Some(u) = user.get() {
+                            view! { <DashboardLayout user=u on_logout=on_logout><Outlet/></DashboardLayout> }.into_view()
+                        } else {
+                            view! { <Redirect path="/login"/> }.into_view()
+                        }
+                    }
+                >
+                    <Route path="" view=DashboardHome />
+                    <Route path="rooms" view=Rooms />
+                    <Route path="customers" view=Customers />
+                    <Route path="bookings" view=Bookings />
+                </Route>
+            </Routes>
         </Router>
     }
 }

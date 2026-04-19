@@ -137,41 +137,16 @@ pub fn DashboardHome() -> impl IntoView {
                 let (check_out, set_check_out) = create_signal("".to_string());
                 let (saving, set_saving) = create_signal(false);
                 let (guest_search, set_guest_search) = create_signal("".to_string());
-                
-                let filtered_guests = move || {
-                    let q = guest_search.get().to_lowercase();
-                    customers.get().into_iter().filter(|c| c.full_name.to_lowercase().contains(&q) || c.aadhaar.contains(&q)).collect::<Vec<_>>()
-                };
-
-                let rid_save = r_id.clone();
-                let rnum_save = r_num.clone();
-
+                let filtered_guests = move || { let q = guest_search.get().to_lowercase(); customers.get().into_iter().filter(|c| c.full_name.to_lowercase().contains(&q) || c.aadhaar.contains(&q)).collect::<Vec<_>>() };
+                let rid_save = r_id.clone(); let rnum_save = r_num.clone();
                 let handle_book = move |ev: leptos::ev::SubmitEvent| {
-                    ev.prevent_default();
-                    set_saving.set(true);
-                    let c_id = sel_cust.get();
-                    let rid = rid_save.clone();
-                    let rnum = rnum_save.clone();
-                    let date = selected_date.get_untracked();
-                    let cout = check_out.get();
+                    ev.prevent_default(); set_saving.set(true);
+                    let c_id = sel_cust.get(); let rid = rid_save.clone(); let rnum = rnum_save.clone(); let date = selected_date.get_untracked(); let cout = check_out.get();
                     let cust_opt = customers.get_untracked().into_iter().find(|c| c.id.as_deref() == Some(&c_id));
                     if let Some(c) = cust_opt {
-                        let total = final_price.get().parse::<f64>().unwrap_or(0.0);
-                        let first_pay = paid_now.get().parse::<f64>().unwrap_or(0.0);
-                        let new_booking = NewBooking {
-                            room_id: rid, customer_id: c_id, customer_name: c.full_name,
-                            room_number: rnum, check_in_date: date,
-                            check_out_date: cout, status: "Checked-In".to_string(),
-                            total_amount: total,
-                            payments: vec![Payment { amount: first_pay, date: selected_date.get_untracked() }]
-                        };
-                        spawn_local(async move {
-                            wait_for_bridge().await;
-                            let js_val = serde_wasm_bindgen::to_value(&new_booking).unwrap();
-                            let _ = add_booking_js(js_val).await;
-                            set_show_book_modal.set(None);
-                            load_data();
-                        });
+                        let total = final_price.get().parse::<f64>().unwrap_or(0.0); let first_pay = paid_now.get().parse::<f64>().unwrap_or(0.0);
+                        let new_booking = NewBooking { room_id: rid, customer_id: c_id, customer_name: c.full_name, room_number: rnum, check_in_date: date, check_out_date: cout, status: "Checked-In".to_string(), total_amount: total, payments: vec![Payment { amount: first_pay, date: selected_date.get_untracked() }] };
+                        spawn_local(async move { wait_for_bridge().await; let _ = add_booking_js(serde_wasm_bindgen::to_value(&new_booking).unwrap()).await; set_show_book_modal.set(None); load_data(); });
                     }
                 };
                 let rnum_view = r_num.clone();
@@ -181,15 +156,9 @@ pub fn DashboardHome() -> impl IntoView {
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;"><h3>"Quick Check-in"</h3><button on:click=move |_| set_show_add_guest_modal.set(true) style="font-size: 0.7rem; background: #e67e22; padding: 5px 10px;">"+ New Guest"</button></div>
                             <form on:submit=handle_book>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
-                                    <div style="display: flex; gap: 10px;">
-                                        <div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Room"</label><input type="text" value=rnum_view disabled style="background: #eee;" /></div>
-                                        <div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label><input type="text" value=selected_date.get() disabled style="background: #eee;" /></div>
-                                    </div>
+                                    <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Room"</label><input type="text" value=rnum_view disabled style="background: #eee;" /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label><input type="text" value=selected_date.get() disabled style="background: #eee;" /></div></div>
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Search Guest"</label><input type="text" placeholder="Search..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="margin-bottom: 5px;" /><select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) required prop:value=sel_cust><option value="">"Choose guest..."</option>{move || filtered_guests().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); let phone = c.phone.clone(); view! { <option value=cid>{c.full_name.clone()} " (" {phone} ")" </option> } }).collect_view()}</select></div>
-                                    <div style="display: flex; gap: 10px;">
-                                        <div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Total Price"</label><input type="number" on:input=move |ev| set_final_price.set(event_target_value(&ev)) prop:value=final_price required /></div>
-                                        <div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Paying Now"</label><input type="number" on:input=move |ev| set_paid_now.set(event_target_value(&ev)) prop:value=paid_now required /></div>
-                                    </div>
+                                    <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Total Price"</label><input type="number" on:input=move |ev| set_final_price.set(event_target_value(&ev)) prop:value=final_price required /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Paying Now"</label><input type="number" on:input=move |ev| set_paid_now.set(event_target_value(&ev)) prop:value=paid_now required /></div></div>
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Estimated Check-out"</label><input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) required /></div>
                                 </div>
                                 <div style="display: flex; gap: 10px; margin-top: 25px;"><button type="submit" disabled=saving style="flex: 2; background: #27ae60;">"Confirm"</button><button type="button" on:click=move |_| set_show_book_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button></div>
@@ -324,7 +293,7 @@ pub fn DashboardHome() -> impl IntoView {
 }
 
 #[component]
-pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: Children) -> impl IntoView {
+pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: impl IntoView) -> impl IntoView {
     let (menu_open, set_menu_open) = create_signal(false);
     let handle_logout = move |_| { clear_user(); spawn_local(async move { wait_for_bridge().await; let _ = sign_out_user().await; on_logout.call(()); }); };
     view! { 
@@ -339,7 +308,7 @@ pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: Children) 
                 <A href="rooms" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active">"Rooms"</A>
                 <A href="customers" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active">"Customers"</A>
                 <A href="bookings" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active">"Bookings"</A>
-                <div style="margin-top: auto; padding-rem: 1rem; border-top: 1px solid #ddd; font-size: 0.85rem;">
+                <div style="margin-top: auto; padding: 1rem; border-top: 1px solid #ddd; font-size: 0.85rem;">
                     <p style="color: #7f8c8d; overflow: hidden; text-overflow: ellipsis; margin-bottom: 8px; padding-left: 1rem;">{user.email}</p>
                     <button on:click=handle_logout style="background-color: #e74c3c; width: calc(100% - 2rem); margin: 0 1rem; border-radius: 6px;">"Logout"</button>
                 </div>
@@ -351,7 +320,7 @@ pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: Children) 
                     <div style="width: 30px;"></div>
                 </header>
                 <div style="padding: 1rem;">
-                    {children()}
+                    {children}
                 </div>
             </main>
         </div> 
