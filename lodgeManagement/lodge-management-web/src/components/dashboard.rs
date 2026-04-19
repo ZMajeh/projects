@@ -219,14 +219,14 @@ pub fn DashboardHome() -> impl IntoView {
                         spawn_local(async move { wait_for_bridge().await; let _ = add_booking_js(serde_wasm_bindgen::to_value(&new_booking).unwrap()).await; set_show_book_modal.set(None); load_data(); });
                     }
                 };
-                let rnum_view = r_num.clone();
+                let rnum_modal_val = r_num.clone();
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
                         <div class="card" style="width: 100%; max-width: 450px; padding: 2rem;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;"><h3>"Quick Check-in"</h3><button on:click=move |_| set_show_add_guest_modal.set(true) style="font-size: 0.7rem; background: #e67e22; padding: 5px 10px;">"+ New Guest"</button></div>
                             <form on:submit=handle_book>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
-                                    <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Room"</label><input type="text" value=rnum_view disabled style="background: #eee;" /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label><input type="text" value=selected_date.get() disabled style="background: #eee;" /></div></div>
+                                    <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Room"</label><input type="text" value=rnum_modal_val disabled style="background: #eee;" /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label><input type="text" value=selected_date.get() disabled style="background: #eee;" /></div></div>
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Search Guest"</label><input type="text" placeholder="Search..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="margin-bottom: 5px;" /><select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) required prop:value=sel_cust><option value="">"Choose guest..."</option>{move || filtered_guests().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); let phone = c.phone.clone(); view! { <option value=cid>{c.full_name.clone()} " (" {phone} ")" </option> } }).collect_view()}</select></div>
                                     <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Total Price"</label><input type="number" on:input=move |ev| set_final_price.set(event_target_value(&ev)) prop:value=final_price required /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Paying Now"</label><input type="number" on:input=move |ev| set_paid_now.set(event_target_value(&ev)) prop:value=paid_now required /></div></div>
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Estimated Check-out"</label><input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) required /></div>
@@ -284,11 +284,14 @@ pub fn DashboardHome() -> impl IntoView {
                     spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(bid, serde_wasm_bindgen::to_value(&co_booking).unwrap()).await; let _ = update_room_js(b_data.room_id.clone(), JsValue::from_str("Available")).await; set_show_manage_stay_modal.set(None); load_data(); });
                 };
                 let b_id_final = b_id.clone(); let b_rid_final = b_rid.clone();
+                let b_data_view = b_data_orig.clone();
+                let co_final = on_checkout_final.clone();
+
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: center; justify-content: center; z-index: 3000; padding: 1rem; display: flex; align-items: center;">
                         <div class="card" style="width: 100%; max-width: 450px; padding: 2rem;">
                             <h3>"Manage Guest Stay"</h3>
-                            <div style="margin-bottom: 20px; text-align: left; background: #f8f9fa; padding: 1rem; border-radius: 8px;"><p><strong>"Guest: "</strong> {b_data_orig.customer_name.clone()}</p><p><strong>"Room: "</strong> {b_data_orig.room_number.clone()} " | " <strong>"Check-in: "</strong> {b_data_orig.check_in_date.clone()}</p><p><strong>"Total: "</strong> "₹" {b_total} " | " <strong>"Balance: "</strong> "₹" {balance}</p></div>
+                            <div style="margin-bottom: 20px; text-align: left; background: #f8f9fa; padding: 1rem; border-radius: 8px;"><p><strong>"Guest: "</strong> {b_data_view.customer_name.clone()}</p><p><strong>"Room: "</strong> {b_data_view.room_number.clone()} " | " <strong>"Check-in: "</strong> {b_data_view.check_in_date.clone()}</p><p><strong>"Total: "</strong> "₹" {b_total} " | " <strong>"Balance: "</strong> "₹" {balance}</p></div>
                             <form on:submit=handle_update>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Collect Payment"</label><input type="number" on:input=move |ev| set_extra_payment.set(event_target_value(&ev)) prop:value=extra_payment /></div>
@@ -296,7 +299,7 @@ pub fn DashboardHome() -> impl IntoView {
                                 </div>
                                 <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 25px;">
                                     <button type="submit" disabled=saving style="background: #3498db;">"Save Changes"</button>
-                                    {let co_f = on_checkout_final.clone(); move || if confirm_checkout.get() { let co_f2 = co_f.clone(); view! { <div style="background: #dcfce7; padding: 10px; border-radius: 8px; border: 1px solid #22c55e; margin-top: 10px;"><p style="color: #166534; font-weight: bold; margin-bottom: 10px;">"Finalize Checkout?"</p><div style="display: flex; gap: 5px;"><button type="button" on:click=move |_| co_f2(()) style="background: #22c55e; flex: 1;">"YES"</button><button type="button" on:click=move |_| set_confirm_checkout.set(false) style="background: #6c757d; flex: 1;">"No"</button></div></div> }.into_view() } else { view! { <button type="button" on:click=move |_| { set_confirm_checkout.set(true); set_confirm_cancel_stay.set(false); } style="background: #27ae60; margin-top: 10px;">"Checkout (Paid & Completed)"</button> }.into_view() }}
+                                    {let co_f2 = co_final.clone(); move || if confirm_checkout.get() { let co_f3 = co_f2.clone(); view! { <div style="background: #dcfce7; padding: 10px; border-radius: 8px; border: 1px solid #22c55e; margin-top: 10px;"><p style="color: #166534; font-weight: bold; margin-bottom: 10px;">"Finalize Checkout?"</p><div style="display: flex; gap: 5px;"><button type="button" on:click=move |_| co_f3(()) style="background: #22c55e; flex: 1;">"YES"</button><button type="button" on:click=move |_| set_confirm_checkout.set(false) style="background: #6c757d; flex: 1;">"No"</button></div></div> }.into_view() } else { view! { <button type="button" on:click=move |_| { set_confirm_checkout.set(true); set_confirm_cancel_stay.set(false); } style="background: #27ae60; margin-top: 10px;">"Checkout (Paid & Completed)"</button> }.into_view() }}
                                     {move || if confirm_cancel_stay.get() { let bf = b_id_final.clone(); let rf = b_rid_final.clone(); view! { <div style="background: #fee2e2; padding: 10px; border-radius: 8px; border: 1px solid #ef4444; margin-top: 10px;"><p style="color: #b91c1c; font-weight: bold; margin-bottom: 10px;">"Really cancel?"</p><div style="display: flex; gap: 5px;"><button type="button" on:click=move |_| { let bf2=bf.clone(); let rf2=rf.clone(); spawn_local(async move { wait_for_bridge().await; let _ = delete_booking_js(bf2, rf2).await; set_show_manage_stay_modal.set(None); load_data(); }); } style="background: #ef4444; flex: 1;">"YES"</button><button type="button" on:click=move |_| set_confirm_cancel_stay.set(false) style="background: #6c757d; flex: 1;">"No"</button></div></div> }.into_view() } else { view! { <button type="button" on:click=move |_| { set_confirm_cancel_stay.set(true); set_confirm_checkout.set(false); } style="background: #e74c3c; margin-top: 10px;">"Cancel Stay (Delete)"</button> }.into_view() }}
                                     <button type="button" on:click=move |_| set_show_manage_stay_modal.set(None) style="background: #6c757d; margin-top: 10px;">"Close"</button>
                                 </div>
@@ -313,9 +316,10 @@ pub fn DashboardHome() -> impl IntoView {
                 let (r_price, set_r_price) = create_signal(room.price.to_string());
                 let (saving, set_saving) = create_signal(false);
                 let r_num = room.number.clone();
+                let rid_update = r_id.clone(); let rnum_update = r_num.clone();
                 let handle_room_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default(); set_saving.set(true);
-                    let rid = r_id.clone(); let rnum = r_num.clone();
+                    let rid = rid_update.clone(); let rnum = rnum_update.clone();
                     let updated_room = NewRoom { number: rnum, room_type: r_type.get(), status: "Available".to_string(), price: r_price.get().parse::<f64>().unwrap_or(0.0) };
                     spawn_local(async move { wait_for_bridge().await; let _ = update_room_js(rid, serde_wasm_bindgen::to_value(&updated_room).unwrap()).await; set_show_edit_room_modal.set(None); load_data(); });
                 };
