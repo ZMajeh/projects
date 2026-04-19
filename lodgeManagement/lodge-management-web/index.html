@@ -198,11 +198,18 @@
 
             // --- BOOKING BRIDGE ---
             window.getBookings = async () => {
-                const q = query(collection(db, "bookings"), orderBy("checkInDate", "desc"), limit(20));
-                const querySnapshot = await getDocs(q);
-                const bookings = [];
-                querySnapshot.forEach((doc) => { bookings.push({ id: doc.id, ...doc.data() }); });
-                return bookings;
+                console.log("Database: Fetching recent stays...");
+                try {
+                    const q = query(collection(db, "bookings"), orderBy("checkInDate", "desc"), limit(20));
+                    const querySnapshot = await getDocs(q);
+                    const bookings = [];
+                    querySnapshot.forEach((doc) => { bookings.push({ id: doc.id, ...doc.data() }); });
+                    console.log(`Database: Successfully fetched ${bookings.length} stays.`);
+                    return bookings;
+                } catch (e) {
+                    console.error("Database Error (Bookings):", e);
+                    throw e;
+                }
             };
 
             window.addBooking = async (booking) => {
