@@ -188,18 +188,16 @@
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
             const auth = getAuth(app);
-            const functions = getFunctions(app);
 
-            window.verifyAadhaarAPI = async (aadhaarNumber) => {
-                // 1. Copy to clipboard
+            window.manualVerifyAadhaar = async (aadhaarNumber) => {
+                // Copy to clipboard for easy pasting on govt site
                 try {
                     await navigator.clipboard.writeText(aadhaarNumber);
                 } catch (e) { console.error("Clipboard failed", e); }
 
-                // 2. Open UIDAI site
+                // Open official validity check
                 window.open("https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en", "_blank");
-                
-                return { status: "manual_started" };
+                return true;
             };
 
             window.loginUser = async (email, password) => {

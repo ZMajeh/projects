@@ -54,8 +54,8 @@ extern "C" {
     async fn extract_aadhaar_js(base64: String) -> Result<JsValue, JsValue>;
     #[wasm_bindgen(catch, js_name = readFileAsDataURL)]
     async fn read_file_as_data_url(file: web_sys::File) -> Result<JsValue, JsValue>;
-    #[wasm_bindgen(catch, js_name = verifyAadhaarAPI)]
-    async fn verify_aadhaar_api(num: String) -> Result<JsValue, JsValue>;
+    #[wasm_bindgen(catch, js_name = manualVerifyAadhaar)]
+    async fn manual_verify_aadhaar(num: String) -> Result<JsValue, JsValue>;
 }
 
 fn validate_aadhaar_checksum(aadhaar: &str) -> bool {
@@ -70,12 +70,10 @@ fn validate_aadhaar_checksum(aadhaar: &str) -> bool {
 }
 
 fn calculate_age(dob: &str) -> Option<String> {
-    // Expected format: DD/MM/YYYY
     let parts: Vec<&str> = dob.split('/').collect();
     if parts.len() == 3 {
         if let Ok(year) = parts[2].parse::<i32>() {
-            let current_year = 2026; // Static for now as we don't have easy chrono in WASM without bloat
-            return Some((current_year - year).to_string());
+            return Some((2026 - year).to_string());
         }
     }
     None
@@ -262,6 +260,7 @@ fn Customers() -> impl IntoView {
     let (capture_target, set_capture_target) = create_signal("photo");
     let (ocr_loading, set_ocr_loading) = create_signal(false);
     let (is_verified, set_is_verified) = create_signal(false);
+    let (show_manual_verify, set_show_manual_verify) = create_signal(false);
     let (ocr_raw_text, set_ocr_raw_text) = create_signal("".to_string());
 
     let load_customers = move || {
@@ -331,34 +330,10 @@ fn Customers() -> impl IntoView {
 
     let on_verify_aadhaar = move |_| {
         let num = aadhaar.get();
-        if !validate_aadhaar_checksum(&num) {
-            window().alert_with_message("Checksum verification failed! Invalid Aadhaar ID.").ok();
-            return;
-        }
-        
-        set_ocr_loading.set(true);
+        if !validate_aadhaar_checksum(&num) { window().alert_with_message("Checksum verification failed!").ok(); return; }
         spawn_local(async move {
-            match verify_aadhaar_api(num.clone()).await {
-                Ok(result_js) => {
-                    if let Some(obj) = js_sys::Object::try_from(&result_js) {
-                        if let Ok(name_js) = js_sys::Reflect::get(obj, &JsValue::from_str("verifiedName")) {
-                            if let Some(n) = name_js.as_string() {
-                                set_is_verified.set(true);
-                                window().alert_with_message(&format!("LIVE API SUCCESS:\nAadhaar Verified.\nOfficial Name: {}", n)).ok();
-                                // Optionally update form name with official government name
-                                if name.get_untracked().is_empty() {
-                                    set_name.set(n);
-                                }
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    logging::error!("Verification API Error: {:?}", e);
-                    window().alert_with_message("Public API verification failed. Please try again.").ok();
-                }
-            }
-            set_ocr_loading.set(false);
+            let _ = manual_verify_aadhaar(num.clone()).await;
+            set_show_manual_verify.set(true);
         });
     };
 
@@ -372,7 +347,8 @@ fn Customers() -> impl IntoView {
                 Ok(_) => { 
                     set_name.set("".to_string()); set_phone.set("".to_string()); set_email.set("".to_string()); 
                     set_aadhaar.set("".to_string()); set_age.set("".to_string()); set_gender.set("Male".to_string());
-                    set_photo.set(None); set_id_card.set(None); set_is_verified.set(false); load_customers(); 
+                    set_photo.set(None); set_id_card.set(None); set_is_verified.set(false); set_ocr_raw_text.set("".to_string());
+                    load_customers(); 
                 }
                 Err(e) => logging::error!("Error adding customer: {:?}", e),
             }
@@ -411,6 +387,7 @@ fn Customers() -> impl IntoView {
                                 prop:value=aadhaar style=move || format!("border-color: {};", if is_verified.get() { "green" } else { "#ddd" }) required />
                             <button type="button" on:click=on_verify_aadhaar disabled=ocr_loading>"Verify"</button>
                         </div>
+                        <span style="font-size: 0.7rem; color: #666;">{move || if is_verified.get() { "✅ Validated" } else { "Manual check required" }}</span>
                     </div>
                 </div>
                 <div class="grid-form" style="margin-top: 20px;">
@@ -431,9 +408,24 @@ fn Customers() -> impl IntoView {
                         </div>
                     </div>
                 </div>
-                {move || if !ocr_raw_text.get().is_empty() { view! { <div style="margin-top: 15px; font-size: 0.7rem; color: #888;">"Data extracted from Aadhaar scan."</div> }.into_view() } else { view! {}.into_view() }}
                 <button type="submit" style="width: 100%; margin-top: 20px; background-color: #27ae60;">"Save Verified Customer"</button>
             </form>
+
+            {move || if show_manual_verify.get() {
+                view! {
+                    <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 3000;">
+                        <div class="card" style="max-width: 400px; text-align: center; padding: 2rem;">
+                            <h3>"Confirm Aadhaar Validity"</h3>
+                            <p>"Official UIDAI site opened. ID copied to clipboard."</p>
+                            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                                <button on:click=move |_| { set_is_verified.set(true); set_show_manual_verify.set(false); } style="background: green; flex: 1;">"YES - VALID"</button>
+                                <button on:click=move |_| { set_is_verified.set(false); set_show_manual_verify.set(false); } style="background: red; flex: 1;">"NO - INVALID"</button>
+                            </div>
+                        </div>
+                    </div>
+                }.into_view()
+            } else { view! {}.into_view() }}
+
             {move || if camera_active.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; padding: 1rem;"><video id="cam-preview" style="width: 100%; max-width: 500px; border: 2px solid white;"></video><div style="margin-top: 20px; display: flex; gap: 10px;"><button on:click=do_capture style="background: green;">"CAPTURE"</button><button on:click=move |_| { stop_camera(); set_camera_active.set(false); } style="background: red;">"CLOSE"</button></div></div> }.into_view() } else { view! {}.into_view() }}
             <h3>"Directory"</h3>
             {move || if loading.get() { view! { <p>"Loading..."</p> }.into_view() } else { view! { <table><thead><tr style="background-color: #f2f2f2; text-align: left;"><th style="padding: 12px; border: 1px solid #ddd;">"Name"</th><th style="padding: 12px; border: 1px solid #ddd;">"Aadhaar"</th><th style="padding: 12px; border: 1px solid #ddd;">"Age/Gender"</th></tr></thead><tbody><For each=move || customers.get() key=|c| c.id.clone().unwrap_or_default() children=|c| view! { <tr><td style="padding: 12px; border: 1px solid #ddd;">{c.full_name}</td><td style="padding: 12px; border: 1px solid #ddd;">{c.aadhaar}</td><td style="padding: 12px; border: 1px solid #ddd;">{c.age} " / " {c.gender}</td></tr> } /></tbody></table> }.into_view() }}
