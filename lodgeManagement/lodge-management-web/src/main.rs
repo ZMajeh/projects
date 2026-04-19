@@ -3,7 +3,7 @@ use leptos_router::*;
 use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct User {
     pub email: String,
     pub uid: String,
@@ -57,7 +57,7 @@ extern "C" {
     #[wasm_bindgen(catch, js_name = addRoom)]
     async fn add_room_js(room: JsValue) -> Result<JsValue, JsValue>;
     #[wasm_bindgen(catch, js_name = getCustomers)]
-    async fn get_customers_js() -> Result<JsValue, JsValue>;
+    async fn get_customers_js(search: String) -> Result<JsValue, JsValue>;
     #[wasm_bindgen(catch, js_name = addCustomer)]
     async fn add_customer_js(customer: JsValue) -> Result<JsValue, JsValue>;
     #[wasm_bindgen(catch, js_name = updateCustomer)]
@@ -131,9 +131,9 @@ async fn fetch_rooms() -> Vec<Room> {
     }
 }
 
-async fn fetch_customers() -> Vec<Customer> {
+async fn fetch_customers(search: String) -> Vec<Customer> {
     wait_for_bridge().await;
-    match get_customers_js().await {
+    match get_customers_js(search).await {
         Ok(js_val) => {
             match serde_wasm_bindgen::from_value::<Vec<Customer>>(js_val) {
                 Ok(customers) => customers,
@@ -307,22 +307,22 @@ fn Customers() -> impl IntoView {
     let (show_manual_verify, set_show_manual_verify) = create_signal(false);
     let (manual_verify_target_id, set_manual_verify_target_id) = create_signal(None::<String>);
 
-    let load_customers = move || {
+    let load_customers = move |q: String| {
         spawn_local(async move {
             set_loading.set(true);
-            set_customers.set(fetch_customers().await);
+            set_customers.set(fetch_customers(q).await);
             set_loading.set(false);
         });
     };
-    create_effect(move |_| { load_customers(); });
 
-    let filtered_customers = move || {
-        let query = search_query.get().to_lowercase();
-        if query.is_empty() { return customers.get(); }
-        customers.get().into_iter().filter(|c| {
-            c.full_name.to_lowercase().contains(&query) || c.aadhaar.contains(&query) || c.phone.contains(&query)
-        }).collect()
-    };
+    // Debounced search effect
+    create_effect(move |_| {
+        let q = search_query.get();
+        spawn_local(async move {
+            gloo_timers::future::TimeoutFuture::new(500).await;
+            if q == search_query.get_untracked() { load_customers(q); }
+        });
+    });
 
     let start_capture = move |target: &'static str| {
         set_capture_target.set(target);
@@ -372,7 +372,6 @@ fn Customers() -> impl IntoView {
     };
 
     let on_verify_trigger = move |num: String, id: Option<String>| {
-        if !validate_aadhaar_checksum(&num) { logging::warn!("Local checksum failed"); }
         set_manual_verify_target_id.set(id);
         spawn_local(async move {
             wait_for_bridge().await;
@@ -384,67 +383,52 @@ fn Customers() -> impl IntoView {
     let on_manual_confirm = move |is_valid: bool| {
         let target_id = manual_verify_target_id.get();
         set_show_manual_verify.set(false);
-        
         if is_valid {
             if let Some(id) = target_id {
-                // Updating existing user in background
                 spawn_local(async move {
                     wait_for_bridge().await;
                     let patch = serde_json::json!({ "verified": true });
                     let js_val = serde_wasm_bindgen::to_value(&patch).unwrap();
                     let _ = update_customer_js(id, js_val).await;
-                    load_customers();
+                    load_customers(search_query.get_untracked());
                 });
-            } else {
-                // Fresh user entry
-                set_is_verified.set(true);
-            }
+            } else { set_is_verified.set(true); }
         }
     };
 
     let on_add_customer = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
         if !is_verified.get() && editing_id.get().is_none() { window().alert_with_message("Please verify Aadhaar first!").ok(); return; }
-        
         let cust_data = NewCustomer { 
             full_name: name.get(), phone: phone.get(), email: email.get(), aadhaar: aadhaar.get(), 
             age: Some(age.get()), gender: Some(gender.get()), photo_data: photo.get(), id_card_data: id_card.get(),
             verified: is_verified.get()
         };
-
         spawn_local(async move {
             wait_for_bridge().await;
             let js_val = serde_wasm_bindgen::to_value(&cust_data).unwrap();
-            if let Some(id) = editing_id.get() {
-                let _ = update_customer_js(id, js_val).await;
-            } else {
-                let _ = add_customer_js(js_val).await;
-            }
+            if let Some(id) = editing_id.get() { let _ = update_customer_js(id, js_val).await; } 
+            else { let _ = add_customer_js(js_val).await; }
             set_editing_id.set(None);
             set_name.set("".to_string()); set_phone.set("".to_string()); set_email.set("".to_string()); 
             set_aadhaar.set("".to_string()); set_age.set("".to_string()); set_gender.set("Male".to_string());
             set_photo.set(None); set_id_card.set(None); set_is_verified.set(false);
-            load_customers();
+            load_customers(search_query.get_untracked());
         });
     };
 
     let on_edit = move |c: Customer| {
         set_editing_id.set(c.id);
-        set_name.set(c.full_name);
-        set_phone.set(c.phone);
-        set_email.set(c.email);
-        set_aadhaar.set(c.aadhaar);
-        set_age.set(c.age.unwrap_or_default());
+        set_name.set(c.full_name); set_phone.set(c.phone); set_email.set(c.email);
+        set_aadhaar.set(c.aadhaar); set_age.set(c.age.unwrap_or_default());
         set_gender.set(c.gender.unwrap_or_else(|| "Male".to_string()));
-        set_photo.set(c.photo_data);
-        set_id_card.set(c.id_card_data);
-        set_is_verified.set(c.verified);
-        window().scroll_to_with_x_and_y(0.0, 0.0);
+        set_photo.set(c.photo_data); set_id_card.set(c.id_card_data);
+        set_is_verified.set(c.verified); window().scroll_to_with_x_and_y(0.0, 0.0);
     };
 
     let on_delete = move |id: String| {
-        if window().confirm_with_message("Delete this customer?").unwrap_or(false) {
-            spawn_local(async move { wait_for_bridge().await; let _ = delete_customer_js(id).await; load_customers(); });
+        if window().confirm_with_message("Delete?").unwrap_or(false) {
+            spawn_local(async move { wait_for_bridge().await; let _ = delete_customer_js(id).await; load_customers(search_query.get_untracked()); });
         }
     };
 
@@ -452,148 +436,30 @@ fn Customers() -> impl IntoView {
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <h1>"Customer Management"</h1>
-                {move || if editing_id.get().is_some() {
-                    view! { <button on:click=move |_| set_editing_id.set(None) style="background:#6c757d;">"Cancel Edit"</button> }.into_view()
-                } else { view! {}.into_view() }}
+                {move || if editing_id.get().is_some() { view! { <button on:click=move |_| set_editing_id.set(None) style="background:#6c757d;">"Cancel"</button> }.into_view() } else { view! {}.into_view() }}
             </div>
-            
             <form on:submit=on_add_customer class="card" style="background: #f9f9f9;">
                 <div class="grid-form">
-                    <div style="display: flex; flex-direction: column;">
-                        <label>"Full Name"</label>
-                        <input type="text" on:input=move |ev| set_name.set(event_target_value(&ev)) prop:value=name required />
-                    </div>
-                    <div style="display: flex; flex-direction: column;">
-                        <label>"Phone Number"</label>
-                        <input type="tel" on:input=move |ev| set_phone.set(event_target_value(&ev)) prop:value=phone required />
-                    </div>
-                    <div style="display: flex; flex-direction: column;">
-                        <label>"Age"</label>
-                        <input type="number" on:input=move |ev| set_age.set(event_target_value(&ev)) prop:value=age required />
-                    </div>
-                    <div style="display: flex; flex-direction: column;">
-                        <label>"Gender"</label>
-                        <select on:change=move |ev| set_gender.set(event_target_value(&ev)) prop:value=gender>
-                            <option value="Male">"Male"</option>
-                            <option value="Female">"Female"</option>
-                            <option value="Other">"Other"</option>
-                        </select>
-                    </div>
-                    <div style="display: flex; flex-direction: column; grid-column: 1 / -1;">
-                        <label>"Aadhaar Number"</label>
-                        <div style="display: flex; gap: 5px;">
-                            <input type="text" maxlength="12" on:input=move |ev| { set_aadhaar.set(event_target_value(&ev)); set_is_verified.set(false); } 
-                                prop:value=aadhaar style=move || format!("border-color: {};", if is_verified.get() { "green" } else { "#ddd" }) required />
-                            <button type="button" on:click=move |_| on_verify_trigger(aadhaar.get(), None) disabled=ocr_loading>"Verify"</button>
-                        </div>
-                    </div>
+                    <div style="display: flex; flex-direction: column;"><label>"Full Name"</label><input type="text" on:input=move |ev| set_name.set(event_target_value(&ev)) prop:value=name required /></div>
+                    <div style="display: flex; flex-direction: column;"><label>"Phone"</label><input type="tel" on:input=move |ev| set_phone.set(event_target_value(&ev)) prop:value=phone required /></div>
+                    <div style="display: flex; flex-direction: column;"><label>"Age"</label><input type="number" on:input=move |ev| set_age.set(event_target_value(&ev)) prop:value=age required /></div>
+                    <div style="display: flex; flex-direction: column;"><label>"Gender"</label><select on:change=move |ev| set_gender.set(event_target_value(&ev)) prop:value=gender><option value="Male">"Male"</option><option value="Female">"Female"</option><option value="Other">"Other"</option></select></div>
+                    <div style="display: flex; flex-direction: column; grid-column: 1 / -1;"><label>"Aadhaar"</label><div style="display: flex; gap: 5px;"><input type="text" maxlength="12" on:input=move |ev| { set_aadhaar.set(event_target_value(&ev)); set_is_verified.set(false); } prop:value=aadhaar style=move || format!("border-color: {};", if is_verified.get() { "green" } else { "#ddd" }) required /><button type="button" on:click=move |_| on_verify_trigger(aadhaar.get(), None) disabled=ocr_loading>"Verify"</button></div></div>
                 </div>
                 <div class="grid-form" style="margin-top: 20px;">
-                    <div style="text-align: center; border: 1px dashed #ccc; padding: 10px;">
-                        <p>"Photo"</p>
-                        {move || photo.get().map(|d| view! { <img src=d style="width: 100%; max-height: 100px;" /> })}
-                        <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 5px;">
-                            <button type="button" on:click=move |_| start_capture("photo") style="font-size: 0.8rem;">"Camera"</button>
-                            <input type="file" accept="image/*" on:change=move |ev| on_file_upload(ev, "photo") style="font-size: 0.7rem;" />
-                        </div>
-                    </div>
-                    <div style="text-align: center; border: 1px dashed #ccc; padding: 10px;">
-                        <p>"Aadhaar Scan"</p>
-                        {move || id_card.get().map(|d| view! { <img src=d style="width: 100%; max-height: 100px;" /> })}
-                        <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 5px;">
-                            <button type="button" on:click=move |_| start_capture("id") style="font-size: 0.8rem;">"Camera"</button>
-                            <input type="file" accept="image/*" on:change=move |ev| on_file_upload(ev, "id") style="font-size: 0.7rem;" />
-                        </div>
-                    </div>
+                    <div style="text-align: center; border: 1px dashed #ccc; padding: 10px;"><p>"Photo"</p>{move || photo.get().map(|d| view! { <img src=d style="width: 100%; max-height: 100px;" /> })}<div style="display: flex; flex-direction: column; gap: 5px; margin-top: 5px;"><button type="button" on:click=move |_| start_capture("photo") style="font-size: 0.8rem;">"Camera"</button><input type="file" accept="image/*" on:change=move |ev| on_file_upload(ev, "photo") style="font-size: 0.7rem;" /></div></div>
+                    <div style="text-align: center; border: 1px dashed #ccc; padding: 10px;"><p>"ID Scan"</p>{move || id_card.get().map(|d| view! { <img src=d style="width: 100%; max-height: 100px;" /> })}<div style="display: flex; flex-direction: column; gap: 5px; margin-top: 5px;"><button type="button" on:click=move |_| start_capture("id") style="font-size: 0.8rem;">"Camera"</button><input type="file" accept="image/*" on:change=move |ev| on_file_upload(ev, "id") style="font-size: 0.7rem;" /></div></div>
                 </div>
-                <button type="submit" style="width: 100%; margin-top: 20px; background-color: #27ae60;">
-                    {move || if editing_id.get().is_some() { "Update Customer" } else { "Save Verified Customer" }}
-                </button>
+                <button type="submit" style="width: 100%; margin-top: 20px; background-color: #27ae60;">{move || if editing_id.get().is_some() { "Update Customer" } else { "Save Verified Customer" }}</button>
             </form>
-
-            <div style="margin: 2rem 0;">
-                <input type="text" placeholder="Search by name, Aadhaar or phone..." on:input=move |ev| set_search_query.set(event_target_value(&ev)) style="padding: 1rem; font-size: 1.1rem; border: 2px solid var(--primary);" />
-            </div>
-
-            <h3>"Directory"</h3>
-            {move || if loading.get() { view! { <p>"Loading..."</p> }.into_view() } else { view! { 
-                <table>
-                    <thead>
-                        <tr style="background-color: #f2f2f2; text-align: left;">
-                            <th style="padding: 12px; border: 1px solid #ddd;">"Name / Details"</th>
-                            <th style="padding: 12px; border: 1px solid #ddd;">"Aadhaar"</th>
-                            <th style="padding: 12px; border: 1px solid #ddd;">"Contact"</th>
-                            <th style="padding: 12px; border: 1px solid #ddd;">"Status"</th>
-                            <th style="padding: 12px; border: 1px solid #ddd;">"Actions"</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <For each=move || filtered_customers() key=|c| c.id.clone().unwrap_or_default() children=move |c| {
-                            let c_cloned = c.clone();
-                            let id_cloned = c.id.clone().unwrap_or_default();
-                            let num_cloned = c.aadhaar.clone();
-                            view! { 
-                                <tr>
-                                    <td style="padding: 12px; border: 1px solid #ddd;">
-                                        <strong>{c.full_name.clone()}</strong><br/>
-                                        <small>{c.age.clone().unwrap_or_else(|| "??".to_string())} {c.gender.clone().unwrap_or_else(|| "??".to_string())}</small>
-                                    </td>
-                                    <td style="padding: 12px; border: 1px solid #ddd;">{c.aadhaar.clone()}</td>
-                                    <td style="padding: 12px; border: 1px solid #ddd;">
-                                        {c.phone.clone()}<br/>
-                                        <small style="color: #666;">{c.email.clone()}</small>
-                                    </td>
-                                    <td style="padding: 12px; border: 1px solid #ddd;">
-                                        {if c.verified {
-                                            view! { <span style="color: green; font-weight: bold;">"✅ Verified"</span> }.into_view()
-                                        } else {
-                                            view! { <button on:click=move |_| on_verify_trigger(num_cloned.clone(), Some(id_cloned.clone())) style="padding: 4px 8px; font-size: 0.7rem; background: #f39c12;">"Verify Now"</button> }.into_view()
-                                        }}
-                                    </td>
-                                    <td style="padding: 12px; border: 1px solid #ddd; white-space: nowrap;">
-                                        <button on:click=move |_| on_edit(c_cloned.clone()) style="padding: 5px 10px; margin-right: 5px; font-size: 0.8rem; background: #3498db;">"Edit"</button>
-                                        <button on:click=move |_| on_delete(c.id.clone().unwrap_or_default()) style="padding: 5px 10px; font-size: 0.8rem; background: #e74c3c;">"Del"</button>
-                                    </td>
-                                </tr> 
-                            }
-                        } />
-                    </tbody>
-                </table> 
-            }.into_view() }}
-
-            {move || if show_manual_verify.get() {
-                view! {
-                    <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 3000;">
-                        <div class="card" style="max-width: 400px; text-align: center; padding: 2rem;">
-                            <h3>"Confirm Aadhaar Validity"</h3>
-                            <p>"Official UIDAI site opened. ID copied to clipboard."</p>
-                            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                                <button on:click=move |_| on_manual_confirm(true) style="background: green; flex: 1;">"YES - VALID"</button>
-                                <button on:click=move |_| on_manual_confirm(false) style="background: red; flex: 1;">"NO - INVALID"</button>
-                            </div>
-                        </div>
-                    </div>
-                }.into_view()
-            } else { view! {}.into_view() }}
-
-            {move || if camera_active.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; padding: 1rem;"><video id="cam-preview" style="width: 100%; max-width: 500px; border: 2px solid white;"></video><div style="margin-top: 20px; display: flex; gap: 10px;"><button on:click=move |_: leptos::ev::MouseEvent| {
-                spawn_local(async move {
-                    wait_for_bridge().await;
-                    if let Ok(data_js) = take_snapshot("cam-preview".to_string()).await {
-                        if let Some(data) = data_js.as_string() {
-                            if capture_target.get() == "photo" { set_photo.set(Some(data)); } 
-                            else { set_id_card.set(Some(data.clone())); process_id_ocr(data); }
-                        }
-                    }
-                    let _ = stop_camera().await;
-                    set_camera_active.set(false);
-                });
-            } style="background: green;">"CAPTURE"</button><button on:click=move |_: leptos::ev::MouseEvent| {
-                spawn_local(async move {
-                    let _ = stop_camera().await;
-                    set_camera_active.set(false);
-                });
-            } style="background: red;">"CLOSE"</button></div></div> }.into_view() } else { view! {}.into_view() }}
+            <div style="margin: 2rem 0;"><input type="text" placeholder="Search name/Aadhaar/phone..." on:input=move |ev| set_search_query.set(event_target_value(&ev)) style="padding: 1rem; font-size: 1.1rem; border: 2px solid var(--primary);" /></div>
+            <h3>"Directory (Top 10)"</h3>
+            {move || if loading.get() { view! { <p>"Loading..."</p> }.into_view() } else { view! { <table><thead><tr style="background-color: #f2f2f2; text-align: left;"><th style="padding: 12px; border: 1px solid #ddd;">"Name/Details"</th><th style="padding: 12px; border: 1px solid #ddd;">"Aadhaar"</th><th style="padding: 12px; border: 1px solid #ddd;">"Contact"</th><th style="padding: 12px; border: 1px solid #ddd;">"Status"</th><th style="padding: 12px; border: 1px solid #ddd;">"Actions"</th></tr></thead><tbody><For each=move || customers.get() key=|c| c.id.clone().unwrap_or_default() children=move |c| {
+                let c_cloned = c.clone(); let id_cloned = c.id.clone().unwrap_or_default(); let num_cloned = c.aadhaar.clone();
+                view! { <tr><td style="padding: 12px; border: 1px solid #ddd;"><strong>{c.full_name.clone()}</strong><br/><small>{c.age.clone().unwrap_or_else(|| "??".to_string())} {c.gender.clone().unwrap_or_else(|| "??".to_string())}</small></td><td style="padding: 12px; border: 1px solid #ddd;">{c.aadhaar.clone()}</td><td style="padding: 12px; border: 1px solid #ddd;">{c.phone.clone()}<br/><small style="color: #666;">{c.email.clone()}</small></td><td style="padding: 12px; border: 1px solid #ddd;">{if c.verified { view! { <span style="color: green; font-weight: bold;">"✅ Verified"</span> }.into_view() } else { view! { <button on:click=move |_| on_verify_trigger(num_cloned.clone(), Some(id_cloned.clone())) style="padding: 4px 8px; font-size: 0.7rem; background: #f39c12;">"Verify Now"</button> }.into_view() }}</td><td style="padding: 12px; border: 1px solid #ddd; white-space: nowrap;"><button on:click=move |_| on_edit(c_cloned.clone()) style="padding: 5px 10px; margin-right: 5px; font-size: 0.8rem; background: #3498db;">"Edit"</button><button on:click=move |_| on_delete(c.id.clone().unwrap_or_default()) style="padding: 5px 10px; font-size: 0.8rem; background: #e74c3c;">"Del"</button></td></tr> }
+            } /></tbody></table> }.into_view() }}
+            {move || if show_manual_verify.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 3000;"><div class="card" style="max-width: 400px; text-align: center; padding: 2rem;"><h3>"Confirm Aadhaar"</h3><p>"Official UIDAI site opened. ID copied."</p><div style="display: flex; gap: 10px; margin-top: 20px;"><button on:click=move |_| on_manual_confirm(true) style="background: green; flex: 1;">"YES"</button><button on:click=move |_| on_manual_confirm(false) style="background: red; flex: 1;">"NO"</button></div></div></div> }.into_view() } else { view! {}.into_view() }}
+            {move || if camera_active.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; padding: 1rem;"><video id="cam-preview" style="width: 100%; max-width: 500px; border: 2px solid white;"></video><div style="margin-top: 20px; display: flex; gap: 10px;"><button on:click=move |_: leptos::ev::MouseEvent| { spawn_local(async move { wait_for_bridge().await; if let Ok(data_js) = take_snapshot("cam-preview".to_string()).await { if let Some(data) = data_js.as_string() { if capture_target.get() == "photo" { set_photo.set(Some(data)); } else { set_id_card.set(Some(data.clone())); process_id_ocr(data); } } } let _ = stop_camera().await; set_camera_active.set(false); }); } style="background: green;">"CAPTURE"</button><button on:click=move |_: leptos::ev::MouseEvent| { spawn_local(async move { let _ = stop_camera().await; set_camera_active.set(false); }); } style="background: red;">"CLOSE"</button></div></div> }.into_view() } else { view! {}.into_view() }}
         </div>
     }
 }

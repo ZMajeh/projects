@@ -143,7 +143,7 @@
 
         <script type="module">
             import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-            import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+            import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, where, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
             import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
             const firebaseConfig = {
@@ -186,17 +186,29 @@
                 return docRef.id;
             };
 
-            window.getCustomers = async () => {
-                console.log("Database: Fetching customers...");
+            window.getCustomers = async (searchTerm = "") => {
+                console.log(`Database: Searching for "${searchTerm}" (Limit 10)...`);
                 try {
-                    const q = query(collection(db, "customers"), orderBy("full_name"));
+                    let q;
+                    if (searchTerm) {
+                        // Server-side prefix search (Standard Firestore pattern)
+                        q = query(
+                            collection(db, "customers"), 
+                            where("full_name", ">=", searchTerm),
+                            where("full_name", "<=", searchTerm + "\uf8ff"),
+                            limit(10)
+                        );
+                    } else {
+                        q = query(collection(db, "customers"), orderBy("full_name"), limit(10));
+                    }
+                    
                     const querySnapshot = await getDocs(q);
                     const customers = [];
                     querySnapshot.forEach((doc) => { customers.push({ id: doc.id, ...doc.data() }); });
-                    console.log(`Database: Successfully fetched ${customers.length} customers.`);
+                    console.log(`Database: Found ${customers.length} matches.`);
                     return customers;
                 } catch (e) {
-                    console.error("Database Error (Fetching Customers):", e);
+                    console.error("Database Search Error:", e);
                     throw e;
                 }
             };
