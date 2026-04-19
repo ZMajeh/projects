@@ -202,8 +202,18 @@
             };
 
             window.addCustomer = async (customer) => {
-                const docRef = await addDoc(collection(db, "customers"), { ...customer, createdAt: serverTimestamp() });
-                return docRef.id;
+                console.log("Database: Attempting to add customer:", customer);
+                try {
+                    const docRef = await addDoc(collection(db, "customers"), { 
+                        ...customer, 
+                        createdAt: serverTimestamp() 
+                    });
+                    console.log("Database: Customer added with ID:", docRef.id);
+                    return docRef.id;
+                } catch (e) {
+                    console.error("Database Error (Adding Customer):", e);
+                    throw e;
+                }
             };
 
             // --- CAMERA BRIDGE ---
