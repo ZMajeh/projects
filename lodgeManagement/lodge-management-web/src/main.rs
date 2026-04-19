@@ -30,6 +30,18 @@ pub struct Customer {
     pub id_card_data: Option<String>,
 }
 
+#[derive(Serialize)]
+pub struct NewCustomer {
+    pub full_name: String,
+    pub phone: String,
+    pub email: String,
+    pub aadhaar: String,
+    pub age: Option<String>,
+    pub gender: Option<String>,
+    pub photo_data: Option<String>,
+    pub id_card_data: Option<String>,
+}
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(catch, js_name = loginUser)]
@@ -361,8 +373,7 @@ fn Customers() -> impl IntoView {
         ev.prevent_default();
         if !is_verified.get() { window().alert_with_message("Please verify Aadhaar before saving!").ok(); return; }
         
-        let new_cust_full = Customer { 
-            id: None, 
+        let new_cust = NewCustomer { 
             full_name: name.get(), 
             phone: phone.get(), 
             email: email.get(), 
@@ -375,19 +386,20 @@ fn Customers() -> impl IntoView {
 
         spawn_local(async move {
             wait_for_bridge().await;
-            let json = serde_json::to_string(&new_cust_full).unwrap();
-            let mut map: serde_json::Value = serde_json::from_str(&json).unwrap();
-            if let Some(obj) = map.as_object_mut() { obj.remove("id"); }
-            let js_val = serde_wasm_bindgen::to_value(&map).unwrap();
             
-            match add_customer_js(js_val).await {
-                Ok(_) => { 
-                    set_name.set("".to_string()); set_phone.set("".to_string()); set_email.set("".to_string()); 
-                    set_aadhaar.set("".to_string()); set_age.set("".to_string()); set_gender.set("Male".to_string());
-                    set_photo.set(None); set_id_card.set(None); set_is_verified.set(false);
-                    load_customers(); 
-                }
-                Err(e) => logging::error!("Error adding customer: {:?}", e),
+            match serde_wasm_bindgen::to_value(&new_cust) {
+                Ok(js_val) => {
+                    match add_customer_js(js_val).await {
+                        Ok(_) => { 
+                            set_name.set("".to_string()); set_phone.set("".to_string()); set_email.set("".to_string()); 
+                            set_aadhaar.set("".to_string()); set_age.set("".to_string()); set_gender.set("Male".to_string());
+                            set_photo.set(None); set_id_card.set(None); set_is_verified.set(false);
+                            load_customers(); 
+                        }
+                        Err(e) => logging::error!("Error adding customer: {:?}", e),
+                    }
+                },
+                Err(e) => logging::error!("Serialization Error: {:?}", e),
             }
         });
     };
