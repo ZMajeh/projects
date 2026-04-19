@@ -301,16 +301,14 @@ fn Customers() -> impl IntoView {
         set_ocr_loading.set(true);
         spawn_local(async move {
             if let Ok(result_js) = extract_aadhaar_js(data).await {
-                // result_js is { aadhaar: string|null, name: string|null }
-                if let Ok(obj) = js_sys::Object::try_from(&result_js) {
-                    if let Some(id_js) = js_sys::Reflect::get(obj, &JsValue::from_str("aadhaar")).ok() {
+                if let Some(obj) = js_sys::Object::try_from(&result_js) {
+                    if let Ok(id_js) = js_sys::Reflect::get(obj, &JsValue::from_str("aadhaar")) {
                         if let Some(id) = id_js.as_string() {
                             set_aadhaar.set(id);
                         }
                     }
-                    if let Some(name_js) = js_sys::Reflect::get(obj, &JsValue::from_str("name")).ok() {
+                    if let Ok(name_js) = js_sys::Reflect::get(obj, &JsValue::from_str("name")) {
                         if let Some(n) = name_js.as_string() {
-                            // Only fill name if it's currently empty
                             if name.get_untracked().is_empty() {
                                 set_name.set(n);
                             }
