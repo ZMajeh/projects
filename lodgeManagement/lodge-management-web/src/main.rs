@@ -353,7 +353,11 @@ fn Customers() -> impl IntoView {
 
     let on_verify_aadhaar = move |_| {
         let num = aadhaar.get();
-        if !validate_aadhaar_checksum(&num) { window().alert_with_message("Checksum verification failed!").ok(); return; }
+        // Log result instead of blocking
+        if !validate_aadhaar_checksum(&num) { 
+            logging::warn!("Local checksum failed for {}", num);
+        }
+        
         spawn_local(async move {
             wait_for_bridge().await;
             let _ = manual_verify_aadhaar(num.clone()).await;
