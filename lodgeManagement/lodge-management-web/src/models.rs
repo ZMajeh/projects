@@ -51,6 +51,7 @@ pub struct NewCustomer {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct Booking {
     pub id: Option<String>,
     pub room_id: String,
@@ -63,18 +64,13 @@ pub struct Booking {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NewBooking {
-    #[serde(rename = "roomId")]
     pub room_id: String,
-    #[serde(rename = "customerId")]
     pub customer_id: String,
-    #[serde(rename = "customerName")]
     pub customer_name: String,
-    #[serde(rename = "roomNumber")]
     pub room_number: String,
-    #[serde(rename = "checkInDate")]
     pub check_in_date: String,
-    #[serde(rename = "checkOutDate")]
     pub check_out_date: String,
     pub status: String,
 }
