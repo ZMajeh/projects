@@ -157,8 +157,14 @@ pub fn Bookings() -> impl IntoView {
                                     <td>{b.check_in_date.clone()}</td>
                                     <td><span style="color: #27ae60; font-weight: bold;">{b.status.clone()}</span></td>
                                     <td style="white-space: nowrap;">
-                                        <button on:click=move |_| on_edit(b_cloned.clone()) style="padding: 5px 10px; margin-right: 5px; font-size: 0.8rem; background: #3498db;">"Edit"</button>
-                                        <button on:click=move |_| on_delete(b_cloned.clone()) style="padding: 5px 10px; font-size: 0.8rem; background: #e74c3c;">"Del"</button>
+                                        {
+                                            let b_edit = b_cloned.clone();
+                                            view! { <button on:click=move |_| on_edit(b_edit.clone()) style="padding: 5px 10px; margin-right: 5px; font-size: 0.8rem; background: #3498db;">"Edit"</button> }
+                                        }
+                                        {
+                                            let b_del = b_cloned.clone();
+                                            view! { <button on:click=move |_| on_delete(b_del.clone()) style="padding: 5px 10px; font-size: 0.8rem; background: #e74c3c;">"Del"</button> }
+                                        }
                                     </td>
                                 </tr> 
                             }
