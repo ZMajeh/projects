@@ -12,8 +12,8 @@ fn get_active_booking_helper(bookings: &[Booking], date_str: &str, room_id: &str
     bookings.iter().find(|b| {
         b.room_id == room_id && 
         b.status == "Checked-In" &&
-        date_str >= b.check_in_date && 
-        date_str < b.check_out_date
+        date_str >= b.check_in_date.as_str() && 
+        date_str < b.check_out_date.as_str()
     }).cloned()
 }
 
@@ -135,16 +135,21 @@ pub fn DashboardHome() -> impl IntoView {
                 let (check_out, set_check_out) = create_signal("".to_string());
                 let (saving, set_saving) = create_signal(false);
                 let (guest_search, set_guest_search) = create_signal("".to_string());
+                
                 let filtered_guests = move || {
                     let q = guest_search.get().to_lowercase();
                     customers.get().into_iter().filter(|c| c.full_name.to_lowercase().contains(&q) || c.aadhaar.contains(&q)).collect::<Vec<_>>()
                 };
+
+                let rid_save = r_id.clone();
+                let rnum_save = r_num.clone();
+
                 let handle_book = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default();
                     set_saving.set(true);
                     let c_id = sel_cust.get();
-                    let rid = r_id.clone();
-                    let rnum = r_num.clone();
+                    let rid = rid_save.clone();
+                    let rnum = rnum_save.clone();
                     let date = selected_date.get_untracked();
                     let cout = check_out.get();
                     let cust_opt = customers.get_untracked().into_iter().find(|c| c.id.as_deref() == Some(&c_id));
@@ -262,7 +267,7 @@ pub fn DashboardHome() -> impl IntoView {
                                 <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 25px;">
                                     <button type="submit" disabled=saving style="background: #3498db;">"Save Changes"</button>
                                     {move || if confirm_cancel_stay.get() {
-                                        let bf = b_id_c.clone(); let rf = b_rid_c.clone();
+                                        let bf = b_id.clone(); let rf = b_rid.clone();
                                         view! { <div style="background: #fee2e2; padding: 10px; border-radius: 8px; border: 1px solid #ef4444; margin-top: 10px;"><p style="color: #b91c1c; font-weight: bold; margin-bottom: 10px;">"Really cancel?"</p><div style="display: flex; gap: 5px;"><button type="button" on:click=move |_| { let bf2=bf.clone(); let rf2=rf.clone(); spawn_local(async move { wait_for_bridge().await; let _ = delete_booking_js(bf2, rf2).await; set_show_manage_stay_modal.set(None); load_data(); }); } style="background: #ef4444; flex: 1;">"YES"</button><button type="button" on:click=move |_| set_confirm_cancel_stay.set(false) style="background: #6c757d; flex: 1;">"No"</button></div></div> }.into_view()
                                     } else { view! { <button type="button" on:click=move |_| set_confirm_cancel_stay.set(true) style="background: #e67e22; margin-top: 10px;">"Cancel / Checkout"</button> }.into_view() }}
                                     <button type="button" on:click=move |_| set_show_manage_stay_modal.set(None) style="background: #6c757d; margin-top: 10px;">"Close"</button>
