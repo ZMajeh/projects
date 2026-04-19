@@ -368,10 +368,33 @@ fn Customers() -> impl IntoView {
     let on_add_customer = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
         if !is_verified.get() { window().alert_with_message("Please verify Aadhaar before saving!").ok(); return; }
-        let new_cust = Customer { id: None, full_name: name.get(), phone: phone.get(), email: email.get(), aadhaar: aadhaar.get(), age: age.get(), gender: gender.get(), photo_data: photo.get(), id_card_data: id_card.get() };
+        
+        let new_cust_full = Customer { 
+            id: None, 
+            full_name: name.get(), 
+            phone: phone.get(), 
+            email: email.get(), 
+            aadhaar: aadhaar.get(), 
+            age: age.get(), 
+            gender: gender.get(), 
+            photo_data: photo.get(), 
+            id_card_data: id_card.get() 
+        };
+
         spawn_local(async move {
             wait_for_bridge().await;
-            let js_val = serde_wasm_bindgen::to_value(&new_cust).unwrap();
+            
+            // Serialize to JSON first and then back to JsValue to strip the "id: None"
+            let json = serde_json::to_string(&new_cust_full).unwrap();
+            let mut map: serde_json::Value = serde_json::from_str(&json).unwrap();
+            
+            // Explicitly remove the ID field so Firebase doesn't see it as undefined
+            if let Some(obj) = map.as_object_mut() {
+                obj.remove("id");
+            }
+            
+            let js_val = serde_wasm_bindgen::to_value(&map).unwrap();
+            
             match add_customer_js(js_val).await {
                 Ok(_) => { 
                     set_name.set("".to_string()); set_phone.set("".to_string()); set_email.set("".to_string()); 
