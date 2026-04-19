@@ -6,7 +6,7 @@ use crate::utils::{clear_user, wait_for_bridge};
 use crate::api::{sign_out_user, add_booking_js, update_room_js};
 use crate::components::rooms::{fetch_rooms, Rooms};
 use crate::components::bookings::{fetch_bookings, Bookings};
-use crate::components::customers::Customers;
+use crate::components::customers::{fetch_customers, Customers};
 
 #[component]
 pub fn DashboardHome() -> impl IntoView {
