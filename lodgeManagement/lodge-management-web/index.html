@@ -25,8 +25,6 @@
                 height: 100vh;
                 position: relative;
             }
-            
-            /* Sidebar / Mobile Menu */
             .sidebar {
                 width: var(--sidebar-width);
                 background-color: var(--sidebar-bg);
@@ -37,19 +35,13 @@
                 transition: transform 0.3s ease;
                 z-index: 1001;
             }
-
-            /* Responsive Mobile Sidebar */
             @media (max-width: 768px) {
                 .sidebar {
                     position: absolute;
-                    left: 0;
-                    top: 0;
-                    bottom: 0;
+                    left: 0; top: 0; bottom: 0;
                     transform: translateX(-100%);
                 }
-                .sidebar.open {
-                    transform: translateX(0);
-                }
+                .sidebar.open { transform: translateX(0); }
                 .sidebar-overlay {
                     display: none;
                     position: fixed;
@@ -57,11 +49,8 @@
                     background: rgba(0,0,0,0.5);
                     z-index: 1000;
                 }
-                .sidebar-overlay.show {
-                    display: block;
-                }
+                .sidebar-overlay.show { display: block; }
             }
-
             .sidebar h2 {
                 font-size: 1.2rem;
                 margin-bottom: 2rem;
@@ -81,16 +70,12 @@
                 background-color: #34495e;
                 color: white;
             }
-
-            /* Content Area */
             .content {
                 flex: 1;
                 padding: 1rem;
                 overflow-y: auto;
                 width: 100%;
             }
-            
-            /* Header for Mobile */
             .mobile-header {
                 display: none;
                 background: white;
@@ -101,9 +86,7 @@
             }
             @media (max-width: 768px) {
                 .mobile-header { display: flex; }
-                .content { padding-top: 0; }
             }
-
             .container {
                 max-width: 1000px;
                 margin: 0 auto;
@@ -112,7 +95,6 @@
                 border-radius: 8px;
                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             }
-            
             .card {
                 background: white;
                 padding: 1rem;
@@ -120,8 +102,6 @@
                 box-shadow: 0 2px 4px rgba(0,0,0,0.05);
                 margin-bottom: 1rem;
             }
-
-            /* Forms & Tables */
             .grid-form {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
@@ -130,14 +110,12 @@
             @media (max-width: 600px) {
                 .grid-form { grid-template-columns: 1fr; }
             }
-
             table {
                 width: 100%;
                 border-collapse: collapse;
                 display: block;
                 overflow-x: auto;
             }
-
             button {
                 padding: 0.8rem 1.2rem;
                 font-size: 1rem;
@@ -148,7 +126,6 @@
                 cursor: pointer;
             }
             button:disabled { background-color: #ccc; }
-            
             input, select {
                 padding: 0.8rem;
                 border: 1px solid #ddd;
@@ -156,24 +133,16 @@
                 width: 100%;
                 box-sizing: border-box;
             }
-            
-            /* Camera Utility */
-            .camera-modal video {
-                width: 95%;
-                max-width: 600px;
-                border-radius: 8px;
-            }
         </style>
     </head>
     <body>
         <div id="main"></div>
 
-        <!-- Firebase SDKs -->
         <script type="module">
             import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-            import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+            import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
             import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-            import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
+            import Tesseract from "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
 
             const firebaseConfig = {
                 apiKey: "AIzaSyB_UNAaB6Enl87Yiw3zQONsjqITtYKKP_Y",
@@ -189,148 +158,53 @@
             const db = getFirestore(app);
             const auth = getAuth(app);
 
-            window.manualVerifyAadhaar = async (aadhaarNumber) => {
-                // Copy to clipboard for easy pasting on govt site
-                try {
-                    await navigator.clipboard.writeText(aadhaarNumber);
-                } catch (e) { console.error("Clipboard failed", e); }
+            // --- AUTH BRIDGE ---
+            window.loginUser = async (email, password) => {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                return { email: user.email, uid: user.uid };
+            };
 
-                // Open official validity check
-                window.open("https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en", "_blank");
+            window.signOutUser = async () => {
+                await signOut(auth);
                 return true;
             };
 
-            window.loginUser = async (email, password) => {
-                console.log("LOGIN_DEBUG: Starting login process...");
-                
-                // 10 Second Timeout to prevent "forever" hanging
-                const timeout = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error("Firebase Login TIMEOUT (10s)")), 10000)
-                );
-
-                try {
-                    console.log("LOGIN_DEBUG: Calling Firebase API...");
-                    const loginPromise = signInWithEmailAndPassword(auth, email, password);
-                    const userCredential = await Promise.race([loginPromise, timeout]);
-                    
-                    console.log("LOGIN_DEBUG: API responded successfully!");
-                    const user = userCredential.user;
-                    return {
-                        email: user.email,
-                        uid: user.uid
-                    };
-                } catch (error) {
-                    console.error("LOGIN_DEBUG: Error caught!", error);
-                    // Standardize error for Rust
-                    throw {
-                        code: error.code || "unknown",
-                        message: error.message || "Unknown error"
-                    };
-                }
-            };
-
-            import { signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-            window.signOutUser = async () => {
-                try {
-                    await signOut(auth);
-                    console.log("Logged out successfully");
-                } catch (error) {
-                    console.error("Logout Error:", error);
-                    throw error;
-                }
-            };
-
-            // Expose bridge functions to the window object so Rust can call them
-            window.addTestLodge = async () => {
-                try {
-                    const docRef = await addDoc(collection(db, "lodges"), {
-                        name: "Cozy Cabin (Test)",
-                        description: "A test lodge created from Rust/WASM",
-                        createdAt: serverTimestamp()
-                    });
-                    console.log("Document written with ID: ", docRef.id);
-                    return docRef.id;
-                } catch (e) {
-                    console.error("Error adding document: ", e);
-                    throw e;
-                }
-            };
-
-            // Rooms Management Bridge
-            import { getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-            
+            // --- DATABASE BRIDGE ---
             window.getRooms = async () => {
-                try {
-                    const q = query(collection(db, "rooms"), orderBy("number"));
-                    const querySnapshot = await getDocs(q);
-                    const rooms = [];
-                    querySnapshot.forEach((doc) => {
-                        rooms.push({ id: doc.id, ...doc.data() });
-                    });
-                    return rooms;
-                } catch (e) {
-                    console.error("Error fetching rooms: ", e);
-                    throw e;
-                }
+                const q = query(collection(db, "rooms"), orderBy("number"));
+                const querySnapshot = await getDocs(q);
+                const rooms = [];
+                querySnapshot.forEach((doc) => { rooms.push({ id: doc.id, ...doc.data() }); });
+                return rooms;
             };
 
             window.addRoom = async (room) => {
-                try {
-                    const docRef = await addDoc(collection(db, "rooms"), {
-                        ...room,
-                        createdAt: serverTimestamp()
-                    });
-                    return docRef.id;
-                } catch (e) {
-                    console.error("Error adding room: ", e);
-                    throw e;
-                }
+                const docRef = await addDoc(collection(db, "rooms"), { ...room, createdAt: serverTimestamp() });
+                return docRef.id;
             };
 
-            // Customer Management Bridge
             window.getCustomers = async () => {
-                try {
-                    const q = query(collection(db, "customers"), orderBy("full_name"));
-                    const querySnapshot = await getDocs(q);
-                    const customers = [];
-                    querySnapshot.forEach((doc) => {
-                        customers.push({ id: doc.id, ...doc.data() });
-                    });
-                    return customers;
-                } catch (e) {
-                    console.error("Error fetching customers: ", e);
-                    throw e;
-                }
+                const q = query(collection(db, "customers"), orderBy("full_name"));
+                const querySnapshot = await getDocs(q);
+                const customers = [];
+                querySnapshot.forEach((doc) => { customers.push({ id: doc.id, ...doc.data() }); });
+                return customers;
             };
 
             window.addCustomer = async (customer) => {
-                try {
-                    const docRef = await addDoc(collection(db, "customers"), {
-                        ...customer,
-                        createdAt: serverTimestamp()
-                    });
-                    return docRef.id;
-                } catch (e) {
-                    console.error("Error adding customer: ", e);
-                    throw e;
-                }
+                const docRef = await addDoc(collection(db, "customers"), { ...customer, createdAt: serverTimestamp() });
+                return docRef.id;
             };
 
-            // Camera API Bridge
+            // --- CAMERA BRIDGE ---
             let stream = null;
             window.startCamera = async (videoElementId) => {
                 const video = document.getElementById(videoElementId);
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia({ 
-                        video: { facingMode: "environment" }, // Prefer back camera for ID
-                        audio: false 
-                    });
-                    video.srcObject = stream;
-                    video.play();
-                } catch (err) {
-                    console.error("Camera Error:", err);
-                    throw err;
-                }
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+                video.srcObject = stream;
+                video.play();
+                return true;
             };
 
             window.takeSnapshot = (videoElementId) => {
@@ -340,15 +214,14 @@
                 canvas.height = video.videoHeight;
                 const ctx = canvas.getContext("2d");
                 ctx.drawImage(video, 0, 0);
-                return canvas.toDataURL("image/jpeg", 0.7); // Returns Base64
+                return canvas.toDataURL("image/jpeg", 0.7);
             };
 
             window.stopCamera = () => {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
+                if (stream) { stream.getTracks().forEach(track => track.stop()); }
             };
 
+            // --- FILE BRIDGE ---
             window.readFileAsDataURL = (file) => {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
@@ -358,64 +231,37 @@
                 });
             };
 
-            // OCR Bridge using Tesseract.js
-            import "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+            // --- OCR BRIDGE ---
             window.extractAadhaar = async (base64Image) => {
-                console.log("OCR: Starting refined extraction...");
-                try {
-                    const worker = await Tesseract.createWorker('eng');
-                    const { data: { text } } = await worker.recognize(base64Image);
-                    await worker.terminate();
+                const worker = await Tesseract.createWorker('eng');
+                const { data: { text } } = await worker.recognize(base64Image);
+                await worker.terminate();
 
-                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
-                    
-                    // 1. Extract 12-digit ID
-                    // Pattern A: 4 digits, space, 4 digits, space, 4 digits (e.g. 7012 5536 7225)
-                    let idMatch = text.match(/\d{4}\s\d{4}\s\d{4}/);
-                    let aadhaar = idMatch ? idMatch[0].replace(/\s/g, '') : null;
-
-                    // Pattern B: If Pattern A fails, look for 12 digits but AVOID the ones that match DOB
-                    if (!aadhaar) {
-                        const dobDigits = text.match(/\d{2}\/\d{2}\/\d{4}/);
-                        const dobClean = dobDigits ? dobDigits[0].replace(/\//g, '') : "";
-                        
-                        const allDigitGroups = text.match(/\d{12}/g) || [];
-                        for (let group of allDigitGroups) {
-                            if (group !== dobClean) {
-                                aadhaar = group;
-                                break;
-                            }
-                        }
-                    }
-
-                    // 2. Extract DOB
-                    const dobMatch = text.match(/\d{2}\/\d{2}\/\d{4}/);
-                    const dob = dobMatch ? dobMatch[0] : null;
-
-                    // 3. Extract Gender (More robust check)
-                    let gender = "Male"; // Default
-                    if (text.toUpperCase().includes("FEMALE")) {
-                        gender = "Female";
-                    } else if (text.toUpperCase().includes("MALE")) {
-                        gender = "Male";
-                    }
-
-                    // 4. Extract Name
-                    let name = null;
-                    for (let i = 0; i < lines.length; i++) {
-                        if (lines[i].includes("DOB") || lines[i].includes("Year of Birth") || lines[i].includes("Birth")) {
-                            if (i > 0) {
-                                name = lines[i-1].replace(/^[^a-zA-Z]+/, '').trim();
-                            }
-                            break;
-                        }
-                    }
-
-                    return { aadhaar, name, dob, gender, raw_text: text };
-                } catch (err) {
-                    console.error("OCR Error:", err);
-                    throw err;
+                const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+                let idMatch = text.match(/\d{4}\s\d{4}\s\d{4}/);
+                let aadhaar = idMatch ? idMatch[0].replace(/\s/g, '') : null;
+                if (!aadhaar) {
+                    const allDigitGroups = text.match(/\d{12}/g) || [];
+                    aadhaar = allDigitGroups.length > 0 ? allDigitGroups[0] : null;
                 }
+                const dobMatch = text.match(/\d{2}\/\d{2}\/\d{4}/);
+                const dob = dobMatch ? dobMatch[0] : null;
+                let gender = text.toUpperCase().includes("FEMALE") ? "Female" : (text.toUpperCase().includes("MALE") ? "Male" : "Male");
+                let name = null;
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].includes("DOB") || lines[i].includes("Birth")) {
+                        if (i > 0) name = lines[i-1].replace(/^[^a-zA-Z]+/, '').trim();
+                        break;
+                    }
+                }
+                return { aadhaar, name, dob, gender, raw_text: text };
+            };
+
+            // --- MANUAL VERIFY BRIDGE ---
+            window.manualVerifyAadhaar = async (aadhaarNumber) => {
+                try { await navigator.clipboard.writeText(aadhaarNumber); } catch (e) {}
+                window.open("https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en", "_blank");
+                return true;
             };
         </script>
     </body>
