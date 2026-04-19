@@ -7,7 +7,7 @@
         <link rel="rust" data-trunk href="Cargo.toml"/>
         <style>
             :root {
-                --primary: #2c3e50;
+                --primary: #007bff;
                 --sidebar-bg: #2c3e50;
                 --bg: #f8f9fa;
                 --text: #333;
@@ -143,7 +143,7 @@
 
         <script type="module">
             import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-            import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, where, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+            import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, where, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
             import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
             const firebaseConfig = {
@@ -172,7 +172,8 @@
             // --- AUTH BRIDGE ---
             window.loginUser = async (email, password) => {
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                return { email: userCredential.user.email, uid: userCredential.user.uid };
+                const user = userCredential.user;
+                return { email: user.email, uid: user.uid };
             };
 
             window.signOutUser = async () => {
@@ -180,8 +181,9 @@
                 return true;
             };
 
-            // --- ROOM BRIDGE ---
+            // --- DATABASE BRIDGE ---
             window.getRooms = async () => {
+                console.log("Database: Fetching rooms...");
                 const q = query(collection(db, "rooms"), orderBy("number"));
                 const querySnapshot = await getDocs(q);
                 const rooms = [];
@@ -219,126 +221,168 @@
                 return true;
             };
 
-            // --- CUSTOMER BRIDGE ---
-            window.getCustomers = async (searchTerm = "") => {
-                console.log(`Database: getCustomers("${searchTerm}")`);
-                try {
-                    let q;
-                    if (searchTerm) {
-                        q = query(collection(db, "customers"), 
-                            where("full_name", ">=", searchTerm),
-                            where("full_name", "<=", searchTerm + "\uf8ff"),
-                            limit(20));
-                    } else {
-                        q = query(collection(db, "customers"), limit(20));
-                    }
-                    const snap = await getDocs(q);
-                    const customers = [];
-                    snap.forEach((doc) => { customers.push({ id: doc.id, ...doc.data() }); });
-                    return customers;
-                } catch (e) {
-                    console.error("Database: getCustomers error", e);
-                    throw e;
-                }
-            };
-
-            window.addCustomer = async (customer) => {
-                const docRef = await addDoc(collection(db, "customers"), { ...cleanData(customer), createdAt: serverTimestamp() });
-                return docRef.id;
-            };
-
-            window.updateCustomer = async (id, customer) => {
-                await updateDoc(doc(db, "customers", id), { ...cleanData(customer), updatedAt: serverTimestamp() });
-                return true;
-            };
-
-            window.deleteCustomer = async (id) => {
-                await deleteDoc(doc(db, "customers", id));
-                return true;
-            };
-
             // --- BOOKING BRIDGE ---
             window.getBookings = async () => {
+                console.log("Database: Fetching recent stays...");
                 try {
                     const q = query(collection(db, "bookings"), orderBy("checkInDate", "desc"), limit(50));
-                    const snap = await getDocs(q);
+                    const querySnapshot = await getDocs(q);
                     const bookings = [];
-                    snap.forEach((doc) => { bookings.push({ id: doc.id, ...doc.data() }); });
+                    querySnapshot.forEach((doc) => { bookings.push({ id: doc.id, ...doc.data() }); });
                     return bookings;
                 } catch (e) {
+                    console.warn("Database: getBookings fallback (index likely building)");
                     const qBasic = query(collection(db, "bookings"), limit(50));
-                    const snapBasic = await getDocs(qBasic);
+                    const querySnapshotBasic = await getDocs(qBasic);
                     const basic = [];
-                    snapBasic.forEach((doc) => { basic.push({ id: doc.id, ...doc.data() }); });
+                    querySnapshotBasic.forEach((doc) => { basic.push({ id: doc.id, ...doc.data() }); });
                     return basic;
                 }
             };
 
             window.addBooking = async (booking) => {
-                const docRef = await addDoc(collection(db, "bookings"), { ...cleanData(booking), createdAt: serverTimestamp() });
-                if (booking.roomId) {
-                    await updateDoc(doc(db, "rooms", booking.roomId), { status: "Occupied" });
+                console.log("Firestore SAVE Booking: ", booking);
+                try {
+                    const docRef = await addDoc(collection(db, "bookings"), { 
+                        ...cleanData(booking), 
+                        createdAt: serverTimestamp() 
+                    });
+                    if (booking.roomId) {
+                        await updateDoc(doc(db, "rooms", booking.roomId), { status: "Occupied" });
+                    }
+                    return docRef.id;
+                } catch (e) {
+                    console.error("Firestore SAVE Booking Error:", e);
+                    throw e;
                 }
-                return docRef.id;
             };
 
             window.updateBooking = async (id, booking) => {
-                await updateDoc(doc(db, "bookings", id), { ...cleanData(booking), updatedAt: serverTimestamp() });
+                const docRef = doc(db, "bookings", id);
+                await updateDoc(docRef, { ...cleanData(booking), updatedAt: serverTimestamp() });
                 return true;
             };
 
             window.deleteBooking = async (id, roomId) => {
-                await deleteDoc(doc(db, "bookings", id));
-                if (roomId) {
-                    await updateDoc(doc(db, "rooms", roomId), { status: "Available" });
+                console.log(`Firestore DELETE Booking: ID=${id}, RoomID=${roomId}`);
+                try {
+                    await deleteDoc(doc(db, "bookings", id));
+                    if (roomId) {
+                        await updateDoc(doc(db, "rooms", roomId), { status: "Available" });
+                    }
+                    return true;
+                } catch (e) {
+                    console.error("Firestore DELETE Booking Error:", e);
+                    throw e;
                 }
-                return true;
             };
 
-            // --- UTILS ---
+            window.getCustomers = async (searchTerm = "") => {
+                console.log(`Database: Searching for "${searchTerm}" (Limit 20)...`);
+                try {
+                    let q;
+                    if (searchTerm) {
+                        q = query(
+                            collection(db, "customers"), 
+                            where("full_name", ">=", searchTerm),
+                            where("full_name", "<=", searchTerm + "\uf8ff"),
+                            limit(20)
+                        );
+                    } else {
+                        q = query(collection(db, "customers"), limit(20));
+                    }
+                    
+                    const querySnapshot = await getDocs(q);
+                    const customers = [];
+                    querySnapshot.forEach((doc) => { customers.push({ id: doc.id, ...doc.data() }); });
+                    return customers;
+                } catch (e) {
+                    console.error("Database Search Error (Customers):", e);
+                    throw e;
+                }
+            };
+
+            window.addCustomer = async (customer) => {
+                console.log("Firestore SAVE Guest: ", customer);
+                try {
+                    const docRef = await addDoc(collection(db, "customers"), { 
+                        ...cleanData(customer), 
+                        createdAt: serverTimestamp() 
+                    });
+                    return docRef.id;
+                } catch (e) {
+                    console.error("Firestore SAVE Error:", e);
+                    throw e;
+                }
+            };
+
+            window.updateCustomer = async (id, customer) => {
+                console.log(`Firestore UPDATE Guest (ID: ${id}):`, customer);
+                try {
+                    const docRef = doc(db, "customers", id);
+                    await updateDoc(docRef, { ...cleanData(customer), updatedAt: serverTimestamp() });
+                    return true;
+                } catch (e) {
+                    console.error("Firestore UPDATE Error:", e);
+                    throw e;
+                }
+            };
+            window.deleteCustomer = async (id) => {
+                await deleteDoc(doc(db, "customers", id));
+                return true;
+            };
+            // --- CAMERA BRIDGE ---
             let stream = null;
-            window.startCamera = async (id) => {
-                const video = document.getElementById(id);
+            window.startCamera = async (videoElementId) => {
+                const video = document.getElementById(videoElementId);
                 stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
                 video.srcObject = stream;
                 video.play();
                 return true;
             };
 
-            window.stopCamera = async () => {
-                if (stream) { stream.getTracks().forEach(t => t.stop()); }
-                return true;
-            };
-
-            window.takeSnapshot = async (id) => {
-                const video = document.getElementById(id);
+            window.takeSnapshot = async (videoElementId) => {
+                const video = document.getElementById(videoElementId);
                 const canvas = document.createElement("canvas");
-                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-                canvas.getContext("2d").drawImage(video, 0, 0);
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(video, 0, 0);
                 return canvas.toDataURL("image/jpeg", 0.7);
             };
 
+            window.stopCamera = async () => {
+                if (stream) { stream.getTracks().forEach(track => track.stop()); }
+                return true;
+            };
+
+            // --- FILE BRIDGE ---
             window.readFileAsDataURL = async (file) => {
-                return new Promise((res, rej) => {
+                return new Promise((resolve, reject) => {
                     const reader = new FileReader();
-                    reader.onload = () => res(reader.result);
-                    reader.onerror = rej;
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
                     reader.readAsDataURL(file);
                 });
             };
 
-            window.extractAadhaar = async (img) => {
+            // --- OCR BRIDGE ---
+            window.extractAadhaar = async (base64Image) => {
+                // Using global Tesseract
                 const worker = await Tesseract.createWorker('eng');
-                const { data: { text } } = await worker.recognize(img);
+                const { data: { text } } = await worker.recognize(base64Image);
                 await worker.terminate();
-                
+
                 const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
                 let idMatch = text.match(/\d{4}\s\d{4}\s\d{4}/);
-                let aadhaar = idMatch ? idMatch[0].replace(/\s/g, '') : (text.match(/\d{12}/) || [null])[0];
+                let aadhaar = idMatch ? idMatch[0].replace(/\s/g, '') : null;
+                if (!aadhaar) {
+                    const allDigitGroups = text.match(/\d{12}/g) || [];
+                    aadhaar = allDigitGroups.length > 0 ? allDigitGroups[0] : null;
+                }
                 const dobMatch = text.match(/\d{2}\/\d{2}\/\d{4}/);
                 const dob = dobMatch ? dobMatch[0] : null;
-                let gender = text.toUpperCase().includes("FEMALE") ? "Female" : "Male";
-                
+                let gender = text.toUpperCase().includes("FEMALE") ? "Female" : (text.toUpperCase().includes("MALE") ? "Male" : "Male");
                 let name = null;
                 for (let i = 0; i < lines.length; i++) {
                     if (lines[i].includes("DOB") || lines[i].includes("Birth")) {
@@ -346,15 +390,48 @@
                         break;
                     }
                 }
-                return { aadhaar, name, dob, gender };
+                return { aadhaar, name, dob, gender, raw_text: text };
             };
 
-            window.manualVerifyAadhaar = async (num) => {
-                try { await navigator.clipboard.writeText(num); } catch(e) {}
-                window.open("https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en", "_blank");
+            // --- MANUAL VERIFY BRIDGE ---
+            window.manualVerifyAadhaar = async (aadhaarNumber) => {
+                console.log("Attempting to copy:", aadhaarNumber);
+                
+                // 1. Copy to clipboard (Try modern API)
+                let copied = false;
+                try {
+                    await navigator.clipboard.writeText(aadhaarNumber);
+                    copied = true;
+                } catch (e) {
+                    // 2. Fallback for focus/permission issues
+                    const textArea = document.createElement("textarea");
+                    textArea.value = aadhaarNumber;
+                    textArea.style.position = "fixed";
+                    textArea.style.left = "-9999px";
+                    textArea.style.top = "0";
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    try {
+                        copied = document.execCommand('copy');
+                    } catch (err) {
+                        console.error('Fallback copy failed', err);
+                    }
+                    document.body.removeChild(textArea);
+                }
+
+                if (copied) console.log("Successfully copied to clipboard.");
+
+                // 3. Open window (Must be immediate to avoid blocker)
+                const win = window.open("https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en", "_blank");
+                if (!win) {
+                    alert("Popup blocked! Please allow popups to verify Aadhaar.");
+                    return false;
+                }
                 return true;
             };
 
+            // Signal that everything is ready
             window.bridgeReady = true;
             console.log("JS Bridge fully initialized.");
         </script>
