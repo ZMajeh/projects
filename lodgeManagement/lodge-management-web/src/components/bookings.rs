@@ -11,7 +11,7 @@ pub async fn fetch_bookings() -> Vec<Booking> {
         Ok(js_val) => {
             match serde_wasm_bindgen::from_value::<Vec<Booking>>(js_val) {
                 Ok(bookings) => {
-                    logging::log!("RUST: Successfully deserialized {} bookings", bookings.length());
+                    logging::log!("RUST: Successfully deserialized {} bookings", bookings.len());
                     bookings
                 },
                 Err(e) => {
