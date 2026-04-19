@@ -119,7 +119,6 @@
             const db = getFirestore(app);
             const auth = getAuth(app);
 
-            // Authentication Bridge
             window.loginUser = async (email, password) => {
                 console.log("LOGIN_DEBUG: Starting login process...");
                 
@@ -146,6 +145,17 @@
                         code: error.code || "unknown",
                         message: error.message || "Unknown error"
                     };
+                }
+            };
+
+            import { signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+            window.signOutUser = async () => {
+                try {
+                    await signOut(auth);
+                    console.log("Logged out successfully");
+                } catch (error) {
+                    console.error("Logout Error:", error);
+                    throw error;
                 }
             };
 
