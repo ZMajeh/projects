@@ -121,21 +121,22 @@
 
             // Authentication Bridge
             window.loginUser = async (email, password) => {
-                console.log("Attempting login for:", email);
+                console.log("CHECKPOINT 1: loginUser called with", email);
+                if (!auth) {
+                    console.error("CHECKPOINT ERROR: Firebase Auth is not initialized!");
+                    throw new Error("Auth not initialized");
+                }
                 try {
+                    console.log("CHECKPOINT 2: Calling signInWithEmailAndPassword...");
                     const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                    console.log("CHECKPOINT 3: API returned successfully");
                     const user = userCredential.user;
-                    console.log("Login successful:", user.uid);
                     return {
                         email: user.email,
                         uid: user.uid
                     };
                 } catch (error) {
-                    console.error("Firebase Auth Error Detail:", {
-                        code: error.code,
-                        message: error.message,
-                        stack: error.stack
-                    });
+                    console.error("CHECKPOINT 4: Catch block hit", error.code);
                     throw error;
                 }
             };
