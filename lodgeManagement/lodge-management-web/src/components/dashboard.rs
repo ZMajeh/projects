@@ -24,143 +24,100 @@ fn PrintableBill(booking: Booking, customer: Option<Customer>, on_close: Callbac
     let today = js_sys::Date::new_0().to_iso_string().as_string().unwrap()[..10].to_string();
     
     view! {
-        <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #f8f9fa; z-index: 9999; overflow-y: auto; padding: 40px; box-sizing: border-box;" class="bill-page">
-            <div style="max-width: 800px; margin: 0 auto 20px auto; display: flex; justify-content: space-between; align-items: center;" class="no-print">
-                <button on:click=move |_| on_close.call(()) style="background: #34495e; padding: 12px 24px; border-radius: 8px;">"← Close & Go Back"</button>
-                <button on:click=move |_| { let _ = window().print(); } style="background: #27ae60; padding: 12px 40px; font-weight: bold; border-radius: 8px; box-shadow: 0 4px 12px rgba(39,174,96,0.3);">"PRINT THIS BILL"</button>
+        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 10000; overflow-y: auto; color: #000;" class="bill-overlay">
+            <div style="max-width: 800px; margin: 20px auto; display: flex; justify-content: space-between; padding: 0 20px;" class="no-print">
+                <button on:click=move |_| on_close.call(()) style="background: #34495e; padding: 10px 20px; border-radius: 4px;">"← Close"</button>
+                <button on:click=move |_| { let _ = window().print(); } style="background: #27ae60; padding: 10px 40px; font-weight: bold; border-radius: 4px;">"PRINT BILL"</button>
             </div>
 
-            <div style="max-width: 800px; margin: 0 auto; background: white; padding: 60px; box-shadow: 0 0 40px rgba(0,0,0,0.1); border: 1px solid #eee; min-height: 1000px; color: #000; box-sizing: border-box;" class="bill-container">
-                
+            <div style="width: 21cm; min-height: 29.7cm; margin: 0 auto; background: white; padding: 1.5cm; box-sizing: border-box; border: 1px solid #eee;" class="printable-area">
                 // Header
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 60px; border-bottom: 3px solid #2c3e50; padding-bottom: 30px;">
-                    <div style="flex: 1; padding-right: 20px;">
-                        <h1 style="margin: 0; font-size: 2.5rem; color: #2c3e50; text-transform: uppercase; letter-spacing: 3px; font-weight: 900;">"ANAND LODGE"</h1>
-                        <h3 style="margin: 5px 0 0 0; font-size: 1rem; color: #7f8c8d; letter-spacing: 5px; text-transform: uppercase;">"Lodge & Stay"</h3>
-                        <div style="margin-top: 20px; font-size: 0.85rem; color: #34495e; line-height: 1.6;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 3px solid #2c3e50; padding-bottom: 20px;">
+                    <div style="flex: 1;">
+                        <h1 style="margin: 0; font-size: 2.2rem; color: #2c3e50; text-transform: uppercase; letter-spacing: 3px; font-weight: 900;">"ANAND LODGE"</h1>
+                        <h3 style="margin: 5px 0 0 0; font-size: 0.9rem; color: #7f8c8d; letter-spacing: 4px; text-transform: uppercase;">"Lodge & Stay"</h3>
+                        <div style="margin-top: 15px; font-size: 0.8rem; color: #34495e; line-height: 1.5;">
                             <p style="margin: 0;">"Main Road, Near Railway Station"</p>
                             <p style="margin: 0;">"Phone: +91 98XXX XXXXX"</p>
-                            <p style="margin: 0;">"GSTIN: 27AAAAA0000A1Z5"</p>
                         </div>
                     </div>
-                    <div style="text-align: right; width: 220px;">
-                        <div style="background: #2c3e50; color: white; padding: 10px 20px; display: inline-block; border-radius: 4px; margin-bottom: 15px; width: 100%; box-sizing: border-box; text-align: center;">
-                            <h2 style="margin: 0; font-size: 1rem; letter-spacing: 2px; text-transform: uppercase;">"Tax Invoice"</h2>
+                    <div style="text-align: right; width: 180px;">
+                        <div style="background: #2c3e50; color: white; padding: 8px; border-radius: 4px; margin-bottom: 15px; text-align: center;">
+                            <h2 style="margin: 0; font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">"Tax Invoice"</h2>
                         </div>
-                        <p style="margin: 4px 0; font-size: 0.9rem;"><strong>"Date: "</strong> {today}</p>
-                        <p style="margin: 4px 0; font-size: 0.9rem;"><strong>"Bill No: "</strong> "AL-" {booking.id.clone().unwrap_or_default().chars().take(6).collect::<String>().to_uppercase()}</p>
+                        <p style="margin: 2px 0; font-size: 0.85rem;"><strong>"Date: "</strong> {today}</p>
+                        <p style="margin: 2px 0; font-size: 0.85rem;"><strong>"Bill No: "</strong> "AL-" {booking.id.clone().unwrap_or_default().chars().take(6).collect::<String>().to_uppercase()}</p>
                     </div>
                 </div>
 
                 // Details
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 50px; margin-bottom: 60px;">
-                    <div>
-                        <h4 style="margin: 0 0 15px 0; color: #7f8c8d; border-bottom: 1px solid #eee; padding-bottom: 5px; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px;">"Billed To"</h4>
-                        <p style="margin: 5px 0; font-size: 1.2rem; color: #2c3e50;"><strong>{booking.customer_name.clone()}</strong></p>
+                <div style="display: flex; gap: 30px; margin-bottom: 40px;">
+                    <div style="flex: 1; background: #f8f9fa; padding: 20px; border-radius: 4px;">
+                        <h4 style="margin: 0 0 10px 0; color: #7f8c8d; border-bottom: 1px solid #ddd; padding-bottom: 5px; text-transform: uppercase; font-size: 0.7rem;">"Guest Details"</h4>
+                        <p style="margin: 5px 0; font-size: 1.1rem; color: #2c3e50;"><strong>{booking.customer_name.clone()}</strong></p>
                         {if !booking.extra_guests.is_empty() {
                             view! {
-                                <p style="margin: 8px 0; font-size: 0.85rem; color: #666; line-height: 1.4;">
-                                    "Extra Guest(s): " <br/> 
-                                    <span style="font-weight: 600;">{booking.extra_guests.iter().map(|g| g.name.clone()).collect::<Vec<_>>().join(", ")}</span>
+                                <p style="margin: 5px 0; font-size: 0.8rem; color: #666;">
+                                    "Guests: " {booking.extra_guests.iter().map(|g| g.name.clone()).collect::<Vec<_>>().join(", ")}
                                 </p>
                             }.into_view()
                         } else { view! {}.into_view() }}
-                        <div style="margin-top: 15px; font-size: 0.9rem; color: #34495e;">
-                            <p style="margin: 3px 0;"><strong>"Phone: "</strong> {customer.as_ref().map(|c| c.phone.clone()).unwrap_or_else(|| "N/A".to_string())}</p>
-                            <p style="margin: 3px 0;"><strong>"Aadhar: "</strong> {customer.as_ref().map(|c| c.aadhaar.clone()).unwrap_or_else(|| "N/A".to_string())}</p>
-                        </div>
+                        <p style="margin: 10px 0 0 0; font-size: 0.85rem;">"Mob: " {customer.as_ref().map(|c| c.phone.clone()).unwrap_or_else(|| "N/A".to_string())}</p>
                     </div>
-                    <div>
-                        <h4 style="margin: 0 0 15px 0; color: #7f8c8d; border-bottom: 1px solid #eee; padding-bottom: 5px; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px;">"Stay Details"</h4>
-                        <table style="width: 100%; font-size: 0.9rem; border-spacing: 0 8px;">
-                            <tr><td style="color: #7f8c8d;">"Room Number:"</td><td style="text-align: right; font-weight: 700; color: #2c3e50;">"Room " {booking.room_number.clone()}</td></tr>
-                            <tr><td style="color: #7f8c8d;">"Arrival:"</td><td style="text-align: right;">{booking.check_in_date.clone()} ({booking.in_time.clone().unwrap_or_else(|| "--:--".to_string())})</td></tr>
-                            <tr><td style="color: #7f8c8d;">"Departure:"</td><td style="text-align: right;">{booking.check_out_date.clone()} ({booking.out_time.clone().unwrap_or_else(|| "--:--".to_string())})</td></tr>
-                            <tr><td style="color: #7f8c8d;">"Stay Status:"</td><td style="text-align: right; color: #27ae60; font-weight: 800;">{booking.status.clone().to_uppercase()}</td></tr>
+                    <div style="flex: 1; background: #f8f9fa; padding: 20px; border-radius: 4px;">
+                        <h4 style="margin: 0 0 10px 0; color: #7f8c8d; border-bottom: 1px solid #ddd; padding-bottom: 5px; text-transform: uppercase; font-size: 0.7rem;">"Stay Details"</h4>
+                        <table style="width: 100%; font-size: 0.85rem;">
+                            <tr><td>"Room No:"</td><td style="text-align: right;"><strong>"Room " {booking.room_number.clone()}</strong></td></tr>
+                            <tr><td>"Arrival:"</td><td style="text-align: right;">{booking.check_in_date.clone()} ({booking.in_time.clone().unwrap_or_else(|| "--:--".to_string())})</td></tr>
+                            <tr><td>"Departure:"</td><td style="text-align: right;">{booking.check_out_date.clone()} ({booking.out_time.clone().unwrap_or_else(|| "--:--".to_string())})</td></tr>
                         </table>
                     </div>
                 </div>
 
-                // Main Charges
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 60px;">
+                // Table
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; font-size: 0.9rem;">
                     <thead>
-                        <tr style="background: #f8f9fa; border-top: 1px solid #2c3e50; border-bottom: 1px solid #2c3e50;">
-                            <th style="text-align: left; padding: 15px; text-transform: uppercase; font-size: 0.75rem;">"Description"</th>
-                            <th style="text-align: right; padding: 15px; text-transform: uppercase; font-size: 0.75rem;">"Price"</th>
-                            <th style="text-align: center; padding: 15px; text-transform: uppercase; font-size: 0.75rem;">"Qty"</th>
-                            <th style="text-align: right; padding: 15px; text-transform: uppercase; font-size: 0.75rem;">"Amount"</th>
+                        <tr style="border-top: 2px solid #2c3e50; border-bottom: 2px solid #2c3e50; background: #f8f9fa;">
+                            <th style="text-align: left; padding: 12px;">"Description"</th>
+                            <th style="text-align: right; padding: 12px;">"Amount"</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr style="border-bottom: 1px solid #eee;">
-                            <td style="padding: 25px 15px;">
-                                <strong style="color: #2c3e50; font-size: 1rem;">"Room Accommodation"</strong><br/>
-                                <small style="color: #7f8c8d;">"Delux Class Stay & Services"</small>
+                            <td style="padding: 20px 12px;">
+                                <strong>"Room Accommodation"</strong><br/>
+                                <small style="color: #666;">"Guest stay and essential lodge services"</small>
                             </td>
-                            <td style="text-align: right; padding: 25px 15px;">"₹" {booking.total_amount}</td>
-                            <td style="text-align: center; padding: 25px 15px;">"1"</td>
-                            <td style="text-align: right; padding: 25px 15px; font-weight: 700; font-size: 1.1rem;">"₹" {booking.total_amount}</td>
+                            <td style="text-align: right; padding: 20px 12px; font-weight: 700;">"₹" {booking.total_amount}</td>
                         </tr>
                     </tbody>
                 </table>
 
                 // Summary
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 40px;">
-                    <div style="flex: 1;">
-                        <h4 style="margin: 0 0 10px 0; font-size: 0.75rem; text-transform: uppercase; color: #7f8c8d;">"Payment Received"</h4>
-                        <table style="width: 100%; font-size: 0.85rem; border-collapse: collapse;">
-                            {booking.payments.iter().map(|p| view! {
-                                <tr style="border-bottom: 1px solid #f0f0f0;">
-                                    <td style="padding: 10px 0;"><strong>{p.date.clone()}</strong></td>
-                                    <td style="padding: 10px 10px; color: #7f8c8d;">"Via Cash/Online"</td>
-                                    <td style="padding: 10px 0; text-align: right; color: #27ae60; font-weight: 700;">"₹" {p.amount}</td>
-                                </tr>
-                            }).collect_view()}
-                        </table>
-                    </div>
-                    <div style="width: 320px; background: #2c3e50; color: white; padding: 25px; border-radius: 4px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; opacity: 0.8;">
-                            <span>"Gross Total"</span>
-                            <span>"₹" {booking.total_amount}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 0.9rem; color: #2ecc71;">
-                            <span>"Total Paid"</span>
-                            <span>"- ₹" {paid}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px;">
-                            <span style="font-weight: 700; font-size: 1rem; text-transform: uppercase;">"Balance Due"</span>
-                            <span style="font-weight: 900; font-size: 1.5rem;">"₹" {balance}</span>
+                <div style="display: flex; justify-content: flex-end;">
+                    <div style="width: 250px; background: #f8f9fa; padding: 20px; border-radius: 4px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;"><span>"Total Bill"</span><span>"₹" {booking.total_amount}</span></div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.85rem; color: #27ae60;"><span>"Total Paid"</span><span>"- ₹" {paid}</span></div>
+                        <div style="display: flex; justify-content: space-between; border-top: 2px solid #2c3e50; padding-top: 10px; font-weight: 900; font-size: 1.1rem; color: #2c3e50;">
+                            <span>"DUE"</span><span>"₹" {balance}</span>
                         </div>
                     </div>
                 </div>
 
-                // Signatures
-                <div style="margin-top: 120px; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 20px;">
-                    <div style="text-align: center;">
-                        <div style="width: 180px; border-bottom: 1px solid #333; margin-bottom: 10px;"></div>
-                        <p style="font-size: 0.8rem; color: #7f8c8d; margin: 0;">"Guest Signature"</p>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-family: 'Brush Script MT', cursive; font-size: 1.8rem; color: #2c3e50; margin-bottom: 5px;">"Anand"</div>
-                        <div style="width: 180px; border-bottom: 1px solid #333; margin-bottom: 10px;"></div>
-                        <p style="font-size: 0.8rem; color: #7f8c8d; margin: 0; font-weight: bold;">"Authorized Signatory"</p>
-                    </div>
-                </div>
-
-                // Professional Footer
-                <div style="margin-top: 80px; border-top: 1px solid #eee; padding-top: 20px; font-size: 0.75rem; color: #95a5a6; line-height: 1.6;">
-                    <p style="margin: 0 0 5px 0; font-weight: bold; color: #7f8c8d;">"Note:"</p>
-                    <p style="margin: 0;">"Computer generated invoice. No signature required unless specified."</p>
-                    <p style="text-align: center; margin-top: 40px; font-weight: bold; color: #bdc3c7;">"--- THANK YOU ---"</p>
+                // Footer
+                <div style="margin-top: 100px; display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div style="text-align: center;"><div style="width: 150px; border-bottom: 1px solid #000; margin-bottom: 5px;"></div><p style="font-size: 0.75rem; color: #666;">"Guest Signature"</p></div>
+                    <div style="text-align: center;"><p style="font-family: cursive; margin: 0; font-size: 1.2rem;">"Anand"</p><div style="width: 150px; border-bottom: 1px solid #000; margin-bottom: 5px;"></div><p style="font-size: 0.75rem; font-weight: bold;">"Authorized Signatory"</p></div>
                 </div>
             </div>
 
             <style>
-                "@media print { 
-                    .no-print { display: none !important; } 
-                    body { background: white !important; padding: 0 !important; margin: 0 !important; } 
-                    .bill-page { padding: 0 !important; background: white !important; position: static !important; width: 100vw !important; height: auto !important; }
-                    .bill-container { box-shadow: none !important; border: none !important; width: 100% !important; max-width: none !important; margin: 0 !important; padding: 60px !important; }
+                "@media print {
+                    @page { margin: 0; size: auto; }
+                    body { background: white !important; }
+                    .no-print { display: none !important; }
+                    .bill-overlay { position: static !important; padding: 0 !important; width: 100% !important; height: auto !important; }
+                    .printable-area { border: none !important; width: 100% !important; height: auto !important; padding: 1.5cm !important; margin: 0 !important; }
                 }"
             </style>
         </div>
@@ -346,20 +303,15 @@ pub fn DashboardHome() -> impl IntoView {
                 let (check_out, set_check_out) = create_signal("".to_string());
                 let (guest_search, set_guest_search) = create_signal("".to_string());
                 let (saving, set_saving) = create_signal(false);
-                
                 let filtered_guests = move || { let q = guest_search.get().to_lowercase(); customers.get().into_iter().filter(|c| c.full_name.to_lowercase().contains(&q) || c.aadhaar.contains(&q)).collect::<Vec<_>>() };
-                
                 let add_extra_guest = move |_| {
                     let cid = sel_cust.get();
                     if cid.is_empty() { return; }
                     if let Some(c) = customers.get_untracked().into_iter().find(|c| c.id.as_deref() == Some(&cid)) {
                         let already_in = extra_selected.get_untracked().iter().any(|g| g.id == cid);
-                        if !already_in {
-                            set_extra_selected.update(|v| v.push(ExtraGuest { id: cid, name: c.full_name }));
-                        }
+                        if !already_in { set_extra_selected.update(|v| v.push(ExtraGuest { id: cid, name: c.full_name })); }
                     }
                 };
-
                 let r_id = room.id.clone().unwrap_or_default();
                 let r_num = room.number.clone();
                 let handle_book = move |ev: leptos::ev::SubmitEvent| {
@@ -369,25 +321,9 @@ pub fn DashboardHome() -> impl IntoView {
                     let primary = &guests[0];
                     let extras = guests[1..].to_vec();
                     let date = selected_date.get_untracked();
-                    let cout = check_out.get();
-                    let total = final_price.get().parse::<f64>().unwrap_or(0.0);
-                    let paid = paid_now.get().parse::<f64>().unwrap_or(0.0);
-                    
-                    let new_booking = NewBooking { 
-                        room_id: r_id.clone(), 
-                        customer_id: primary.id.clone(), 
-                        customer_name: primary.name.clone(), 
-                        extra_guests: extras,
-                        room_number: r_num.clone(), 
-                        check_in_date: date.clone(), 
-                        check_out_date: cout, 
-                        in_time: None, out_time: None, status: "Checked-In".to_string(), 
-                        total_amount: total, 
-                        payments: vec![Payment { amount: paid, date: date }] 
-                    };
+                    let new_booking = NewBooking { room_id: r_id.clone(), customer_id: primary.id.clone(), customer_name: primary.name.clone(), extra_guests: extras, room_number: r_num.clone(), check_in_date: date.clone(), check_out_date: check_out.get(), in_time: None, out_time: None, status: "Checked-In".to_string(), total_amount: final_price.get().parse().unwrap_or(0.0), payments: vec![Payment { amount: paid_now.get().parse().unwrap_or(0.0), date: date }] };
                     spawn_local(async move { wait_for_bridge().await; let _ = add_booking_js(serde_wasm_bindgen::to_value(&new_booking).unwrap()).await; set_show_book_modal.set(None); load_data(); });
                 };
-
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
                         <div class="card" style="width: 100%; max-width: 450px; padding: 2rem;">
@@ -395,25 +331,7 @@ pub fn DashboardHome() -> impl IntoView {
                             <form on:submit=handle_book>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
                                     <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Room"</label><input type="text" value=room.number.clone() disabled style="background: #eee;" /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label><input type="text" value=selected_date.get() disabled style="background: #eee;" /></div></div>
-                                    
-                                    <div>
-                                        <label style="font-size: 0.8rem; font-weight: bold;">"Select Guest(s)"</label>
-                                        <div style="display: flex; gap: 5px; margin-bottom: 5px;">
-                                            <input type="text" placeholder="Search..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="flex: 1;" />
-                                            <button type="button" on:click=add_extra_guest style="padding: 0 15px; background: #27ae60; font-weight: bold;">"+"</button>
-                                        </div>
-                                        <select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) prop:value=sel_cust>
-                                            <option value="">"Choose guest from search..."</option>
-                                            {move || filtered_guests().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); view! { <option value=cid>{c.full_name.clone()} " (" {c.phone.clone()} ")" </option> } }).collect_view()}
-                                        </select>
-                                        <div style="margin-top: 10px; display: flex; flex_wrap: wrap; gap: 5px;">
-                                            {move || extra_selected.get().into_iter().enumerate().map(|(idx, g)| {
-                                                let g_id = g.id.clone();
-                                                view! { <span style="background: #3498db; color: white; padding: 2px 10px; border-radius: 15px; font-size: 0.8rem;">{if idx==0 { "(P) " } else { "" }} {g.name} <button type="button" on:click=move |_| set_extra_selected.update(|v| v.retain(|x| x.id != g_id)) style="background:none; padding:0; margin-left:5px; font-weight:bold;">"×"</button></span> }
-                                            }).collect_view()}
-                                        </div>
-                                    </div>
-
+                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Select Guest(s)"</label><div style="display: flex; gap: 5px; margin-bottom: 5px;"><input type="text" placeholder="Search..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="flex: 1;" /><button type="button" on:click=add_extra_guest style="padding: 0 15px; background: #27ae60; font-weight: bold;">"+"</button></div><select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) prop:value=sel_cust><option value="">"Choose guest from search..."</option>{move || filtered_guests().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); view! { <option value=cid>{c.full_name.clone()} " (" {c.phone.clone()} ")" </option> } }).collect_view()}</select><div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">{move || extra_selected.get().into_iter().enumerate().map(|(idx, g)| { let g_id = g.id.clone(); view! { <span style="background: #3498db; color: white; padding: 2px 10px; border-radius: 15px; font-size: 0.8rem;">{if idx==0 { "(P) " } else { "" }} {g.name} <button type="button" on:click=move |_| set_extra_selected.update(|v| v.retain(|x| x.id != g_id)) style="background:none; padding:0; margin-left:5px; font-weight:bold;">"×"</button></span> } }).collect_view()}</div></div>
                                     <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Total Price"</label><input type="number" on:input=move |ev| set_final_price.set(event_target_value(&ev)) prop:value=final_price required /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Paying Now"</label><input type="number" on:input=move |ev| set_paid_now.set(event_target_value(&ev)) prop:value=paid_now required /></div></div>
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Estimated Check-out"</label><input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) required /></div>
                                 </div>
@@ -434,39 +352,28 @@ pub fn DashboardHome() -> impl IntoView {
                 let (saving, set_saving) = create_signal(false);
                 let b_id = booking.id.clone().unwrap_or_default();
                 let b_data_orig = booking.clone();
-                let date_str = selected_date.get_untracked();
-                
-                let b_id_upd = b_id.clone(); let b_data_upd = b_data_orig.clone(); let date_upd = date_str.clone();
                 let handle_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default(); set_saving.set(true);
-                    let bid = b_id_upd.clone(); let extra = extra_payment.get().parse::<f64>().unwrap_or(0.0);
-                    let mut updated_payments = b_data_upd.payments.clone();
-                    if extra > 0.0 { updated_payments.push(Payment { amount: extra, date: date_upd.clone() }); }
-                    let updated_booking = NewBooking { room_id: b_data_upd.room_id.clone(), customer_id: b_data_upd.customer_id.clone(), customer_name: b_data_upd.customer_name.clone(), extra_guests: b_data_upd.extra_guests.clone(), room_number: b_data_upd.room_number.clone(), check_in_date: b_data_upd.check_in_date.clone(), check_out_date: check_out.get(), in_time: b_data_upd.in_time.clone(), out_time: b_data_upd.out_time.clone(), status: b_data_upd.status.clone(), total_amount: b_data_upd.total_amount, payments: updated_payments };
-                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(bid, serde_wasm_bindgen::to_value(&updated_booking).unwrap()).await; set_show_manage_stay_modal.set(None); load_data(); });
+                    let mut updated_payments = b_data_orig.payments.clone();
+                    let extra = extra_payment.get().parse::<f64>().unwrap_or(0.0);
+                    if extra > 0.0 { updated_payments.push(Payment { amount: extra, date: selected_date.get_untracked() }); }
+                    let updated_booking = NewBooking { room_id: b_data_orig.room_id.clone(), customer_id: b_data_orig.customer_id.clone(), customer_name: b_data_orig.customer_name.clone(), extra_guests: b_data_orig.extra_guests.clone(), room_number: b_data_orig.room_number.clone(), check_in_date: b_data_orig.check_in_date.clone(), check_out_date: check_out.get(), in_time: b_data_orig.in_time.clone(), out_time: b_data_orig.out_time.clone(), status: b_data_orig.status.clone(), total_amount: b_data_orig.total_amount, payments: updated_payments };
+                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(b_id.clone(), serde_wasm_bindgen::to_value(&updated_booking).unwrap()).await; set_show_manage_stay_modal.set(None); load_data(); });
                 };
-
-                let b_id_co = b_id.clone(); let b_data_co = b_data_orig.clone(); let date_co = date_str.clone();
+                let b_id_co = b_data_orig.id.clone().unwrap_or_default(); let b_data_co = b_data_orig.clone();
                 let on_checkout_final = move |_| {
-                    let bid = b_id_co.clone(); let b_data = b_data_co.clone(); let today = date_co.clone();
-                    let paid_so_far: f64 = b_data.payments.iter().map(|p| p.amount).sum();
-                    let mut final_payments = b_data.payments.clone();
-                    if b_data.total_amount > paid_so_far { final_payments.push(Payment { amount: b_data.total_amount - paid_so_far, date: today.clone() }); }
-                    let co_booking = NewBooking { room_id: b_data.room_id.clone(), customer_id: b_data.customer_id.clone(), customer_name: b_data.customer_name.clone(), extra_guests: b_data.extra_guests.clone(), room_number: b_data.room_number.clone(), check_in_date: b_data.check_in_date.clone(), check_out_date: today, in_time: b_data.in_time.clone(), out_time: None, status: "Checked-Out".to_string(), total_amount: b_data.total_amount, payments: final_payments };
-                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(bid, serde_wasm_bindgen::to_value(&co_booking).unwrap()).await; let _ = update_room_js(b_data.room_id.clone(), JsValue::from_str("Available")).await; set_show_manage_stay_modal.set(None); load_data(); });
+                    let today = selected_date.get_untracked(); let paid_so_far: f64 = b_data_co.payments.iter().map(|p| p.amount).sum();
+                    let mut final_payments = b_data_co.payments.clone();
+                    if b_data_co.total_amount > paid_so_far { final_payments.push(Payment { amount: b_data_co.total_amount - paid_so_far, date: today.clone() }); }
+                    let co_booking = NewBooking { room_id: b_data_co.room_id.clone(), customer_id: b_data_co.customer_id.clone(), customer_name: b_data_co.customer_name.clone(), extra_guests: b_data_co.extra_guests.clone(), room_number: b_data_co.room_number.clone(), check_in_date: b_data_co.check_in_date.clone(), check_out_date: today, in_time: b_data_co.in_time.clone(), out_time: None, status: "Checked-Out".to_string(), total_amount: b_data_co.total_amount, payments: final_payments };
+                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(b_id_co.clone(), serde_wasm_bindgen::to_value(&co_booking).unwrap()).await; let _ = update_room_js(b_data_co.room_id.clone(), JsValue::from_str("Available")).await; set_show_manage_stay_modal.set(None); load_data(); });
                 };
-
-                let b_id_del = b_id.clone(); let b_rid_del = b_data_orig.room_id.clone();
-                let b_name_view = b_data_orig.customer_name.clone();
-                let b_extras_view = b_data_orig.extra_guests.clone();
-                let b_rnum_view = b_data_orig.room_number.clone();
-                let b_checkin_view = b_data_orig.check_in_date.clone();
-
+                let b_id_del = b_data_orig.id.clone().unwrap_or_default(); let b_rid_del = b_data_orig.room_id.clone();
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: center; justify-content: center; z-index: 3000; padding: 1rem; display: flex; align-items: center;">
                         <div class="card" style="width: 100%; max-width: 450px; padding: 2rem;">
                             <h3>"Manage Guest Stay"</h3>
-                            <div style="margin-bottom: 20px; text-align: left; background: #f8f9fa; padding: 1rem; border-radius: 8px;"><p><strong>"Guest(s): "</strong> {b_name_view} {b_extras_view.iter().map(|g| format!(", {}", g.name)).collect::<String>()}</p><p><strong>"Room: "</strong> {b_rnum_view} " | " <strong>"In: "</strong> {b_checkin_view}</p></div>
+                            <div style="margin-bottom: 20px; text-align: left; background: #f8f9fa; padding: 1rem; border-radius: 8px;"><p><strong>"Guest(s): "</strong> {b_data_orig.customer_name.clone()} {b_data_orig.extra_guests.iter().map(|g| format!(", {}", g.name)).collect::<String>()}</p><p><strong>"Room: "</strong> {b_data_orig.room_number.clone()} " | " <strong>"In: "</strong> {b_data_orig.check_in_date.clone()}</p></div>
                             <form on:submit=handle_update>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Collect Payment"</label><input type="number" on:input=move |ev| set_extra_payment.set(event_target_value(&ev)) prop:value=extra_payment /></div>
@@ -492,13 +399,10 @@ pub fn DashboardHome() -> impl IntoView {
                 let r_id = room.id.clone().unwrap_or_default(); let r_num = room.number.clone();
                 let handle_room_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default(); set_saving.set(true);
-                    let rid = r_id.clone(); let rnum = r_num.clone();
-                    let updated_room = NewRoom { number: rnum, room_type: r_type.get(), status: "Available".to_string(), price: r_price.get().parse().unwrap_or(0.0) };
-                    spawn_local(async move { wait_for_bridge().await; let _ = update_room_js(rid, serde_wasm_bindgen::to_value(&updated_room).unwrap()).await; set_show_edit_room_modal.set(None); load_data(); });
+                    let updated_room = NewRoom { number: r_num.clone(), room_type: r_type.get(), status: "Available".to_string(), price: r_price.get().parse().unwrap_or(0.0) };
+                    spawn_local(async move { wait_for_bridge().await; let _ = update_room_js(r_id.clone(), serde_wasm_bindgen::to_value(&updated_room).unwrap()).await; set_show_edit_room_modal.set(None); load_data(); });
                 };
-                view! {
-                    <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;"><div class="card" style="width: 100%; max-width: 400px; padding: 2rem;"><h3>"Edit Room Settings"</h3><form on:submit=handle_room_update><div style="display: flex; flex-direction: column; gap: 15px; text-align: left;"><div><label style="font-size: 0.8rem; font-weight: bold;">"Room Number"</label><input type="text" value=room.number.clone() disabled style="background: #eee;" /></div><div><label style="font-size: 0.8rem; font-weight: bold;">"Category"</label><select on:change=move |ev| set_r_type.set(event_target_value(&ev)) prop:value=r_type><option value="Delux">"Delux"</option><option value="AC">"AC"</option><option value="non-AC">"non-AC"</option></select></div><div><label style="font-size: 0.8rem; font-weight: bold;">"Base Price"</label><input type="number" on:input=move |ev| set_r_price.set(event_target_value(&ev)) prop:value=r_price /></div></div><div style="display: flex; gap: 10px; margin-top: 25px;"><button type="submit" disabled=saving style="flex: 1; background: #3498db;">"Save"</button><button type="button" on:click=move |_| set_show_edit_room_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button></div></form></div></div>
-                }
+                view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;"><div class="card" style="width: 100%; max-width: 400px; padding: 2rem;"><h3>"Edit Room Settings"</h3><form on:submit=handle_room_update><div style="display: flex; flex-direction: column; gap: 15px; text-align: left;"><div><label style="font-size: 0.8rem; font-weight: bold;">"Room Number"</label><input type="text" value=room.number.clone() disabled style="background: #eee;" /></div><div><label style="font-size: 0.8rem; font-weight: bold;">"Category"</label><select on:change=move |ev| set_r_type.set(event_target_value(&ev)) prop:value=r_type><option value="Delux">"Delux"</option><option value="AC">"AC"</option><option value="non-AC">"non-AC"</option></select></div><div><label style="font-size: 0.8rem; font-weight: bold;">"Base Price"</label><input type="number" on:input=move |ev| set_r_price.set(event_target_value(&ev)) prop:value=r_price /></div></div><div style="display: flex; gap: 10px; margin-top: 25px;"><button type="submit" disabled=saving style="flex: 1; background: #3498db;">"Save"</button><button type="button" on:click=move |_| set_show_edit_room_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button></div></form></div></div> }
             })}
         </div>
     }
@@ -510,8 +414,8 @@ pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: Children) 
     let handle_logout = move |_| { clear_user(); spawn_local(async move { wait_for_bridge().await; let _ = sign_out_user().await; on_logout.call(()); }); };
     view! { 
         <div class="app-layout">
-            <div class=move || format!("sidebar-overlay {}", if menu_open.get() { "show" } else { "" }) on:click=move |_| set_menu_open.set(false)></div>
-            <nav class=move || format!("sidebar {}", if menu_open.get() { "open" } else { "" })>
+            <div class=move || format!("sidebar-overlay no-print {}", if menu_open.get() { "show" } else { "" }) on:click=move |_| set_menu_open.set(false)></div>
+            <nav class=move || format!("sidebar no-print {}", if menu_open.get() { "open" } else { "" })>
                 <div style="padding: 1.5rem; border-bottom: 2px solid var(--primary); margin-bottom: 1rem; background: #f8f9fa;"><h1 style="color: var(--primary); font-size: 1.8rem; font-weight: 900; margin: 0; text-transform: uppercase; letter-spacing: 2px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">"Anand"</h1><h2 style="color: #34495e; font-size: 1.1rem; font-weight: 700; margin: 0; opacity: 0.8;">"Lodge Manager"</h2></div>
                 <A href="" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active" exact=true>"Overview"</A>
                 <A href="rooms" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active">"Rooms"</A>
@@ -520,7 +424,7 @@ pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: Children) 
                 <div style="margin-top: auto; padding: 1rem; border-top: 1px solid #ddd; font-size: 0.85rem;"><p style="color: #7f8c8d; overflow: hidden; text-overflow: ellipsis; margin-bottom: 8px; padding-left: 1rem;">{user.email}</p><button on:click=handle_logout style="background-color: #e74c3c; width: calc(100% - 2rem); margin: 0 1rem; border-radius: 6px;">"Logout"</button></div>
             </nav>
             <main class="content">
-                <header class="mobile-header"><button on:click=move |_| set_menu_open.update(|v| *v = !*v) style="background: none; color: black; font-size: 1.5rem; padding: 0;">"☰"</button><strong style="color: var(--primary); font-weight: 900; font-size: 1.2rem; letter-spacing: 1px;">"ANAND LODGE"</strong><div style="width: 30px;"></div></header>
+                <header class="mobile-header no-print"><button on:click=move |_| set_menu_open.update(|v| *v = !*v) style="background: none; color: black; font-size: 1.5rem; padding: 0;">"☰"</button><strong style="color: var(--primary); font-weight: 900; font-size: 1.2rem; letter-spacing: 1px;">"ANAND LODGE"</strong><div style="width: 30px;"></div></header>
                 <div style="padding: 1rem;">{children()}</div>
             </main>
         </div> 
