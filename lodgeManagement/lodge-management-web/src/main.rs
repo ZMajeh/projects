@@ -281,6 +281,7 @@ fn Customers() -> impl IntoView {
     let (capture_target, set_capture_target) = create_signal("photo");
     let (ocr_loading, set_ocr_loading) = create_signal(false);
     let (is_verified, set_is_verified) = create_signal(false);
+    let (ocr_raw_text, set_ocr_raw_text) = create_signal("".to_string());
 
     let load_customers = move || {
         spawn_local(async move {
@@ -312,6 +313,11 @@ fn Customers() -> impl IntoView {
                             if name.get_untracked().is_empty() {
                                 set_name.set(n);
                             }
+                        }
+                    }
+                    if let Ok(raw_js) = js_sys::Reflect::get(obj, &JsValue::from_str("raw_text")) {
+                        if let Some(txt) = raw_js.as_string() {
+                            set_ocr_raw_text.set(txt);
                         }
                     }
                 }
@@ -445,6 +451,20 @@ fn Customers() -> impl IntoView {
                         </div>
                     </div>
                 </div>
+
+                {move || if !ocr_raw_text.get().is_empty() {
+                    view! {
+                        <div style="margin-top: 15px; background: #fff; padding: 10px; border: 1px solid #eee;">
+                            <label style="font-weight: bold; font-size: 0.8rem;">"OCR Debug Text (Verify data below):"</label>
+                            <pre style="white-space: pre-wrap; font-size: 0.7rem; background: #fdfdfd; padding: 10px; border-radius: 4px; max-height: 150px; overflow-y: auto; margin-top: 5px;">
+                                {ocr_raw_text.get()}
+                            </pre>
+                        </div>
+                    }.into_view()
+                } else {
+                    view! {}.into_view()
+                }}
+
                 <button type="submit" style="width: 100%; margin-top: 20px;">"Save Verified Customer"</button>
             </form>
             

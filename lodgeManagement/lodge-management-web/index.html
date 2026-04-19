@@ -376,7 +376,7 @@
                         }
                     }
 
-                    return { aadhaar, name };
+                    return { aadhaar, name, raw_text: text };
                 } catch (err) {
                     console.error("OCR Error:", err);
                     throw err;
