@@ -64,12 +64,20 @@ pub struct Payment {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ExtraGuest {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Booking {
     pub id: Option<String>,
     pub room_id: String,
     pub customer_id: String,
     pub customer_name: String,
+    #[serde(default)]
+    pub extra_guests: Vec<ExtraGuest>,
     pub room_number: String,
     pub check_in_date: String,
     pub check_out_date: String,
@@ -88,6 +96,7 @@ pub struct NewBooking {
     pub room_id: String,
     pub customer_id: String,
     pub customer_name: String,
+    pub extra_guests: Vec<ExtraGuest>,
     pub room_number: String,
     pub check_in_date: String,
     pub check_out_date: String,
