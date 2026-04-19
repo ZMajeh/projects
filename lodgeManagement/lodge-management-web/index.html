@@ -196,6 +196,29 @@
                 return true;
             };
 
+            // --- BOOKING BRIDGE ---
+            window.getBookings = async () => {
+                const q = query(collection(db, "bookings"), orderBy("checkInDate", "desc"), limit(20));
+                const querySnapshot = await getDocs(q);
+                const bookings = [];
+                querySnapshot.forEach((doc) => { bookings.push({ id: doc.id, ...doc.data() }); });
+                return bookings;
+            };
+
+            window.addBooking = async (booking) => {
+                // 1. Save Booking
+                const docRef = await addDoc(collection(db, "bookings"), { 
+                    ...booking, 
+                    createdAt: serverTimestamp() 
+                });
+                
+                // 2. Mark Room as Occupied
+                const roomRef = doc(db, "rooms", booking.roomId);
+                await updateDoc(roomRef, { status: "Occupied" });
+                
+                return docRef.id;
+            };
+
             window.getCustomers = async (searchTerm = "") => {
                 console.log(`Database: Searching for "${searchTerm}" (Limit 10)...`);
                 try {
