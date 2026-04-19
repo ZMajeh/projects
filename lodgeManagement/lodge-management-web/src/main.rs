@@ -48,6 +48,8 @@ extern "C" {
     fn take_snapshot(id: String) -> String;
     #[wasm_bindgen(js_name = stopCamera)]
     fn stop_camera();
+    #[wasm_bindgen(catch, js_name = extractAadhaar)]
+    async fn extract_aadhaar_js(base64: String) -> Result<JsValue, JsValue>;
 }
 
 fn validate_aadhaar(aadhaar: &str) -> bool {
@@ -117,12 +119,6 @@ fn Login(on_login: Callback<User>) -> impl IntoView {
         });
     };
 
-    let on_mock_login = move |_| {
-        let u = User { email: "admin@test.com".to_string(), uid: "mock_id".to_string() };
-        save_user(&u);
-        on_login.call(u);
-    };
-
     view! {
         <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; padding: 1rem;">
             <div class="container" style="max-width: 400px; text-align: center; width: 100%;">
@@ -141,7 +137,6 @@ fn Login(on_login: Callback<User>) -> impl IntoView {
                         {move || if loading.get() { "Logging in..." } else { "Login" }}
                     </button>
                 </form>
-                <button on:click=on_mock_login style="margin-top: 10px; background-color: #6c757d; font-size: 0.8rem; padding: 5px 10px;">"DEBUG: Skip Login"</button>
             </div>
         </div>
     }
@@ -243,6 +238,7 @@ fn Customers() -> impl IntoView {
     let (id_card, set_id_card) = create_signal(None::<String>);
     let (camera_active, set_camera_active) = create_signal(false);
     let (capture_target, set_capture_target) = create_signal("photo");
+    let (ocr_loading, set_ocr_loading) = create_signal(false);
 
     let load_customers = move || {
         spawn_local(async move {
@@ -261,7 +257,22 @@ fn Customers() -> impl IntoView {
 
     let do_capture = move |_| {
         let data = take_snapshot("cam-preview".to_string());
-        if capture_target.get() == "photo" { set_photo.set(Some(data)); } else { set_id_card.set(Some(data)); }
+        if capture_target.get() == "photo" { 
+            set_photo.set(Some(data)); 
+        } else { 
+            set_id_card.set(Some(data.clone()));
+            // Auto-OCR for Aadhaar
+            set_ocr_loading.set(true);
+            let data_for_ocr = data.clone();
+            spawn_local(async move {
+                if let Ok(id_js) = extract_aadhaar_js(data_for_ocr).await {
+                    if let Some(id) = id_js.as_string() {
+                        set_aadhaar.set(id);
+                    }
+                }
+                set_ocr_loading.set(false);
+            });
+        }
         stop_camera();
         set_camera_active.set(false);
     };
@@ -281,7 +292,7 @@ fn Customers() -> impl IntoView {
 
     view! {
         <div class="card">
-            <h1>"Customer Entry"</h1>
+            <h1>"Customer Entry & Auto-OCR"</h1>
             <form on:submit=on_add_customer class="card" style="background: #f9f9f9;">
                 <div class="grid-form">
                     <div style="display: flex; flex-direction: column;">
@@ -293,29 +304,33 @@ fn Customers() -> impl IntoView {
                         <input type="tel" on:input=move |ev| set_phone.set(event_target_value(&ev)) prop:value=phone required />
                     </div>
                     <div style="display: flex; flex-direction: column;">
-                        <label>"Email Address"</label>
+                        <label>"Email"</label>
                         <input type="email" on:input=move |ev| set_email.set(event_target_value(&ev)) prop:value=email required />
                     </div>
                     <div style="display: flex; flex-direction: column;">
-                        <label>"Aadhaar Number (12 Digits)"</label>
+                        <label>"Aadhaar Number"</label>
                         <input type="text" maxlength="12" on:input=move |ev| set_aadhaar.set(event_target_value(&ev)) prop:value=aadhaar 
                             style=move || format!("border-color: {};", if validate_aadhaar(&aadhaar.get()) { "green" } else { "red" }) required />
+                        <span style="font-size: 0.7rem; color: #666;">
+                            {move || if ocr_loading.get() { "Extracting ID from image..." } else { "Checksum auto-verified" }}
+                        </span>
                     </div>
                 </div>
                 <div class="grid-form" style="margin-top: 20px;">
                     <div style="text-align: center; border: 1px dashed #ccc; padding: 10px;">
-                        <p>"Photo"</p>
+                        <p>"Customer Photo"</p>
                         {move || photo.get().map(|d| view! { <img src=d style="width: 100%; max-height: 100px; object-fit: contain;" /> })}
-                        <button type="button" on:click=move |_| start_capture("photo") style="margin-top: 5px; font-size: 0.8rem;">"Take"</button>
+                        <button type="button" on:click=move |_| start_capture("photo") style="margin-top: 5px;">"Take Photo"</button>
                     </div>
                     <div style="text-align: center; border: 1px dashed #ccc; padding: 10px;">
-                        <p>"ID Scan"</p>
+                        <p>"Aadhaar Scan (Auto-ID)"</p>
                         {move || id_card.get().map(|d| view! { <img src=d style="width: 100%; max-height: 100px; object-fit: contain;" /> })}
-                        <button type="button" on:click=move |_| start_capture("id") style="margin-top: 5px; font-size: 0.8rem;">"Scan"</button>
+                        <button type="button" on:click=move |_| start_capture("id") style="margin-top: 5px;">"Scan ID"</button>
                     </div>
                 </div>
-                <button type="submit" style="width: 100%; margin-top: 20px;">"Save Customer"</button>
+                <button type="submit" style="width: 100%; margin-top: 20px;">"Save Verified Customer"</button>
             </form>
+
             {move || if camera_active.get() {
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; padding: 1rem;">
@@ -327,7 +342,8 @@ fn Customers() -> impl IntoView {
                     </div>
                 }.into_view()
             } else { view! {}.into_view() }}
-            <h3>"Customer Directory"</h3>
+
+            <h3>"Directory"</h3>
             {move || if loading.get() { view! { <p>"Loading..."</p> }.into_view() } else {
                 view! {
                     <table>
