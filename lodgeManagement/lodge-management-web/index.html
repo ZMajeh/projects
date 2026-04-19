@@ -3,18 +3,19 @@
     <head>
         <meta charset="utf-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
-        <title>Lodge Management System</title>
+        <title>Anand Lodge Management</title>
         <link rel="rust" data-trunk href="Cargo.toml"/>
         <style>
             :root {
-                --primary: #007bff;
-                --sidebar-bg: #2c3e50;
-                --bg: #f8f9fa;
-                --text: #333;
-                --sidebar-width: 250px;
+                --primary: #2c3e50;
+                --accent: #27ae60;
+                --sidebar-bg: #f8f9fa;
+                --bg: #ffffff;
+                --text: #2c3e50;
+                --sidebar-width: 260px;
             }
             body {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 margin: 0;
                 background-color: var(--bg);
                 color: var(--text);
@@ -28,10 +29,9 @@
             .sidebar {
                 width: var(--sidebar-width);
                 background-color: var(--sidebar-bg);
-                color: white;
+                border-right: 1px solid #ddd;
                 display: flex;
                 flex-direction: column;
-                padding: 1rem;
                 transition: transform 0.3s ease;
                 z-index: 1001;
             }
@@ -46,66 +46,57 @@
                     display: none;
                     position: fixed;
                     top: 0; left: 0; right: 0; bottom: 0;
-                    background: rgba(0,0,0,0.5);
+                    background: rgba(0,0,0,0.4);
                     z-index: 1000;
                 }
                 .sidebar-overlay.show { display: block; }
             }
-            .sidebar h2 {
-                font-size: 1.2rem;
-                margin-bottom: 2rem;
-                text-align: center;
-                border-bottom: 1px solid #444;
-                padding-bottom: 1rem;
-            }
             .nav-link {
-                color: #bdc3c7;
+                color: #5d6d7e;
                 text-decoration: none;
-                padding: 0.8rem 1rem;
-                border-radius: 4px;
-                margin-bottom: 0.5rem;
-                transition: background 0.2s;
+                padding: 1rem 1.5rem;
+                font-weight: 600;
+                border-left: 4px solid transparent;
+                transition: all 0.2s;
             }
-            .nav-link:hover, .nav-link.active {
-                background-color: #34495e;
-                color: white;
+            .nav-link:hover { background: #edf2f4; color: var(--primary); }
+            .nav-link.active {
+                background-color: #edf2f4;
+                color: var(--primary);
+                border-left-color: var(--primary);
             }
             .content {
                 flex: 1;
-                padding: 1rem;
+                padding: 1.5rem;
                 overflow-y: auto;
                 width: 100%;
             }
             .mobile-header {
                 display: none;
                 background: white;
-                padding: 0.5rem 1rem;
+                padding: 0.8rem 1rem;
                 border-bottom: 1px solid #ddd;
                 align-items: center;
                 justify-content: space-between;
+                position: sticky;
+                top: 0;
+                z-index: 900;
             }
             @media (max-width: 768px) {
                 .mobile-header { display: flex; }
             }
-            .container {
-                max-width: 1000px;
-                margin: 0 auto;
-                background: white;
-                padding: 1rem;
-                border-radius: 8px;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            }
             .card {
                 background: white;
-                padding: 1rem;
-                border-radius: 8px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-                margin-bottom: 1rem;
+                padding: 1.5rem;
+                border-radius: 12px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+                margin-bottom: 1.5rem;
+                border: 1px solid #eee;
             }
             .grid-form {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
-                gap: 15px;
+                gap: 20px;
             }
             @media (max-width: 600px) {
                 .grid-form { grid-template-columns: 1fr; }
@@ -113,29 +104,31 @@
             table {
                 width: 100%;
                 border-collapse: collapse;
-                display: block;
-                overflow-x: auto;
+                margin-top: 1rem;
             }
+            th { background: #f8f9fa; text-align: left; padding: 12px; border-bottom: 2px solid #eee; }
+            td { padding: 12px; border-bottom: 1px solid #eee; }
             button {
-                padding: 0.8rem 1.2rem;
-                font-size: 1rem;
+                padding: 0.8rem 1.5rem;
+                font-weight: 600;
                 background-color: var(--primary);
                 color: white;
                 border: none;
-                border-radius: 4px;
+                border-radius: 8px;
                 cursor: pointer;
+                transition: opacity 0.2s;
             }
-            button:disabled { background-color: #ccc; }
+            button:hover { opacity: 0.9; }
+            button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
             input, select {
                 padding: 0.8rem;
-                border: 1px solid #ddd;
-                border-radius: 4px;
+                border: 1px solid #dcdde1;
+                border-radius: 8px;
                 width: 100%;
-                box-sizing: border-box;
+                font-size: 1rem;
             }
+            input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(44,62,80,0.1); }
         </style>
-        
-        <!-- Load Tesseract as Global -->
         <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     </head>
     <body>
@@ -143,7 +136,7 @@
 
         <script type="module">
             import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-            import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, where, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+            import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, where, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
             import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
             const firebaseConfig = {
@@ -160,11 +153,19 @@
             const db = getFirestore(app);
             const auth = getAuth(app);
 
+            const cleanData = (obj) => {
+                if (!obj || typeof obj !== 'object') return {};
+                const newObj = {};
+                Object.keys(obj).forEach(key => {
+                    if (obj[key] !== undefined && obj[key] !== null) newObj[key] = obj[key];
+                });
+                return newObj;
+            };
+
             // --- AUTH BRIDGE ---
             window.loginUser = async (email, password) => {
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-                return { email: user.email, uid: user.uid };
+                return { email: userCredential.user.email, uid: userCredential.user.uid };
             };
 
             window.signOutUser = async () => {
@@ -172,8 +173,9 @@
                 return true;
             };
 
-            // --- DATABASE BRIDGE ---
+            // --- ROOM BRIDGE ---
             window.getRooms = async () => {
+                console.log("Database: Fetching rooms...");
                 const q = query(collection(db, "rooms"), orderBy("number"));
                 const querySnapshot = await getDocs(q);
                 const rooms = [];
@@ -181,22 +183,29 @@
                 return rooms;
             };
 
-            const cleanData = (obj) => {
-                const newObj = {};
-                Object.keys(obj).forEach(key => {
-                    if (obj[key] !== undefined) newObj[key] = obj[key];
-                });
-                return newObj;
-            };
-
             window.addRoom = async (room) => {
-                const docRef = await addDoc(collection(db, "rooms"), { ...cleanData(room), createdAt: serverTimestamp() });
-                return docRef.id;
+                console.log("Firestore: addRoom", room);
+                try {
+                    const data = { ...cleanData(room), createdAt: serverTimestamp() };
+                    const docRef = await addDoc(collection(db, "rooms"), data);
+                    console.log("Firestore: addRoom success", docRef.id);
+                    return docRef.id;
+                } catch (e) {
+                    console.error("Firestore: addRoom error", e);
+                    throw e;
+                }
             };
 
             window.updateRoom = async (id, room) => {
-                await updateDoc(doc(db, "rooms", id), { ...cleanData(room), updatedAt: serverTimestamp() });
-                return true;
+                console.log("Firestore: updateRoom", id, room);
+                try {
+                    const data = { ...cleanData(room), updatedAt: serverTimestamp() };
+                    await updateDoc(doc(db, "rooms", id), data);
+                    return true;
+                } catch (e) {
+                    console.error("Firestore: updateRoom error", e);
+                    throw e;
+                }
             };
 
             window.deleteRoom = async (id) => {
@@ -204,227 +213,136 @@
                 return true;
             };
 
-            // --- BOOKING BRIDGE ---
-            window.getBookings = async () => {
-                console.log("Database: Fetching recent stays...");
-                try {
-                    const q = query(collection(db, "bookings"), orderBy("checkInDate", "desc"), limit(20));
-                    const querySnapshot = await getDocs(q);
-                    const bookings = [];
-                    querySnapshot.forEach((doc) => { bookings.push({ id: doc.id, ...doc.data() }); });
-                    console.log(`Database: Successfully fetched ${bookings.length} stays.`);
-                    return bookings;
-                } catch (e) {
-                    console.error("Database Error (Bookings):", e);
-                    throw e;
-                }
-            };
-
-            window.addBooking = async (booking) => {
-                console.log("Firestore SAVE Booking: ", booking);
-                try {
-                    // 1. Save Booking
-                    const docRef = await addDoc(collection(db, "bookings"), { 
-                        ...cleanData(booking), 
-                        createdAt: serverTimestamp() 
-                    });
-                    console.log("Firestore SAVE Booking Success, ID:", docRef.id);
-                    
-                    // 2. Mark Room as Occupied
-                    const roomRef = doc(db, "rooms", booking.roomId);
-                    await updateDoc(roomRef, { status: "Occupied" });
-                    console.log("Firestore Room Status Updated to Occupied");
-                    
-                    return docRef.id;
-                } catch (e) {
-                    console.error("Firestore SAVE Booking Error:", e);
-                    throw e;
-                }
-            };
-
-            window.updateBooking = async (id, booking) => {
-                const docRef = doc(db, "bookings", id);
-                await updateDoc(docRef, { ...cleanData(booking), updatedAt: serverTimestamp() });
-                return true;
-            };
-
-            window.deleteBooking = async (id, roomId) => {
-                console.log(`Firestore DELETE Booking: ID=${id}, RoomID=${roomId}`);
-                try {
-                    // 1. Delete Booking
-                    await deleteDoc(doc(db, "bookings", id));
-                    console.log("Firestore Booking Deleted Successfully");
-                    
-                    // 2. Mark Room as Available
-                    if (roomId) {
-                        const roomRef = doc(db, "rooms", roomId);
-                        await updateDoc(roomRef, { status: "Available" });
-                        console.log(`Firestore Room ${roomId} marked as Available`);
-                    }
-                    return true;
-                } catch (e) {
-                    console.error("Firestore DELETE Booking Error:", e);
-                    throw e;
-                }
-            };
-
+            // --- CUSTOMER BRIDGE ---
             window.getCustomers = async (searchTerm = "") => {
-                console.log(`Database: Searching for "${searchTerm}" (Limit 10)...`);
+                console.log(`Database: getCustomers("${searchTerm}")`);
                 try {
                     let q;
                     if (searchTerm) {
-                        // Server-side prefix search (Standard Firestore pattern)
-                        q = query(
-                            collection(db, "customers"), 
+                        q = query(collection(db, "customers"), 
                             where("full_name", ">=", searchTerm),
                             where("full_name", "<=", searchTerm + "\uf8ff"),
-                            limit(10)
-                        );
+                            limit(20));
                     } else {
-                        q = query(collection(db, "customers"), orderBy("full_name"), limit(10));
+                        q = query(collection(db, "customers"), limit(20));
                     }
-                    
-                    const querySnapshot = await getDocs(q);
+                    const snap = await getDocs(q);
                     const customers = [];
-                    querySnapshot.forEach((doc) => { customers.push({ id: doc.id, ...doc.data() }); });
-                    console.log(`Database: Found ${customers.length} matches.`);
+                    snap.forEach((doc) => { customers.push({ id: doc.id, ...doc.data() }); });
+                    console.log(`Database: Found ${customers.length} guests`);
                     return customers;
                 } catch (e) {
-                    console.error("Database Search Error:", e);
+                    console.error("Database: getCustomers error", e);
                     throw e;
                 }
             };
 
             window.addCustomer = async (customer) => {
-                console.log("Firestore SAVE: ", customer);
-                try {
-                    const docRef = await addDoc(collection(db, "customers"), { 
-                        ...cleanData(customer), 
-                        createdAt: serverTimestamp() 
-                    });
-                    return docRef.id;
-                } catch (e) {
-                    console.error("Firestore SAVE Error:", e);
-                    throw e;
-                }
+                console.log("Firestore: addCustomer", customer);
+                const docRef = await addDoc(collection(db, "customers"), { ...cleanData(customer), createdAt: serverTimestamp() });
+                return docRef.id;
             };
 
             window.updateCustomer = async (id, customer) => {
-                console.log(`Firestore UPDATE (ID: ${id}):`, customer);
-                try {
-                    const docRef = doc(db, "customers", id);
-                    await updateDoc(docRef, { ...cleanData(customer), updatedAt: serverTimestamp() });
-                    return true;
-                } catch (e) {
-                    console.error("Firestore UPDATE Error:", e);
-                    throw e;
-                }
+                await updateDoc(doc(db, "customers", id), { ...cleanData(customer), updatedAt: serverTimestamp() });
+                return true;
             };
+
             window.deleteCustomer = async (id) => {
                 await deleteDoc(doc(db, "customers", id));
                 return true;
             };
-            // --- CAMERA BRIDGE ---
-            let stream = null;
-            window.startCamera = async (videoElementId) => {
-                const video = document.getElementById(videoElementId);
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
-                video.srcObject = stream;
-                video.play();
+
+            // --- BOOKING BRIDGE ---
+            window.getBookings = async () => {
+                console.log("Database: Fetching bookings...");
+                try {
+                    const q = query(collection(db, "bookings"), orderBy("checkInDate", "desc"), limit(50));
+                    const snap = await getDocs(q);
+                    const bookings = [];
+                    snap.forEach((doc) => { bookings.push({ id: doc.id, ...doc.data() }); });
+                    return bookings;
+                } catch (e) {
+                    console.warn("Database: getBookings fallback (index likely building)");
+                    const q = query(collection(db, "bookings"), limit(50));
+                    const snap = await getDocs(q);
+                    const bookings = [];
+                    snap.forEach((doc) => { bookings.push({ id: doc.id, ...doc.data() }); });
+                    return bookings;
+                }
+            };
+
+            window.addBooking = async (booking) => {
+                console.log("Firestore: addBooking", booking);
+                const docRef = await addDoc(collection(db, "bookings"), { ...cleanData(booking), createdAt: serverTimestamp() });
+                if (booking.roomId) {
+                    await updateDoc(doc(db, "rooms", booking.roomId), { status: "Occupied" });
+                }
+                return docRef.id;
+            };
+
+            window.updateBooking = async (id, booking) => {
+                await updateDoc(doc(db, "bookings", id), { ...cleanData(booking), updatedAt: serverTimestamp() });
                 return true;
             };
 
-            window.takeSnapshot = async (videoElementId) => {
-                const video = document.getElementById(videoElementId);
-                const canvas = document.createElement("canvas");
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                const ctx = canvas.getContext("2d");
-                ctx.drawImage(video, 0, 0);
-                return canvas.toDataURL("image/jpeg", 0.7);
+            window.deleteBooking = async (id, roomId) => {
+                await deleteDoc(doc(db, "bookings", id));
+                if (roomId) {
+                    await updateDoc(doc(db, "rooms", roomId), { status: "Available" });
+                }
+                return true;
+            };
+
+            // --- UTILS ---
+            window.startCamera = async (id) => {
+                const video = document.getElementById(id);
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+                video.srcObject = stream;
+                video.play();
+                window._currentStream = stream;
+                return true;
             };
 
             window.stopCamera = async () => {
-                if (stream) { stream.getTracks().forEach(track => track.stop()); }
+                if (window._currentStream) { window._currentStream.getTracks().forEach(t => t.stop()); }
                 return true;
             };
 
-            // --- FILE BRIDGE ---
+            window.takeSnapshot = async (id) => {
+                const video = document.getElementById(id);
+                const canvas = document.createElement("canvas");
+                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+                canvas.getContext("2d").drawImage(video, 0, 0);
+                return canvas.toDataURL("image/jpeg", 0.7);
+            };
+
             window.readFileAsDataURL = async (file) => {
-                return new Promise((resolve, reject) => {
+                return new Promise((res, rej) => {
                     const reader = new FileReader();
-                    reader.onload = () => resolve(reader.result);
-                    reader.onerror = reject;
+                    reader.onload = () => res(reader.result);
+                    reader.onerror = rej;
                     reader.readAsDataURL(file);
                 });
             };
 
-            // --- OCR BRIDGE ---
-            window.extractAadhaar = async (base64Image) => {
-                // Using global Tesseract
+            window.extractAadhaar = async (img) => {
                 const worker = await Tesseract.createWorker('eng');
-                const { data: { text } } = await worker.recognize(base64Image);
+                const { data: { text } } = await worker.recognize(img);
                 await worker.terminate();
-
-                const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
                 let idMatch = text.match(/\d{4}\s\d{4}\s\d{4}/);
-                let aadhaar = idMatch ? idMatch[0].replace(/\s/g, '') : null;
-                if (!aadhaar) {
-                    const allDigitGroups = text.match(/\d{12}/g) || [];
-                    aadhaar = allDigitGroups.length > 0 ? allDigitGroups[0] : null;
-                }
-                const dobMatch = text.match(/\d{2}\/\d{2}\/\d{4}/);
-                const dob = dobMatch ? dobMatch[0] : null;
-                let gender = text.toUpperCase().includes("FEMALE") ? "Female" : (text.toUpperCase().includes("MALE") ? "Male" : "Male");
-                let name = null;
-                for (let i = 0; i < lines.length; i++) {
-                    if (lines[i].includes("DOB") || lines[i].includes("Birth")) {
-                        if (i > 0) name = lines[i-1].replace(/^[^a-zA-Z]+/, '').trim();
-                        break;
-                    }
-                }
-                return { aadhaar, name, dob, gender, raw_text: text };
+                let aadhaar = idMatch ? idMatch[0].replace(/\s/g, '') : (text.match(/\d{12}/) || [null])[0];
+                let dob = (text.match(/\d{2}\/\d{2}\/\d{4}/) || [null])[0];
+                let gender = text.toUpperCase().includes("FEMALE") ? "Female" : "Male";
+                return { aadhaar, dob, gender };
             };
 
-            // --- MANUAL VERIFY BRIDGE ---
-            window.manualVerifyAadhaar = async (aadhaarNumber) => {
-                console.log("Attempting to copy:", aadhaarNumber);
-                
-                // 1. Copy to clipboard (Try modern API)
-                let copied = false;
-                try {
-                    await navigator.clipboard.writeText(aadhaarNumber);
-                    copied = true;
-                } catch (e) {
-                    // 2. Fallback for focus/permission issues
-                    const textArea = document.createElement("textarea");
-                    textArea.value = aadhaarNumber;
-                    textArea.style.position = "fixed";
-                    textArea.style.left = "-9999px";
-                    textArea.style.top = "0";
-                    document.body.appendChild(textArea);
-                    textArea.focus();
-                    textArea.select();
-                    try {
-                        copied = document.execCommand('copy');
-                    } catch (err) {
-                        console.error('Fallback copy failed', err);
-                    }
-                    document.body.removeChild(textArea);
-                }
-
-                if (copied) console.log("Successfully copied to clipboard.");
-
-                // 3. Open window (Must be immediate to avoid blocker)
-                const win = window.open("https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en", "_blank");
-                if (!win) {
-                    alert("Popup blocked! Please allow popups to verify Aadhaar.");
-                    return false;
-                }
+            window.manualVerifyAadhaar = async (num) => {
+                try { await navigator.clipboard.writeText(num); } catch(e) {}
+                window.open("https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en", "_blank");
                 return true;
             };
 
-            // Signal that everything is ready
             window.bridgeReady = true;
             console.log("JS Bridge fully initialized.");
         </script>
