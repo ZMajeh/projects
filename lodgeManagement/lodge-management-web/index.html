@@ -241,14 +241,23 @@
             };
 
             window.deleteBooking = async (id, roomId) => {
-                // 1. Delete Booking
-                await deleteDoc(doc(db, "bookings", id));
-                // 2. Mark Room as Available
-                if (roomId) {
-                    const roomRef = doc(db, "rooms", roomId);
-                    await updateDoc(roomRef, { status: "Available" });
+                console.log(`Firestore DELETE Booking: ID=${id}, RoomID=${roomId}`);
+                try {
+                    // 1. Delete Booking
+                    await deleteDoc(doc(db, "bookings", id));
+                    console.log("Firestore Booking Deleted Successfully");
+                    
+                    // 2. Mark Room as Available
+                    if (roomId) {
+                        const roomRef = doc(db, "rooms", roomId);
+                        await updateDoc(roomRef, { status: "Available" });
+                        console.log(`Firestore Room ${roomId} marked as Available`);
+                    }
+                    return true;
+                } catch (e) {
+                    console.error("Firestore DELETE Booking Error:", e);
+                    throw e;
                 }
-                return true;
             };
 
             window.getCustomers = async (searchTerm = "") => {
