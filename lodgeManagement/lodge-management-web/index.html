@@ -234,6 +234,23 @@
                 }
             };
 
+            window.updateBooking = async (id, booking) => {
+                const docRef = doc(db, "bookings", id);
+                await updateDoc(docRef, { ...booking, updatedAt: serverTimestamp() });
+                return true;
+            };
+
+            window.deleteBooking = async (id, roomId) => {
+                // 1. Delete Booking
+                await deleteDoc(doc(db, "bookings", id));
+                // 2. Mark Room as Available
+                if (roomId) {
+                    const roomRef = doc(db, "rooms", roomId);
+                    await updateDoc(roomRef, { status: "Available" });
+                }
+                return true;
+            };
+
             window.getCustomers = async (searchTerm = "") => {
                 console.log(`Database: Searching for "${searchTerm}" (Limit 10)...`);
                 try {

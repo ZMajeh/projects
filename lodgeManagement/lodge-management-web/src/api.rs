@@ -37,6 +37,12 @@ extern "C" {
     
     #[wasm_bindgen(catch, js_name = addBooking)]
     pub async fn add_booking_js(booking: JsValue) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = updateBooking)]
+    pub async fn update_booking_js(id: String, booking: JsValue) -> Result<JsValue, JsValue>;
+    
+    #[wasm_bindgen(catch, js_name = deleteBooking)]
+    pub async fn delete_booking_js(id: String, roomId: String) -> Result<JsValue, JsValue>;
     
     #[wasm_bindgen(catch, js_name = startCamera)]
     pub async fn start_camera(id: String) -> Result<JsValue, JsValue>;
