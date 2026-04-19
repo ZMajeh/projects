@@ -276,7 +276,7 @@ pub fn DashboardHome() -> impl IntoView {
                                                 <td style="color: #27ae60; font-weight: bold;">"₹" {paid}</td>
                                                 <td style=format!("color: {}; font-weight: bold;", if balance > 0.0 { "#e67e22" } else { "#27ae60" })>"₹" {balance}</td>
                                                 <td><small><strong>"Mob: "</strong> {c_data.as_ref().map(|x| x.phone.clone()).unwrap_or_default()}</small></td>
-                                                <td><button on:click=move |_| set_show_bill_modal.set(Some((b.clone(), c.clone()))) style="padding: 5px 12px; font-size: 0.75rem; background: #8e44ad;">"Bill"</button></td>
+                                                <td><button on:click=move |_| set_show_bill_modal.set(Some((b_data.clone(), c_data.clone()))) style="padding: 5px 12px; font-size: 0.75rem; background: #8e44ad;">"Bill"</button></td>
                                             </tr>
                                         }
                                     }/>
@@ -320,11 +320,11 @@ pub fn DashboardHome() -> impl IntoView {
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
                         <div class="card" style="width: 100%; max-width: 450px; padding: 2rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;"><h3>"Quick Check-in"</h3><button on:click=move |_| set_show_add_guest_modal.set(true) style="font-size: 0.7rem; background: #e67e22; padding: 5px 10px;">"+ New Guest"</button></div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;"><h3>"Quick Check-in"</h3><button on:click=move |_| set_show_add_guest_modal.set(false) style="background: none; color: black; font-size: 1.5rem;">"×"</button></div>
                             <form on:submit=handle_book>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
-                                    <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Room"</label><input type="text" value=room.number.clone() disabled style="background: #eee;" /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label><input type="text" value=selected_date.get() disabled style="background: #eee;" /></div></div>
-                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Select Guest(s)"</label><div style="display: flex; gap: 5px; margin-bottom: 5px;"><input type="text" placeholder="Search..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="flex: 1;" /><button type="button" on:click=add_extra_guest style="padding: 0 15px; background: #27ae60; font-weight: bold;">"+"</button></div><select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) prop:value=sel_cust><option value="">"Choose guest from search..."</option>{move || filtered_guests().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); view! { <option value=cid>{c.full_name.clone()} " (" {c.phone.clone()} ")" </option> } }).collect_view()}</select><div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">{move || extra_selected.get().into_iter().enumerate().map(|(idx, g)| { let g_cloned = g.clone(); view! { <span style="background: #3498db; color: white; padding: 2px 10px; border-radius: 15px; font-size: 0.8rem;">{if idx==0 { "(P) " } else { "" }} {g_cloned.name.clone()} <button type="button" on:click=move |_| set_extra_selected.update(|v| v.retain(|x| x.id != g_cloned.id)) style="background:none; padding:0; margin-left:5px; font-weight:bold;">"×"</button></span> } }).collect_view()}</div></div>
+                                    <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Room"</label><input type="text" value=r_cloned.number.clone() disabled style="background: #eee;" /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label><input type="text" value=selected_date.get() disabled style="background: #eee;" /></div></div>
+                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Select Guest(s)"</label><div style="display: flex; gap: 5px; margin-bottom: 5px;"><input type="text" placeholder="Search..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="flex: 1;" /><button type="button" on:click=add_extra_guest style="padding: 0 15px; background: #27ae60; font-weight: bold;">"+"</button></div><select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) prop:value=sel_cust><option value="">"Choose guest from search..."</option>{move || filtered_guests().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); view! { <option value=cid>{c.full_name.clone()} " (" {c.phone.clone()} ")" </option> } }).collect_view()}</select><div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">{move || extra_selected.get().into_iter().enumerate().map(|(idx, g)| { let g_id_val = g.id.clone(); let g_name_val = g.name.clone(); view! { <span style="background: #3498db; color: white; padding: 2px 10px; border-radius: 15px; font-size: 0.8rem;">{if idx==0 { "(P) " } else { "" }} {g_name_val} <button type="button" on:click=move |_| set_extra_selected.update(|v| v.retain(|x| x.id != g_id_val)) style="background:none; padding:0; margin-left:5px; font-weight:bold; color:white;">"×"</button></span> } }).collect_view()}</div></div>
                                     <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Total Price"</label><input type="number" on:input=move |ev| set_final_price.set(event_target_value(&ev)) prop:value=final_price required /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Paying Now"</label><input type="number" on:input=move |ev| set_paid_now.set(event_target_value(&ev)) prop:value=paid_now required /></div></div>
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Estimated Check-out"</label><input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) required /></div>
                                 </div>
@@ -344,24 +344,26 @@ pub fn DashboardHome() -> impl IntoView {
                 let (extra_payment, set_extra_payment) = create_signal((booking.total_amount - booking.payments.iter().map(|p| p.amount).sum::<f64>()).to_string());
                 let (saving, set_saving) = create_signal(false);
                 let b_data_orig = booking.clone();
+                let b_id_val = b_data_orig.id.clone().unwrap_or_default();
                 let handle_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default(); set_saving.set(true);
                     let mut updated_payments = b_data_orig.payments.clone();
                     let extra = extra_payment.get().parse::<f64>().unwrap_or(0.0);
                     if extra > 0.0 { updated_payments.push(Payment { amount: extra, date: selected_date.get_untracked() }); }
                     let updated_booking = NewBooking { room_id: b_data_orig.room_id.clone(), customer_id: b_data_orig.customer_id.clone(), customer_name: b_data_orig.customer_name.clone(), extra_guests: b_data_orig.extra_guests.clone(), room_number: b_data_orig.room_number.clone(), check_in_date: b_data_orig.check_in_date.clone(), check_out_date: check_out.get(), in_time: b_data_orig.in_time.clone(), out_time: b_data_orig.out_time.clone(), status: b_data_orig.status.clone(), total_amount: b_data_orig.total_amount, payments: updated_payments };
-                    let b_id_val = b_data_orig.id.clone().unwrap_or_default();
-                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(b_id_val, serde_wasm_bindgen::to_value(&updated_booking).unwrap()).await; set_show_manage_stay_modal.set(None); load_data(); });
+                    let bid = b_id_val.clone();
+                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(bid, serde_wasm_bindgen::to_value(&updated_booking).unwrap()).await; set_show_manage_stay_modal.set(None); load_data(); });
                 };
                 let b_data_co = b_data_orig.clone();
+                let b_id_co_val = b_data_co.id.clone().unwrap_or_default();
                 let on_checkout_final = move |_| {
                     let today = selected_date.get_untracked(); let paid_so_far: f64 = b_data_co.payments.iter().map(|p| p.amount).sum();
                     let mut final_payments = b_data_co.payments.clone();
                     if b_data_co.total_amount > paid_so_far { final_payments.push(Payment { amount: b_data_co.total_amount - paid_so_far, date: today.clone() }); }
                     let co_booking = NewBooking { room_id: b_data_co.room_id.clone(), customer_id: b_data_co.customer_id.clone(), customer_name: b_data_co.customer_name.clone(), extra_guests: b_data_co.extra_guests.clone(), room_number: b_data_co.room_number.clone(), check_in_date: b_data_co.check_in_date.clone(), check_out_date: today, in_time: b_data_co.in_time.clone(), out_time: None, status: "Checked-Out".to_string(), total_amount: b_data_co.total_amount, payments: final_payments };
-                    let bid_co = b_data_co.id.clone().unwrap_or_default();
-                    let rid_co = b_data_co.room_id.clone();
-                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(bid_co, serde_wasm_bindgen::to_value(&co_booking).unwrap()).await; let _ = update_room_js(rid_co, JsValue::from_str("Available")).await; set_show_manage_stay_modal.set(None); load_data(); });
+                    let bid = b_id_co_val.clone();
+                    let rid = b_data_co.room_id.clone();
+                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(bid, serde_wasm_bindgen::to_value(&co_booking).unwrap()).await; let _ = update_room_js(rid, JsValue::from_str("Available")).await; set_show_manage_stay_modal.set(None); load_data(); });
                 };
                 let b_id_del = b_data_orig.id.clone().unwrap_or_default(); let b_rid_del = b_data_orig.room_id.clone();
                 view! {
@@ -391,12 +393,13 @@ pub fn DashboardHome() -> impl IntoView {
                 let (r_type, set_r_type) = create_signal(room.room_type.clone());
                 let (r_price, set_r_price) = create_signal(room.price.to_string());
                 let (saving, set_saving) = create_signal(false);
-                let r_id = room.id.clone().unwrap_or_default();
+                let rid_val = room.id.clone().unwrap_or_default();
+                let r_num_val = room.number.clone();
                 let handle_room_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default(); set_saving.set(true);
-                    let updated_room = NewRoom { number: room.number.clone(), room_type: r_type.get(), status: "Available".to_string(), price: r_price.get().parse().unwrap_or(0.0) };
-                    let r_id_val = r_id.clone();
-                    spawn_local(async move { wait_for_bridge().await; let _ = update_room_js(r_id_val, serde_wasm_bindgen::to_value(&updated_room).unwrap()).await; set_show_edit_room_modal.set(None); load_data(); });
+                    let updated_room = NewRoom { number: r_num_val.clone(), room_type: r_type.get(), status: "Available".to_string(), price: r_price.get().parse().unwrap_or(0.0) };
+                    let rid = rid_val.clone();
+                    spawn_local(async move { wait_for_bridge().await; let _ = update_room_js(rid, serde_wasm_bindgen::to_value(&updated_room).unwrap()).await; set_show_edit_room_modal.set(None); load_data(); });
                 };
                 view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;"><div class="card" style="width: 100%; max-width: 400px; padding: 2rem;"><h3>"Edit Room Settings"</h3><form on:submit=handle_room_update><div style="display: flex; flex-direction: column; gap: 15px; text-align: left;"><div><label style="font-size: 0.8rem; font-weight: bold;">"Room Number"</label><input type="text" value=room.number.clone() disabled style="background: #eee;" /></div><div><label style="font-size: 0.8rem; font-weight: bold;">"Category"</label><select on:change=move |ev| set_r_type.set(event_target_value(&ev)) prop:value=r_type><option value="Delux">"Delux"</option><option value="AC">"AC"</option><option value="non-AC">"non-AC"</option></select></div><div><label style="font-size: 0.8rem; font-weight: bold;">"Base Price"</label><input type="number" on:input=move |ev| set_r_price.set(event_target_value(&ev)) prop:value=r_price /></div></div><div style="display: flex; gap: 10px; margin-top: 25px;"><button type="submit" disabled=saving style="flex: 1; background: #3498db;">"Save"</button><button type="button" on:click=move |_| set_show_edit_room_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button></div></form></div></div> }
             })}
