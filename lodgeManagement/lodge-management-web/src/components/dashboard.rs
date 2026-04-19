@@ -31,7 +31,6 @@ fn PrintableBill(booking: Booking, customer: Option<Customer>, on_close: Callbac
             </div>
 
             <div style="width: 21cm; min-height: 29.7cm; margin: 0 auto; background: white; padding: 1.5cm; box-sizing: border-box; border: 1px solid #eee;" class="printable-area">
-                // Header
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 3px solid #2c3e50; padding-bottom: 20px;">
                     <div style="flex: 1;">
                         <h1 style="margin: 0; font-size: 2.2rem; color: #2c3e50; text-transform: uppercase; letter-spacing: 3px; font-weight: 900;">"ANAND LODGE"</h1>
@@ -50,7 +49,6 @@ fn PrintableBill(booking: Booking, customer: Option<Customer>, on_close: Callbac
                     </div>
                 </div>
 
-                // Details
                 <div style="display: flex; gap: 30px; margin-bottom: 40px;">
                     <div style="flex: 1; background: #f8f9fa; padding: 20px; border-radius: 4px;">
                         <h4 style="margin: 0 0 10px 0; color: #7f8c8d; border-bottom: 1px solid #ddd; padding-bottom: 5px; text-transform: uppercase; font-size: 0.7rem;">"Guest Details"</h4>
@@ -74,7 +72,6 @@ fn PrintableBill(booking: Booking, customer: Option<Customer>, on_close: Callbac
                     </div>
                 </div>
 
-                // Table
                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; font-size: 0.9rem;">
                     <thead>
                         <tr style="border-top: 2px solid #2c3e50; border-bottom: 2px solid #2c3e50; background: #f8f9fa;">
@@ -93,7 +90,6 @@ fn PrintableBill(booking: Booking, customer: Option<Customer>, on_close: Callbac
                     </tbody>
                 </table>
 
-                // Summary
                 <div style="display: flex; justify-content: flex-end;">
                     <div style="width: 250px; background: #f8f9fa; padding: 20px; border-radius: 4px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;"><span>"Total Bill"</span><span>"₹" {booking.total_amount}</span></div>
@@ -104,7 +100,6 @@ fn PrintableBill(booking: Booking, customer: Option<Customer>, on_close: Callbac
                     </div>
                 </div>
 
-                // Footer
                 <div style="margin-top: 100px; display: flex; justify-content: space-between; align-items: flex-end;">
                     <div style="text-align: center;"><div style="width: 150px; border-bottom: 1px solid #000; margin-bottom: 5px;"></div><p style="font-size: 0.75rem; color: #666;">"Guest Signature"</p></div>
                     <div style="text-align: center;"><p style="font-family: cursive; margin: 0; font-size: 1.2rem;">"Anand"</p><div style="width: 150px; border-bottom: 1px solid #000; margin-bottom: 5px;"></div><p style="font-size: 0.75rem; font-weight: bold;">"Authorized Signatory"</p></div>
@@ -200,40 +195,36 @@ pub fn DashboardHome() -> impl IntoView {
                             let r_cloned = r.clone();
                             let rid = r_cloned.id.clone().unwrap_or_default();
                             let rid_style = rid.clone();
-                            let rid_status = rid.clone();
-                            let rid_label = rid.clone();
-                            let rid_btn = rid.clone();
-                            let rid_edit = rid.clone();
                             
                             view! {
                                 <div style=move || {
-                                    let booking_opt = get_active_booking_helper(&bookings.get(), &selected_date.get(), &rid_style);
-                                    let border_color = if let Some(b) = booking_opt {
-                                        let paid: f64 = b.payments.iter().map(|p| p.amount).sum();
-                                        if b.total_amount > paid { "#f39c12" } else { "#e74c3c" }
+                                    let b_opt = get_active_booking_helper(&bookings.get(), &selected_date.get(), &rid_style);
+                                    let color = if let Some(b) = b_opt {
+                                        let p: f64 = b.payments.iter().map(|pay| pay.amount).sum();
+                                        if b.total_amount > p { "#f39c12" } else { "#e74c3c" }
                                     } else { "#27ae60" };
-                                    format!("border: 1px solid #eee; border-radius: 12px; padding: 15px; text-align: center; background: #fff; border-top: 8px solid {};", border_color)
+                                    format!("border: 1px solid #eee; border-radius: 12px; padding: 15px; text-align: center; background: #fff; border-top: 8px solid {};", color)
                                 }>
                                     <strong style="font-size: 1.3rem; display: block; margin-bottom: 5px;">"Room " {r_cloned.number.clone()}</strong>
                                     <span style="font-size: 0.8rem; color: #7f8c8d; background: #f8f9fa; padding: 2px 8px; border-radius: 10px;">{r_cloned.room_type.clone()} " • ₹" {r_cloned.price}</span>
                                     <div style=move || {
-                                        let booking_opt = get_active_booking_helper(&bookings.get(), &selected_date.get(), &rid_status);
-                                        let text_color = if let Some(b) = booking_opt {
-                                            let paid: f64 = b.payments.iter().map(|p| p.amount).sum();
-                                            if b.total_amount > paid { "#f39c12" } else { "#e74c3c" }
+                                        let b_opt = get_active_booking_helper(&bookings.get(), &selected_date.get(), &rid_style);
+                                        let color = if let Some(b) = b_opt {
+                                            let p: f64 = b.payments.iter().map(|pay| pay.amount).sum();
+                                            if b.total_amount > p { "#f39c12" } else { "#e74c3c" }
                                         } else { "#27ae60" };
-                                        format!("margin: 15px 0; font-size: 0.8rem; font-weight: bold; color: {};", text_color)
+                                        format!("margin: 15px 0; font-size: 0.8rem; font-weight: bold; color: {};", color)
                                     }>
-                                        {move || {
+                                        {let rid_label = rid_style.clone(); move || {
                                             if let Some(b) = get_active_booking_helper(&bookings.get(), &selected_date.get(), &rid_label) {
-                                                let paid: f64 = b.payments.iter().map(|p| p.amount).sum();
-                                                if b.total_amount > paid { format!("● PENDING ₹{}", b.total_amount - paid) } else { "● OCCUPIED".to_string() }
+                                                let p: f64 = b.payments.iter().map(|pay| pay.amount).sum();
+                                                if b.total_amount > p { format!("● PENDING ₹{}", b.total_amount - p) } else { "● OCCUPIED".to_string() }
                                             } else { "● AVAILABLE".to_string() }
                                         }}
                                     </div>
                                     <div style="display: flex; gap: 8px; margin-top: 10px;">
-                                        {let rb = r_cloned.clone(); let r_id_btn = rid_btn.clone(); view! { <button on:click=move |_| set_show_book_modal.set(Some(rb.clone())) disabled=move || get_active_booking_helper(&bookings.get(), &selected_date.get(), &r_id_btn).is_some() style="flex: 1; padding: 8px; font-size: 0.75rem; background: #27ae60;">"Book"</button> }}
-                                        {let re = r_cloned.clone(); let r_id_edit = rid_edit.clone(); view! { <button on:click=move |_| { if let Some(booking) = get_active_booking_helper(&bookings.get(), &selected_date.get(), &r_id_edit) { set_confirm_cancel_stay.set(false); set_confirm_checkout.set(false); set_show_manage_stay_modal.set(Some(booking)); } else { set_show_edit_room_modal.set(Some(re.clone())); } } style="flex: 1; padding: 8px; font-size: 0.75rem; background: #3498db;">"Edit"</button> }}
+                                        {let rb = r_cloned.clone(); let rid_btn = rid_style.clone(); view! { <button on:click=move |_| set_show_book_modal.set(Some(rb.clone())) disabled=move || get_active_booking_helper(&bookings.get(), &selected_date.get(), &rid_btn).is_some() style="flex: 1; padding: 8px; font-size: 0.75rem; background: #27ae60;">"Book"</button> }}
+                                        {let re = r_cloned.clone(); let rid_edit = rid_style.clone(); view! { <button on:click=move |_| { if let Some(booking) = get_active_booking_helper(&bookings.get(), &selected_date.get(), &rid_edit) { set_confirm_cancel_stay.set(false); set_confirm_checkout.set(false); set_show_manage_stay_modal.set(Some(booking)); } else { set_show_edit_room_modal.set(Some(re.clone())); } } style="flex: 1; padding: 8px; font-size: 0.75rem; background: #3498db;">"Edit"</button> }}
                                     </div>
                                 </div>
                             }
@@ -248,29 +239,13 @@ pub fn DashboardHome() -> impl IntoView {
                     view! {
                         <div style="overflow-x: auto;">
                             <table>
-                                <thead>
-                                    <tr>
-                                        <th>"Guest(s)"</th>
-                                        <th>"Room"</th>
-                                        <th>"Status"</th>
-                                        <th>"Paid"</th>
-                                        <th>"Balance"</th>
-                                        <th>"Contact Info"</th>
-                                        <th>"Action"</th>
-                                    </tr>
-                                </thead>
+                                <thead><tr><th>"Guest(s)"</th><th>"Room"</th><th>"Status"</th><th>"Paid"</th><th>"Balance"</th><th>"Contact Info"</th><th>"Action"</th></tr></thead>
                                 <tbody>
                                     <For each=move || guests_on_day() key=|item| item.0.id.clone().unwrap_or_default() children=move |(b, c, paid)| {
-                                        let b_data = b.clone();
-                                        let c_data = c.clone();
-                                        let balance = b_data.total_amount - paid;
-                                        let status = b_data.status.clone();
+                                        let b_data = b.clone(); let c_data = c.clone(); let balance = b_data.total_amount - paid; let status = b_data.status.clone();
                                         view! {
                                             <tr>
-                                                <td>
-                                                    <strong>{b_data.customer_name.clone()}</strong><br/>
-                                                    {b_data.extra_guests.iter().map(|g| view! { <div style="font-size: 0.8rem; color: #666;">"+ " {g.name.clone()}</div> }).collect_view()}
-                                                </td>
+                                                <td><strong>{b_data.customer_name.clone()}</strong><br/>{b_data.extra_guests.iter().map(|g| view! { <div style="font-size: 0.8rem; color: #666;">"+ " {g.name.clone()}</div> }).collect_view()}</td>
                                                 <td>"Room " {b_data.room_number.clone()}</td>
                                                 <td><span style=format!("padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: {}; color: white;", if status == "Checked-In" { "#27ae60" } else { "#95a5a6" })>{status.to_uppercase()}</span></td>
                                                 <td style="color: #27ae60; font-weight: bold;">"₹" {paid}</td>
@@ -282,13 +257,12 @@ pub fn DashboardHome() -> impl IntoView {
                                     }/>
                                 </tbody>
                             </table>
-                            {move || if guests_on_day().is_empty() { view! { <p style="text-align: center; color: #7f8c8d; padding: 2rem;">"No guest history for this day."</p> }.into_view() } else { view! {}.into_view() }}
                         </div>
                     }.into_view()
                 }}
             </div>
 
-            // --- QUICK BOOKING MODAL ---
+            // --- MODALS ---
             {move || show_book_modal.get().map(|room| {
                 let (sel_cust, set_sel_cust) = create_signal("".to_string());
                 let (extra_selected, set_extra_selected) = create_signal(Vec::<ExtraGuest>::new());
@@ -297,48 +271,28 @@ pub fn DashboardHome() -> impl IntoView {
                 let (check_out, set_check_out) = create_signal("".to_string());
                 let (guest_search, set_guest_search) = create_signal("".to_string());
                 let (saving, set_saving) = create_signal(false);
-                let filtered_guests = move || { let q = guest_search.get().to_lowercase(); customers.get().into_iter().filter(|c| c.full_name.to_lowercase().contains(&q) || c.aadhaar.contains(&q)).collect::<Vec<_>>() };
-                let add_extra_guest = move |_| {
+                let filtered = move || { let q = guest_search.get().to_lowercase(); customers.get().into_iter().filter(|c| c.full_name.to_lowercase().contains(&q) || c.aadhaar.contains(&q)).collect::<Vec<_>>() };
+                let add_extra = move |_| {
                     let cid = sel_cust.get();
                     if cid.is_empty() { return; }
-                    if let Some(c) = customers.get_untracked().into_iter().find(|c| c.id.as_deref() == Some(&cid)) {
-                        let already_in = extra_selected.get_untracked().iter().any(|g| g.id == cid);
-                        if !already_in { set_extra_selected.update(|v| v.push(ExtraGuest { id: cid, name: c.full_name.clone() })); }
+                    if let Some(c) = customers.get_untracked().into_iter().find(|cust| cust.id.as_deref() == Some(&cid)) {
+                        if !extra_selected.get_untracked().iter().any(|g| g.id == cid) { set_extra_selected.update(|v| v.push(ExtraGuest { id: cid, name: c.full_name.clone() })); }
                     }
                 };
-                let r_cloned = room.clone();
+                let r_cloned_book = room.clone();
                 let handle_book = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default(); set_saving.set(true);
                     let guests = extra_selected.get_untracked();
                     if guests.is_empty() { set_saving.set(false); return; }
-                    let primary = &guests[0];
-                    let extras = guests[1..].to_vec();
-                    let date = selected_date.get_untracked();
-                    let new_booking = NewBooking { room_id: r_cloned.id.clone().unwrap_or_default(), customer_id: primary.id.clone(), customer_name: primary.name.clone(), extra_guests: extras, room_number: r_cloned.number.clone(), check_in_date: date.clone(), check_out_date: check_out.get(), in_time: None, out_time: None, status: "Checked-In".to_string(), total_amount: final_price.get().parse::<f64>().unwrap_or(0.0), payments: vec![Payment { amount: paid_now.get().parse::<f64>().unwrap_or(0.0), date: date }] };
+                    let primary = &guests[0]; let extras = guests[1..].to_vec(); let date = selected_date.get_untracked();
+                    let new_booking = NewBooking { room_id: r_cloned_book.id.clone().unwrap_or_default(), customer_id: primary.id.clone(), customer_name: primary.name.clone(), extra_guests: extras, room_number: r_cloned_book.number.clone(), check_in_date: date.clone(), check_out_date: check_out.get(), in_time: None, out_time: None, status: "Checked-In".to_string(), total_amount: final_price.get().parse::<f64>().unwrap_or(0.0), payments: vec![Payment { amount: paid_now.get().parse::<f64>().unwrap_or(0.0), date: date }] };
                     spawn_local(async move { wait_for_bridge().await; let _ = add_booking_js(serde_wasm_bindgen::to_value(&new_booking).unwrap()).await; set_show_book_modal.set(None); load_data(); });
                 };
-                view! {
-                    <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
-                        <div class="card" style="width: 100%; max-width: 450px; padding: 2rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;"><h3>"Quick Check-in"</h3><button on:click=move |_| set_show_add_guest_modal.set(false) style="background: none; color: black; font-size: 1.5rem;">"×"</button></div>
-                            <form on:submit=handle_book>
-                                <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
-                                    <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Room"</label><input type="text" value=r_cloned.number.clone() disabled style="background: #eee;" /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label><input type="text" value=selected_date.get() disabled style="background: #eee;" /></div></div>
-                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Select Guest(s)"</label><div style="display: flex; gap: 5px; margin-bottom: 5px;"><input type="text" placeholder="Search..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="flex: 1;" /><button type="button" on:click=add_extra_guest style="padding: 0 15px; background: #27ae60; font-weight: bold;">"+"</button></div><select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) prop:value=sel_cust><option value="">"Choose guest from search..."</option>{move || filtered_guests().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); view! { <option value=cid>{c.full_name.clone()} " (" {c.phone.clone()} ")" </option> } }).collect_view()}</select><div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">{move || extra_selected.get().into_iter().enumerate().map(|(idx, g)| { let g_cloned = g.clone(); view! { <span style="background: #3498db; color: white; padding: 2px 10px; border-radius: 15px; font-size: 0.8rem;">{if idx==0 { "(P) " } else { "" }} {g_cloned.name.clone()} <button type="button" on:click=move |_| set_extra_selected.update(|v| v.retain(|x| x.id != g_cloned.id)) style="background:none; padding:0; margin-left:5px; font-weight:bold; color:white;">"×"</button></span> } }).collect_view()}</div></div>
-                                    <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Total Price"</label><input type="number" on:input=move |ev| set_final_price.set(event_target_value(&ev)) prop:value=final_price required /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Paying Now"</label><input type="number" on:input=move |ev| set_paid_now.set(event_target_value(&ev)) prop:value=paid_now required /></div></div>
-                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Estimated Check-out"</label><input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) required /></div>
-                                </div>
-                                <div style="display: flex; gap: 10px; margin-top: 25px;"><button type="submit" disabled=move || saving.get() || extra_selected.get().is_empty() style="flex: 2; background: #27ae60;">"Confirm"</button><button type="button" on:click=move |_| set_show_book_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button></div>
-                            </form>
-                        </div>
-                    </div>
-                }
+                view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;"><div class="card" style="width: 100%; max-width: 450px; padding: 2rem;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;"><h3>"Quick Check-in"</h3><button on:click=move |_| set_show_book_modal.set(None) style="background: none; color: black; font-size: 1.5rem;">"×"</button></div><form on:submit=handle_book><div style="display: flex; flex-direction: column; gap: 15px; text-align: left;"><div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Room"</label><input type="text" value=room.number.clone() disabled style="background: #eee;" /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label><input type="text" value=selected_date.get() disabled style="background: #eee;" /></div></div><div><label style="font-size: 0.8rem; font-weight: bold;">"Select Guest(s)"</label><div style="display: flex; gap: 5px; margin-bottom: 5px;"><input type="text" placeholder="Search..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="flex: 1;" /><button type="button" on:click=add_extra style="padding: 0 15px; background: #27ae60; font-weight: bold;">"+"</button></div><select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) prop:value=sel_cust><option value="">"Choose guest from search..."</option>{move || filtered().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); view! { <option value=cid>{c.full_name.clone()} " (" {c.phone.clone()} ")" </option> } }).collect_view()}</select><div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">{move || extra_selected.get().into_iter().enumerate().map(|(idx, g)| { let g_id_v = g.id.clone(); let g_name_v = g.name.clone(); view! { <span style="background: #3498db; color: white; padding: 2px 10px; border-radius: 15px; font-size: 0.8rem;">{if idx==0 { "(P) " } else { "" }} {g_name_v} <button type="button" on:click=move |_| set_extra_selected.update(|v| v.retain(|x| x.id != g_id_v)) style="background:none; padding:0; margin-left:5px; font-weight:bold; color:white;">"×"</button></span> } }).collect_view()}</div></div><div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Total Price"</label><input type="number" on:input=move |ev| set_final_price.set(event_target_value(&ev)) prop:value=final_price required /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Paying Now"</label><input type="number" on:input=move |ev| set_paid_now.set(event_target_value(&ev)) prop:value=paid_now required /></div></div><div><label style="font-size: 0.8rem; font-weight: bold;">"Estimated Check-out"</label><input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) required /></div></div><div style="display: flex; gap: 10px; margin-top: 25px;"><button type="submit" disabled=move || saving.get() || extra_selected.get().is_empty() style="flex: 2; background: #27ae60;">"Confirm"</button><button type="button" on:click=move |_| set_show_book_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button></div></form></div></div> }
             })}
 
-            // --- ADD GUEST POPUP ---
             {move || if show_add_guest_modal.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 4000; padding: 1rem;"><div class="card" style="width: 100%; max-width: 500px; padding: 1rem; max-height: 90vh; overflow-y: auto;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;"><h3>"Register New Guest"</h3><button on:click=move |_| set_show_add_guest_modal.set(false) style="background: none; color: black; font-size: 1.5rem;">"×"</button></div><CustomerForm editing_id=create_memo(|_| None) initial_data=None on_success=Callback::new(move |_| { set_show_add_guest_modal.set(false); load_data(); }) /></div></div> }.into_view() } else { view! {}.into_view() }}
 
-            // --- MANAGE STAY MODAL ---
             {move || show_manage_stay_modal.get().map(|booking| {
                 let (check_out, set_check_out) = create_signal(booking.check_out_date.clone());
                 let (extra_payment, set_extra_payment) = create_signal((booking.total_amount - booking.payments.iter().map(|p| p.amount).sum::<f64>()).to_string());
@@ -347,23 +301,21 @@ pub fn DashboardHome() -> impl IntoView {
                 let b_id_val = b_data_orig.id.clone().unwrap_or_default();
                 let handle_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default(); set_saving.set(true);
-                    let mut updated_payments = b_data_orig.payments.clone();
-                    let extra = extra_payment.get().parse::<f64>().unwrap_or(0.0);
-                    if extra > 0.0 { updated_payments.push(Payment { amount: extra, date: selected_date.get_untracked() }); }
-                    let updated_booking = NewBooking { room_id: b_data_orig.room_id.clone(), customer_id: b_data_orig.customer_id.clone(), customer_name: b_data_orig.customer_name.clone(), extra_guests: b_data_orig.extra_guests.clone(), room_number: b_data_orig.room_number.clone(), check_in_date: b_data_orig.check_in_date.clone(), check_out_date: check_out.get(), in_time: b_data_orig.in_time.clone(), out_time: b_data_orig.out_time.clone(), status: b_data_orig.status.clone(), total_amount: b_data_orig.total_amount, payments: updated_payments };
-                    let b_id_update = b_id_val.clone();
-                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(b_id_update, serde_wasm_bindgen::to_value(&updated_booking).unwrap()).await; set_show_manage_stay_modal.set(None); load_data(); });
+                    let mut upd_pays = b_data_orig.payments.clone(); let extra = extra_payment.get().parse::<f64>().unwrap_or(0.0);
+                    if extra > 0.0 { upd_pays.push(Payment { amount: extra, date: selected_date.get_untracked() }); }
+                    let upd_book = NewBooking { room_id: b_data_orig.room_id.clone(), customer_id: b_data_orig.customer_id.clone(), customer_name: b_data_orig.customer_name.clone(), extra_guests: b_data_orig.extra_guests.clone(), room_number: b_data_orig.room_number.clone(), check_in_date: b_data_orig.check_in_date.clone(), check_out_date: check_out.get(), in_time: b_data_orig.in_time.clone(), out_time: b_data_orig.out_time.clone(), status: b_data_orig.status.clone(), total_amount: b_data_orig.total_amount, payments: upd_pays };
+                    let bid = b_id_val.clone();
+                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(bid, serde_wasm_bindgen::to_value(&upd_book).unwrap()).await; set_show_manage_stay_modal.set(None); load_data(); });
                 };
                 let b_data_co = b_data_orig.clone();
-                let b_id_co_val = b_data_co.id.clone().unwrap_or_default();
                 let on_checkout_final = move |_| {
                     let today = selected_date.get_untracked(); let paid_so_far: f64 = b_data_co.payments.iter().map(|p| p.amount).sum();
                     let mut final_payments = b_data_co.payments.clone();
                     if b_data_co.total_amount > paid_so_far { final_payments.push(Payment { amount: b_data_co.total_amount - paid_so_far, date: today.clone() }); }
                     let co_booking = NewBooking { room_id: b_data_co.room_id.clone(), customer_id: b_data_co.customer_id.clone(), customer_name: b_data_co.customer_name.clone(), extra_guests: b_data_co.extra_guests.clone(), room_number: b_data_co.room_number.clone(), check_in_date: b_data_co.check_in_date.clone(), check_out_date: today, in_time: b_data_co.in_time.clone(), out_time: None, status: "Checked-Out".to_string(), total_amount: b_data_co.total_amount, payments: final_payments };
-                    let bid_co = b_id_co_val.clone();
-                    let rid_co = b_data_co.room_id.clone();
-                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(bid_co, serde_wasm_bindgen::to_value(&co_booking).unwrap()).await; let _ = update_room_js(rid_co, JsValue::from_str("Available")).await; set_show_manage_stay_modal.set(None); load_data(); });
+                    let b_id_co_val = b_data_co.id.clone().unwrap_or_default();
+                    let room_id_co = b_data_co.room_id.clone();
+                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(b_id_co_val, serde_wasm_bindgen::to_value(&co_booking).unwrap()).await; let _ = update_room_js(room_id_co, JsValue::from_str("Available")).await; set_show_manage_stay_modal.set(None); load_data(); });
                 };
                 let b_id_del = b_data_orig.id.clone().unwrap_or_default(); let b_rid_del = b_data_orig.room_id.clone();
                 view! {
@@ -388,16 +340,14 @@ pub fn DashboardHome() -> impl IntoView {
                 }
             })}
 
-            // --- QUICK ROOM SETTINGS MODAL ---
             {move || show_edit_room_modal.get().map(|room| {
                 let (r_type, set_r_type) = create_signal(room.room_type.clone());
                 let (r_price, set_r_price) = create_signal(room.price.to_string());
                 let (saving, set_saving) = create_signal(false);
                 let rid_val = room.id.clone().unwrap_or_default();
-                let r_num_val = room.number.clone();
                 let handle_room_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default(); set_saving.set(true);
-                    let updated_room = NewRoom { number: r_num_val.clone(), room_type: r_type.get(), status: "Available".to_string(), price: r_price.get().parse().unwrap_or(0.0) };
+                    let updated_room = NewRoom { number: room.number.clone(), room_type: r_type.get(), status: "Available".to_string(), price: r_price.get().parse().unwrap_or(0.0) };
                     let rid = rid_val.clone();
                     spawn_local(async move { wait_for_bridge().await; let _ = update_room_js(rid, serde_wasm_bindgen::to_value(&updated_room).unwrap()).await; set_show_edit_room_modal.set(None); load_data(); });
                 };
