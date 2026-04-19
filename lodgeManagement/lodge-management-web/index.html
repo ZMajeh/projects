@@ -121,15 +121,21 @@
 
             // Authentication Bridge
             window.loginUser = async (email, password) => {
+                console.log("Attempting login for:", email);
                 try {
                     const userCredential = await signInWithEmailAndPassword(auth, email, password);
                     const user = userCredential.user;
+                    console.log("Login successful:", user.uid);
                     return {
                         email: user.email,
                         uid: user.uid
                     };
                 } catch (error) {
-                    console.error("Auth Error:", error.code, error.message);
+                    console.error("Firebase Auth Error Detail:", {
+                        code: error.code,
+                        message: error.message,
+                        stack: error.stack
+                    });
                     throw error;
                 }
             };
