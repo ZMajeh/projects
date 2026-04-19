@@ -13,6 +13,7 @@ wasm-bindgen-futures = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde-wasm-bindgen = "0.6"
+js-sys = { version = "0.3", features = ["Reflect", "Object"] }
 web-sys = { version = "0.3", features = ["Storage", "Window", "File", "FileList", "HtmlInputElement"] }
 gloo-timers = { version = "0.3", features = ["futures"] }
 # We will add firebase interop later

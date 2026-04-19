@@ -55,13 +55,52 @@ extern "C" {
 }
 
 fn validate_aadhaar_checksum(aadhaar: &str) -> bool {
-    if aadhaar.len() != 12 || !aadhaar.chars().all(|c| c.is_ascii_digit()) { return false; }
-    let multiplication_table = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 0, 6, 7, 8, 9, 5],[2, 3, 4, 0, 1, 7, 8, 9, 5, 6],[3, 4, 0, 1, 2, 8, 9, 5, 6, 7],[4, 0, 1, 2, 3, 9, 5, 6, 7, 8],[5, 9, 8, 7, 6, 4, 3, 2, 1, 0],[6, 5, 9, 8, 7, 0, 4, 3, 2, 1],[7, 6, 5, 9, 8, 1, 0, 4, 3, 2],[8, 7, 6, 5, 9, 2, 1, 0, 4, 3],[9, 8, 7, 6, 5, 3, 2, 1, 0, 4]];
-    let permutation_table = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 5, 7, 6, 2, 8, 3, 0, 9, 4],[5, 8, 0, 3, 7, 9, 6, 1, 4, 2],[8, 9, 1, 6, 0, 4, 3, 5, 2, 7],[9, 4, 5, 3, 1, 2, 6, 8, 7, 0],[4, 2, 8, 6, 5, 7, 3, 9, 0, 1],[2, 7, 9, 3, 8, 0, 6, 4, 1, 5],[7, 0, 4, 6, 9, 1, 3, 2, 5, 8]];
+    let clean_aadhaar = aadhaar.trim().replace(" ", "");
+    logging::log!("Validating Aadhaar: '{}'", clean_aadhaar);
+
+    if clean_aadhaar.len() != 12 || !clean_aadhaar.chars().all(|c| c.is_ascii_digit()) { 
+        logging::error!("Aadhaar validation failed: invalid length or non-digit characters");
+        return false; 
+    }
+    
+    let multiplication_table = [
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        [1, 2, 3, 4, 0, 6, 7, 8, 9, 5],
+        [2, 3, 4, 0, 1, 7, 8, 9, 5, 6],
+        [3, 4, 0, 1, 2, 8, 9, 5, 6, 7],
+        [4, 0, 1, 2, 3, 9, 5, 6, 7, 8],
+        [5, 9, 8, 7, 6, 4, 3, 2, 1, 0],
+        [6, 5, 9, 8, 7, 0, 4, 3, 2, 1],
+        [7, 6, 5, 9, 8, 1, 0, 4, 3, 2],
+        [8, 7, 6, 5, 9, 2, 1, 0, 4, 3],
+        [9, 8, 7, 6, 5, 3, 2, 1, 0, 4],
+    ];
+
+    let permutation_table = [
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        [1, 5, 7, 6, 2, 8, 3, 0, 9, 4],
+        [5, 8, 0, 3, 7, 9, 6, 1, 4, 2],
+        [8, 9, 1, 6, 0, 4, 3, 5, 2, 7],
+        [9, 4, 5, 3, 1, 2, 6, 8, 7, 0],
+        [4, 2, 8, 6, 5, 7, 3, 9, 0, 1],
+        [2, 7, 9, 3, 8, 0, 6, 4, 1, 5],
+        [7, 0, 4, 6, 9, 1, 3, 2, 5, 8],
+    ];
+
     let mut c = 0;
-    let reversed_digits: Vec<usize> = aadhaar.chars().rev().map(|d| d.to_digit(10).unwrap() as usize).collect();
-    for (i, &digit) in reversed_digits.iter().enumerate() { c = multiplication_table[c][permutation_table[i % 8][digit]]; }
-    c == 0
+    let digits: Vec<usize> = clean_aadhaar
+        .chars()
+        .map(|d| d.to_digit(10).unwrap() as usize)
+        .collect();
+
+    // Verhoeff algorithm: process digits from right to left
+    for (i, &digit) in digits.iter().rev().enumerate() {
+        c = multiplication_table[c][permutation_table[i % 8][digit]];
+    }
+
+    let is_valid = c == 0;
+    logging::log!("Aadhaar checksum result: c={}, is_valid={}", c, is_valid);
+    is_valid
 }
 
 fn get_saved_user() -> Option<User> {
@@ -261,9 +300,22 @@ fn Customers() -> impl IntoView {
     let process_id_ocr = move |data: String| {
         set_ocr_loading.set(true);
         spawn_local(async move {
-            if let Ok(id_js) = extract_aadhaar_js(data).await {
-                if let Some(id) = id_js.as_string() {
-                    set_aadhaar.set(id);
+            if let Ok(result_js) = extract_aadhaar_js(data).await {
+                // result_js is { aadhaar: string|null, name: string|null }
+                if let Ok(obj) = js_sys::Object::try_from(&result_js) {
+                    if let Some(id_js) = js_sys::Reflect::get(obj, &JsValue::from_str("aadhaar")).ok() {
+                        if let Some(id) = id_js.as_string() {
+                            set_aadhaar.set(id);
+                        }
+                    }
+                    if let Some(name_js) = js_sys::Reflect::get(obj, &JsValue::from_str("name")).ok() {
+                        if let Some(n) = name_js.as_string() {
+                            // Only fill name if it's currently empty
+                            if name.get_untracked().is_empty() {
+                                set_name.set(n);
+                            }
+                        }
+                    }
                 }
             }
             set_ocr_loading.set(false);
