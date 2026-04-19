@@ -121,23 +121,31 @@
 
             // Authentication Bridge
             window.loginUser = async (email, password) => {
-                console.log("CHECKPOINT 1: loginUser called with", email);
-                if (!auth) {
-                    console.error("CHECKPOINT ERROR: Firebase Auth is not initialized!");
-                    throw new Error("Auth not initialized");
-                }
+                console.log("LOGIN_DEBUG: Starting login process...");
+                
+                // 10 Second Timeout to prevent "forever" hanging
+                const timeout = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error("Firebase Login TIMEOUT (10s)")), 10000)
+                );
+
                 try {
-                    console.log("CHECKPOINT 2: Calling signInWithEmailAndPassword...");
-                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                    console.log("CHECKPOINT 3: API returned successfully");
+                    console.log("LOGIN_DEBUG: Calling Firebase API...");
+                    const loginPromise = signInWithEmailAndPassword(auth, email, password);
+                    const userCredential = await Promise.race([loginPromise, timeout]);
+                    
+                    console.log("LOGIN_DEBUG: API responded successfully!");
                     const user = userCredential.user;
                     return {
                         email: user.email,
                         uid: user.uid
                     };
                 } catch (error) {
-                    console.error("CHECKPOINT 4: Catch block hit", error.code);
-                    throw error;
+                    console.error("LOGIN_DEBUG: Error caught!", error);
+                    // Standardize error for Rust
+                    throw {
+                        code: error.code || "unknown",
+                        message: error.message || "Unknown error"
+                    };
                 }
             };
 

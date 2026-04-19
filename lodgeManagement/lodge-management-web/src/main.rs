@@ -77,18 +77,28 @@ fn Login(on_login: Callback<User>) -> impl IntoView {
                 Ok(user_js) => {
                     if let Ok(user) = serde_wasm_bindgen::from_value::<User>(user_js) {
                         on_login.call(user);
+                    } else {
+                        set_error.set(Some("Serialization error".to_string()));
                     }
                 }
-                Err(_) => {
-                    set_error.set(Some("Login failed. Check credentials.".to_string()));
+                Err(e) => {
+                    logging::error!("Login Error: {:?}", e);
+                    set_error.set(Some("Login failed. Check console.".to_string()));
                 }
             }
             set_loading.set(false);
         });
     };
 
+    let on_mock_login = move |_| {
+        on_login.call(User {
+            email: "admin@test.com".to_string(),
+            uid: "mock_id".to_string(),
+        });
+    };
+
     view! {
-        <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+        <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column;">
             <div class="container" style="max-width: 400px; text-align: center;">
                 <h2>"Lodge Management Login"</h2>
                 <form on:submit=on_submit>
@@ -117,6 +127,13 @@ fn Login(on_login: Callback<User>) -> impl IntoView {
                         {move || if loading.get() { "Logging in..." } else { "Login" }}
                     </button>
                 </form>
+                
+                <p style="margin-top: 20px; font-size: 0.8rem; color: #999;">
+                    "Stuck? Click below to bypass for testing:"
+                </p>
+                <button on:click=on_mock_login style="background-color: #6c757d; font-size: 0.8rem; padding: 5px 10px;">
+                    "DEBUG: Skip Login"
+                </button>
             </div>
         </div>
     }
@@ -228,21 +245,10 @@ fn Rooms() -> impl IntoView {
 }
 
 #[component]
-fn Bookings() -> impl IntoView {
-    view! {
-        <div class="card">
-            <h1>"Bookings"</h1>
-            <p>"View and manage customer reservations and check-ins."</p>
-        </div>
-    }
-}
-
-#[component]
 fn Customers() -> impl IntoView {
     let (customers, set_customers) = create_signal(Vec::<Customer>::new());
     let (loading, set_loading) = create_signal(true);
     
-    // Form signals
     let (name, set_name) = create_signal("".to_string());
     let (phone, set_phone) = create_signal("".to_string());
     let (email, set_email) = create_signal("".to_string());
@@ -336,30 +342,26 @@ fn Customers() -> impl IntoView {
 #[component]
 fn DashboardLayout(user: User) -> impl IntoView {
     view! {
-        <Router>
-            <div class="app-layout">
-                <nav class="sidebar">
-                    <h2>"Lodge Manager"</h2>
-                    <A href="" class="nav-link" active_class="active" exact=true>"Overview"</A>
-                    <A href="rooms" class="nav-link" active_class="active">"Rooms"</A>
-                    <A href="bookings" class="nav-link" active_class="active">"Bookings"</A>
-                    <A href="customers" class="nav-link" active_class="active">"Customers"</A>
-                    
-                    <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid #444; font-size: 0.8rem;">
-                        <p style="color: #bdc3c7; margin-bottom: 5px;">"Logged in as:"</p>
-                        <p style="overflow: hidden; text-overflow: ellipsis;">{user.email}</p>
-                    </div>
-                </nav>
-                <main class="content">
-                    <Routes>
-                        <Route path="" view=DashboardHome />
-                        <Route path="rooms" view=Rooms />
-                        <Route path="bookings" view=Bookings />
-                        <Route path="customers" view=Customers />
-                    </Routes>
-                </main>
-            </div>
-        </Router>
+        <div class="app-layout">
+            <nav class="sidebar">
+                <h2>"Lodge Manager"</h2>
+                <A href="" class="nav-link" active_class="active" exact=true>"Overview"</A>
+                <A href="rooms" class="nav-link" active_class="active">"Rooms"</A>
+                <A href="customers" class="nav-link" active_class="active">"Customers"</A>
+                
+                <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid #444; font-size: 0.8rem;">
+                    <p style="color: #bdc3c7; margin-bottom: 5px;">"Logged in as:"</p>
+                    <p style="overflow: hidden; text-overflow: ellipsis;">{user.email}</p>
+                </div>
+            </nav>
+            <main class="content">
+                <Routes>
+                    <Route path="" view=DashboardHome />
+                    <Route path="rooms" view=Rooms />
+                    <Route path="customers" view=Customers />
+                </Routes>
+            </main>
+        </div>
     }
 }
 
@@ -368,12 +370,14 @@ fn App() -> impl IntoView {
     let (user, set_user) = create_signal(None::<User>);
 
     view! {
-        <main>
-            {move || match user.get() {
-                Some(u) => view! { <DashboardLayout user=u/> }.into_view(),
-                None => view! { <Login on_login=Callback::new(move |u| set_user.set(Some(u)))/> }.into_view(),
-            }}
-        </main>
+        <Router>
+            <main>
+                {move || match user.get() {
+                    Some(u) => view! { <DashboardLayout user=u/> }.into_view(),
+                    None => view! { <Login on_login=Callback::new(move |u| set_user.set(Some(u)))/> }.into_view(),
+                }}
+            </main>
+        </Router>
     }
 }
 
