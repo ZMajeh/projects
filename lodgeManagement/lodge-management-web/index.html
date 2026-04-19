@@ -337,6 +337,15 @@
                 }
             };
 
+            window.readFileAsDataURL = (file) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            };
+
             // OCR Bridge using Tesseract.js
             import "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
             window.extractAadhaar = async (base64Image) => {
