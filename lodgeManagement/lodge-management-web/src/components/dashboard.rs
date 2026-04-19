@@ -84,12 +84,12 @@ pub fn DashboardHome() -> impl IntoView {
 
                                     <div style="display: flex; gap: 5px; margin-top: 10px;">
                                         <div style="flex: 1;">
-                                            <A href="/bookings" class="nav-link" style="padding: 0; display: block;">
+                                            <A href="/bookings">
                                                 <button style="width: 100%; padding: 8px; font-size: 0.7rem; background: #27ae60;">"Book"</button>
                                             </A>
                                         </div>
                                         <div style="flex: 1;">
-                                            <A href="/rooms" class="nav-link" style="padding: 0; display: block;">
+                                            <A href="/rooms">
                                                 <button style="width: 100%; padding: 8px; font-size: 0.7rem; background: #3498db;">"Edit"</button>
                                             </A>
                                         </div>
