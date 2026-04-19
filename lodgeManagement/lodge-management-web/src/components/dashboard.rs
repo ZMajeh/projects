@@ -39,7 +39,7 @@ pub fn DashboardHome() -> impl IntoView {
         set_selected_date.set(new_date.to_iso_string().as_string().unwrap()[..10].to_string());
     };
 
-    let get_active_booking = move |room_id: &str| -> Option<Booking> {
+    let is_occupied = move |room_id: &str| -> Option<Booking> {
         let date_str = selected_date.get();
         bookings.get().iter().find(|b| {
             b.room_id == room_id && 
@@ -77,10 +77,12 @@ pub fn DashboardHome() -> impl IntoView {
                             let rid_label = room_id.clone();
                             let rid_btn = room_id.clone();
                             let rid_edit = room_id.clone();
+                            let room_for_modal = r_cloned.clone();
+                            let room_for_edit = r_cloned.clone();
                             
                             view! {
                                 <div style=move || {
-                                    let occupied = get_active_booking(&rid_style).is_some();
+                                    let occupied = is_occupied(&rid_style).is_some();
                                     format!("border: 1px solid #eee; border-radius: 12px; padding: 15px; text-align: center; background: #fff; border-top: 8px solid {};", 
                                         if occupied { "#e74c3c" } else { "#27ae60" }
                                     )
@@ -89,28 +91,28 @@ pub fn DashboardHome() -> impl IntoView {
                                     <span style="font-size: 0.8rem; color: #7f8c8d; background: #f8f9fa; padding: 2px 8px; border-radius: 10px;">{r.room_type.clone()}</span>
                                     
                                     <div style=move || {
-                                        let occupied = get_active_booking(&rid_status).is_some();
+                                        let occupied = is_occupied(&rid_status).is_some();
                                         format!("margin: 15px 0; font-size: 0.8rem; font-weight: bold; color: {};", 
                                             if occupied { "#e74c3c" } else { "#27ae60" }
                                         )
                                     }>
-                                        {move || if get_active_booking(&rid_label).is_some() { "● OCCUPIED" } else { "● AVAILABLE" }}
+                                        {move || if is_occupied(&rid_label).is_some() { "● OCCUPIED" } else { "● AVAILABLE" }}
                                     </div>
 
                                     <div style="display: flex; gap: 8px; margin-top: 10px;">
                                         <button 
-                                            on:click=move |_| set_show_book_modal.set(Some(r_cloned.clone()))
-                                            disabled=move || get_active_booking(&rid_btn).is_some()
+                                            on:click=move |_| set_show_book_modal.set(Some(room_for_modal.clone()))
+                                            disabled=move || is_occupied(&rid_btn).is_some()
                                             style="flex: 1; padding: 8px; font-size: 0.75rem; background: #27ae60;"
                                         >
                                             "Book"
                                         </button>
                                         <button 
                                             on:click=move |_| {
-                                                if let Some(booking) = get_active_booking(&rid_edit) {
+                                                if let Some(booking) = is_occupied(&rid_edit) {
                                                     set_show_manage_stay_modal.set(Some(booking));
                                                 } else {
-                                                    set_show_edit_room_modal.set(Some(r_cloned.clone()));
+                                                    set_show_edit_room_modal.set(Some(room_for_edit.clone()));
                                                 }
                                             }
                                             style="flex: 1; padding: 8px; font-size: 0.75rem; background: #3498db;"
@@ -213,16 +215,20 @@ pub fn DashboardHome() -> impl IntoView {
                 let b_in = booking.check_in_date.clone();
                 let (check_out, set_check_out) = create_signal(booking.check_out_date.clone());
                 let (saving, set_saving) = create_signal(false);
+                
+                let b_id_c = b_id.clone();
+                let b_rid_c = b_rid.clone();
+                let b_data = booking.clone();
 
                 let handle_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default();
                     set_saving.set(true);
-                    let bid = b_id.clone();
+                    let bid = b_id_c.clone();
                     let updated_booking = NewBooking {
-                        room_id: booking.room_id.clone(), customer_id: booking.customer_id.clone(),
-                        customer_name: booking.customer_name.clone(), room_number: booking.room_number.clone(),
-                        check_in_date: booking.check_in_date.clone(), check_out_date: check_out.get(),
-                        status: booking.status.clone(),
+                        room_id: b_data.room_id.clone(), customer_id: b_data.customer_id.clone(),
+                        customer_name: b_data.customer_name.clone(), room_number: b_data.room_number.clone(),
+                        check_in_date: b_data.check_in_date.clone(), check_out_date: check_out.get(),
+                        status: b_data.status.clone(),
                     };
                     spawn_local(async move {
                         wait_for_bridge().await;
@@ -258,7 +264,7 @@ pub fn DashboardHome() -> impl IntoView {
                             <form on:submit=handle_update>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
                                     <div>
-                                        <label style="font-size: 0.8rem; font-weight: bold;">"Check-out Date"</label>
+                                        <label style="font-size: 0.8rem; font-weight: bold;">"Update Check-out Date"</label>
                                         <input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) prop:value=check_out required />
                                     </div>
                                 </div>
