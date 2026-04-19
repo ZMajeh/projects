@@ -73,11 +73,9 @@ pub fn DashboardHome() -> impl IntoView {
                             let r_cloned = r.clone();
                             let r_cloned_2 = r.clone();
                             
-                            // Clone for style closure
                             let rid_style = room_id.clone();
-                            // Clone for status closure
                             let rid_status = room_id.clone();
-                            // Clone for button closure
+                            let rid_label = room_id.clone();
                             let rid_btn = room_id.clone();
                             
                             view! {
@@ -96,7 +94,7 @@ pub fn DashboardHome() -> impl IntoView {
                                             if occupied { "#e74c3c" } else { "#27ae60" }
                                         )
                                     }>
-                                        {move || if is_occupied(&rid_status) { "● OCCUPIED" } else { "● AVAILABLE" }}
+                                        {move || if is_occupied(&rid_label) { "● OCCUPIED" } else { "● AVAILABLE" }}
                                     </div>
 
                                     <div style="display: flex; gap: 8px; margin-top: 10px;">
