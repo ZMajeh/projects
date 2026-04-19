@@ -180,6 +180,35 @@
                     throw e;
                 }
             };
+
+            // Customer Management Bridge
+            window.getCustomers = async () => {
+                try {
+                    const q = query(collection(db, "customers"), orderBy("full_name"));
+                    const querySnapshot = await getDocs(q);
+                    const customers = [];
+                    querySnapshot.forEach((doc) => {
+                        customers.push({ id: doc.id, ...doc.data() });
+                    });
+                    return customers;
+                } catch (e) {
+                    console.error("Error fetching customers: ", e);
+                    throw e;
+                }
+            };
+
+            window.addCustomer = async (customer) => {
+                try {
+                    const docRef = await addDoc(collection(db, "customers"), {
+                        ...customer,
+                        createdAt: serverTimestamp()
+                    });
+                    return docRef.id;
+                } catch (e) {
+                    console.error("Error adding customer: ", e);
+                    throw e;
+                }
+            };
         </script>
     </body>
 </html>

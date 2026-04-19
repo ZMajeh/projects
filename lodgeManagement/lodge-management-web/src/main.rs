@@ -17,6 +17,14 @@ pub struct Room {
     pub status: String,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct Customer {
+    pub id: Option<String>,
+    pub full_name: String,
+    pub phone: String,
+    pub email: String,
+}
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(catch, js_name = loginUser)]
@@ -27,10 +35,23 @@ extern "C" {
 
     #[wasm_bindgen(catch, js_name = addRoom)]
     async fn add_room_js(room: JsValue) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = getCustomers)]
+    async fn get_customers_js() -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = addCustomer)]
+    async fn add_customer_js(customer: JsValue) -> Result<JsValue, JsValue>;
 }
 
 async fn fetch_rooms() -> Vec<Room> {
     match get_rooms_js().await {
+        Ok(js_val) => serde_wasm_bindgen::from_value(js_val).unwrap_or_default(),
+        Err(_) => vec![],
+    }
+}
+
+async fn fetch_customers() -> Vec<Customer> {
+    match get_customers_js().await {
         Ok(js_val) => serde_wasm_bindgen::from_value(js_val).unwrap_or_default(),
         Err(_) => vec![],
     }
@@ -116,7 +137,6 @@ fn Rooms() -> impl IntoView {
     let (rooms, set_rooms) = create_signal(Vec::<Room>::new());
     let (loading, set_loading) = create_signal(true);
     
-    // Form signals
     let (number, set_number) = create_signal("".to_string());
     let (room_type, set_room_type) = create_signal("Single".to_string());
 
@@ -128,10 +148,7 @@ fn Rooms() -> impl IntoView {
         });
     };
 
-    // Initial load
-    create_effect(move |_| {
-        load_rooms();
-    });
+    create_effect(move |_| { load_rooms(); });
 
     let on_add_room = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
@@ -157,7 +174,6 @@ fn Rooms() -> impl IntoView {
     view! {
         <div class="card">
             <h1>"Rooms Management"</h1>
-            
             <form on:submit=on_add_room style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 20px;">
                 <div style="display: flex; flex-direction: column;">
                     <label>"Room Number"</label>
@@ -178,7 +194,7 @@ fn Rooms() -> impl IntoView {
                 view! { <p>"Loading rooms..."</p> }.into_view()
             } else {
                 view! {
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                    <table style="width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr style="background-color: #f2f2f2; text-align: left;">
                                 <th style="padding: 12px; border: 1px solid #ddd;">"Number"</th>
@@ -223,10 +239,96 @@ fn Bookings() -> impl IntoView {
 
 #[component]
 fn Customers() -> impl IntoView {
+    let (customers, set_customers) = create_signal(Vec::<Customer>::new());
+    let (loading, set_loading) = create_signal(true);
+    
+    // Form signals
+    let (name, set_name) = create_signal("".to_string());
+    let (phone, set_phone) = create_signal("".to_string());
+    let (email, set_email) = create_signal("".to_string());
+
+    let load_customers = move || {
+        spawn_local(async move {
+            set_loading.set(true);
+            set_customers.set(fetch_customers().await);
+            set_loading.set(false);
+        });
+    };
+
+    create_effect(move |_| { load_customers(); });
+
+    let on_add_customer = move |ev: leptos::ev::SubmitEvent| {
+        ev.prevent_default();
+        let new_cust = Customer {
+            id: None,
+            full_name: name.get(),
+            phone: phone.get(),
+            email: email.get(),
+        };
+
+        spawn_local(async move {
+            let js_val = serde_wasm_bindgen::to_value(&new_cust).unwrap();
+            match add_customer_js(js_val).await {
+                Ok(_) => {
+                    set_name.set("".to_string());
+                    set_phone.set("".to_string());
+                    set_email.set("".to_string());
+                    load_customers();
+                }
+                Err(e) => logging::error!("Error adding customer: {:?}", e),
+            }
+        });
+    };
+
     view! {
         <div class="card">
-            <h1>"Customer Directory"</h1>
-            <p>"Manage customer profiles and secure identification documents."</p>
+            <h1>"Customer Entry"</h1>
+            
+            <form on:submit=on_add_customer style="margin-bottom: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f9f9f9; padding: 20px; border-radius: 8px;">
+                <div style="display: flex; flex-direction: column;">
+                    <label>"Full Name"</label>
+                    <input type="text" on:input=move |ev| set_name.set(event_target_value(&ev)) prop:value=name required />
+                </div>
+                <div style="display: flex; flex-direction: column;">
+                    <label>"Phone Number"</label>
+                    <input type="tel" on:input=move |ev| set_phone.set(event_target_value(&ev)) prop:value=phone required />
+                </div>
+                <div style="display: flex; flex-direction: column; grid-column: span 2;">
+                    <label>"Email Address"</label>
+                    <input type="email" on:input=move |ev| set_email.set(event_target_value(&ev)) prop:value=email required />
+                </div>
+                <button type="submit" style="grid-column: span 2;">"Save Customer"</button>
+            </form>
+
+            <h3>"Customer Directory"</h3>
+            {move || if loading.get() {
+                view! { <p>"Loading customers..."</p> }.into_view()
+            } else {
+                view! {
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background-color: #f2f2f2; text-align: left;">
+                                <th style="padding: 12px; border: 1px solid #ddd;">"Name"</th>
+                                <th style="padding: 12px; border: 1px solid #ddd;">"Phone"</th>
+                                <th style="padding: 12px; border: 1px solid #ddd;">"Email"</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <For
+                                each=move || customers.get()
+                                key=|c| c.id.clone().unwrap_or_default()
+                                children=|c| view! {
+                                    <tr>
+                                        <td style="padding: 12px; border: 1px solid #ddd;">{c.full_name}</td>
+                                        <td style="padding: 12px; border: 1px solid #ddd;">{c.phone}</td>
+                                        <td style="padding: 12px; border: 1px solid #ddd;">{c.email}</td>
+                                    </tr>
+                                }
+                            />
+                        </tbody>
+                    </table>
+                }.into_view()
+            }}
         </div>
     }
 }
