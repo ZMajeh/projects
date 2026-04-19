@@ -10,6 +10,9 @@ pub fn CustomerForm(
     on_success: Callback<()>,
     #[prop(optional)] initial_data: Option<Customer>,
 ) -> impl IntoView {
+    // We use the initial_data once to seed the signals.
+    // In Leptos, for a form that can reset, we use create_effect or keyed components.
+    // For this refactor, let's keep it simple:
     let (name, set_name) = create_signal(initial_data.as_ref().map(|c| c.full_name.clone()).unwrap_or_default());
     let (phone, set_phone) = create_signal(initial_data.as_ref().map(|c| c.phone.clone()).unwrap_or_default());
     let (aadhaar, set_aadhaar) = create_signal(initial_data.as_ref().map(|c| c.aadhaar.clone()).unwrap_or_default());
@@ -165,11 +168,13 @@ pub fn Customers() -> impl IntoView {
                 let e_id = editing_id.get();
                 let e_data = editing_data.get();
                 view! {
-                    <CustomerForm 
-                        editing_id=create_memo(move |_| e_id.clone()) 
-                        initial_data=e_data
-                        on_success=Callback::new(move |_| { set_editing_id.set(None); set_editing_data.set(None); load_customers(search_query.get_untracked()); }) 
-                    />
+                    <div id=e_id.clone().unwrap_or_else(|| "new-form".to_string())>
+                        <CustomerForm 
+                            editing_id=create_memo(move |_| e_id.clone()) 
+                            initial_data=e_data
+                            on_success=Callback::new(move |_| { set_editing_id.set(None); set_editing_data.set(None); load_customers(search_query.get_untracked()); }) 
+                        />
+                    </div>
                 }
             }}
 
