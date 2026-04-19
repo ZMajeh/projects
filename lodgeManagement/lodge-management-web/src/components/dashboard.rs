@@ -197,13 +197,12 @@ pub fn DashboardHome() -> impl IntoView {
                 view! {
                     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
                         <For each=move || rooms.get() key=|r| r.id.clone().unwrap_or_default() children=move |r| {
-                            let room_id = r.id.clone().unwrap_or_default();
                             let r_cloned = r.clone();
-                            let rid_style = room_id.clone();
-                            let rid_status = room_id.clone();
-                            let rid_label = room_id.clone();
-                            let rid_btn = room_id.clone();
-                            let rid_edit = room_id.clone();
+                            let rid_style = r_cloned.id.clone().unwrap_or_default();
+                            let rid_status = rid_style.clone();
+                            let rid_label = rid_style.clone();
+                            let rid_btn = rid_style.clone();
+                            let rid_edit = rid_style.clone();
                             
                             view! {
                                 <div style=move || {
@@ -312,8 +311,7 @@ pub fn DashboardHome() -> impl IntoView {
                         if !already_in { set_extra_selected.update(|v| v.push(ExtraGuest { id: cid, name: c.full_name })); }
                     }
                 };
-                let r_id = room.id.clone().unwrap_or_default();
-                let r_num = room.number.clone();
+                let r_cloned = room.clone();
                 let handle_book = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default(); set_saving.set(true);
                     let guests = extra_selected.get_untracked();
@@ -321,7 +319,7 @@ pub fn DashboardHome() -> impl IntoView {
                     let primary = &guests[0];
                     let extras = guests[1..].to_vec();
                     let date = selected_date.get_untracked();
-                    let new_booking = NewBooking { room_id: r_id.clone(), customer_id: primary.id.clone(), customer_name: primary.name.clone(), extra_guests: extras, room_number: r_num.clone(), check_in_date: date.clone(), check_out_date: check_out.get(), in_time: None, out_time: None, status: "Checked-In".to_string(), total_amount: final_price.get().parse().unwrap_or(0.0), payments: vec![Payment { amount: paid_now.get().parse().unwrap_or(0.0), date: date }] };
+                    let new_booking = NewBooking { room_id: r_cloned.id.clone().unwrap_or_default(), customer_id: primary.id.clone(), customer_name: primary.name.clone(), extra_guests: extras, room_number: r_cloned.number.clone(), check_in_date: date.clone(), check_out_date: check_out.get(), in_time: None, out_time: None, status: "Checked-In".to_string(), total_amount: final_price.get().parse().unwrap_or(0.0), payments: vec![Payment { amount: paid_now.get().parse().unwrap_or(0.0), date: date }] };
                     spawn_local(async move { wait_for_bridge().await; let _ = add_booking_js(serde_wasm_bindgen::to_value(&new_booking).unwrap()).await; set_show_book_modal.set(None); load_data(); });
                 };
                 view! {
@@ -331,7 +329,7 @@ pub fn DashboardHome() -> impl IntoView {
                             <form on:submit=handle_book>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
                                     <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Room"</label><input type="text" value=room.number.clone() disabled style="background: #eee;" /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label><input type="text" value=selected_date.get() disabled style="background: #eee;" /></div></div>
-                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Select Guest(s)"</label><div style="display: flex; gap: 5px; margin-bottom: 5px;"><input type="text" placeholder="Search..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="flex: 1;" /><button type="button" on:click=add_extra_guest style="padding: 0 15px; background: #27ae60; font-weight: bold;">"+"</button></div><select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) prop:value=sel_cust><option value="">"Choose guest from search..."</option>{move || filtered_guests().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); view! { <option value=cid>{c.full_name.clone()} " (" {c.phone.clone()} ")" </option> } }).collect_view()}</select><div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">{move || extra_selected.get().into_iter().enumerate().map(|(idx, g)| { let g_id = g.id.clone(); view! { <span style="background: #3498db; color: white; padding: 2px 10px; border-radius: 15px; font-size: 0.8rem;">{if idx==0 { "(P) " } else { "" }} {g.name} <button type="button" on:click=move |_| set_extra_selected.update(|v| v.retain(|x| x.id != g_id)) style="background:none; padding:0; margin-left:5px; font-weight:bold;">"×"</button></span> } }).collect_view()}</div></div>
+                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Select Guest(s)"</label><div style="display: flex; gap: 5px; margin-bottom: 5px;"><input type="text" placeholder="Search..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="flex: 1;" /><button type="button" on:click=add_extra_guest style="padding: 0 15px; background: #27ae60; font-weight: bold;">"+"</button></div><select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) prop:value=sel_cust><option value="">"Choose guest from search..."</option>{move || filtered_guests().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); view! { <option value=cid>{c.full_name.clone()} " (" {c.phone.clone()} ")" </option> } }).collect_view()}</select><div style="margin-top: 10px; display: flex; flex_wrap: wrap; gap: 5px;">{move || extra_selected.get().into_iter().enumerate().map(|(idx, g)| { let g_id = g.id.clone(); view! { <span style="background: #3498db; color: white; padding: 2px 10px; border-radius: 15px; font-size: 0.8rem;">{if idx==0 { "(P) " } else { "" }} {g.name} <button type="button" on:click=move |_| set_extra_selected.update(|v| v.retain(|x| x.id != g_id)) style="background:none; padding:0; margin-left:5px; font-weight:bold;">"×"</button></span> } }).collect_view()}</div></div>
                                     <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Total Price"</label><input type="number" on:input=move |ev| set_final_price.set(event_target_value(&ev)) prop:value=final_price required /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Paying Now"</label><input type="number" on:input=move |ev| set_paid_now.set(event_target_value(&ev)) prop:value=paid_now required /></div></div>
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Estimated Check-out"</label><input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) required /></div>
                                 </div>
@@ -352,21 +350,25 @@ pub fn DashboardHome() -> impl IntoView {
                 let (saving, set_saving) = create_signal(false);
                 let b_id = booking.id.clone().unwrap_or_default();
                 let b_data_orig = booking.clone();
+                let date_str = selected_date.get_untracked();
                 let handle_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default(); set_saving.set(true);
                     let mut updated_payments = b_data_orig.payments.clone();
                     let extra = extra_payment.get().parse::<f64>().unwrap_or(0.0);
                     if extra > 0.0 { updated_payments.push(Payment { amount: extra, date: selected_date.get_untracked() }); }
                     let updated_booking = NewBooking { room_id: b_data_orig.room_id.clone(), customer_id: b_data_orig.customer_id.clone(), customer_name: b_data_orig.customer_name.clone(), extra_guests: b_data_orig.extra_guests.clone(), room_number: b_data_orig.room_number.clone(), check_in_date: b_data_orig.check_in_date.clone(), check_out_date: check_out.get(), in_time: b_data_orig.in_time.clone(), out_time: b_data_orig.out_time.clone(), status: b_data_orig.status.clone(), total_amount: b_data_orig.total_amount, payments: updated_payments };
-                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(b_id.clone(), serde_wasm_bindgen::to_value(&updated_booking).unwrap()).await; set_show_manage_stay_modal.set(None); load_data(); });
+                    let b_id_val = b_id.clone();
+                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(b_id_val, serde_wasm_bindgen::to_value(&updated_booking).unwrap()).await; set_show_manage_stay_modal.set(None); load_data(); });
                 };
-                let b_id_co = b_data_orig.id.clone().unwrap_or_default(); let b_data_co = b_data_orig.clone();
+                let b_data_co = b_data_orig.clone();
                 let on_checkout_final = move |_| {
                     let today = selected_date.get_untracked(); let paid_so_far: f64 = b_data_co.payments.iter().map(|p| p.amount).sum();
                     let mut final_payments = b_data_co.payments.clone();
                     if b_data_co.total_amount > paid_so_far { final_payments.push(Payment { amount: b_data_co.total_amount - paid_so_far, date: today.clone() }); }
                     let co_booking = NewBooking { room_id: b_data_co.room_id.clone(), customer_id: b_data_co.customer_id.clone(), customer_name: b_data_co.customer_name.clone(), extra_guests: b_data_co.extra_guests.clone(), room_number: b_data_co.room_number.clone(), check_in_date: b_data_co.check_in_date.clone(), check_out_date: today, in_time: b_data_co.in_time.clone(), out_time: None, status: "Checked-Out".to_string(), total_amount: b_data_co.total_amount, payments: final_payments };
-                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(b_id_co.clone(), serde_wasm_bindgen::to_value(&co_booking).unwrap()).await; let _ = update_room_js(b_data_co.room_id.clone(), JsValue::from_str("Available")).await; set_show_manage_stay_modal.set(None); load_data(); });
+                    let b_id_co_val = b_data_co.id.clone().unwrap_or_default();
+                    let room_id_co = b_data_co.room_id.clone();
+                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(b_id_co_val, serde_wasm_bindgen::to_value(&co_booking).unwrap()).await; let _ = update_room_js(room_id_co, JsValue::from_str("Available")).await; set_show_manage_stay_modal.set(None); load_data(); });
                 };
                 let b_id_del = b_data_orig.id.clone().unwrap_or_default(); let b_rid_del = b_data_orig.room_id.clone();
                 view! {
@@ -400,7 +402,8 @@ pub fn DashboardHome() -> impl IntoView {
                 let handle_room_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default(); set_saving.set(true);
                     let updated_room = NewRoom { number: r_num.clone(), room_type: r_type.get(), status: "Available".to_string(), price: r_price.get().parse().unwrap_or(0.0) };
-                    spawn_local(async move { wait_for_bridge().await; let _ = update_room_js(r_id.clone(), serde_wasm_bindgen::to_value(&updated_room).unwrap()).await; set_show_edit_room_modal.set(None); load_data(); });
+                    let r_id_val = r_id.clone();
+                    spawn_local(async move { wait_for_bridge().await; let _ = update_room_js(r_id_val, serde_wasm_bindgen::to_value(&updated_room).unwrap()).await; set_show_edit_room_modal.set(None); load_data(); });
                 };
                 view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;"><div class="card" style="width: 100%; max-width: 400px; padding: 2rem;"><h3>"Edit Room Settings"</h3><form on:submit=handle_room_update><div style="display: flex; flex-direction: column; gap: 15px; text-align: left;"><div><label style="font-size: 0.8rem; font-weight: bold;">"Room Number"</label><input type="text" value=room.number.clone() disabled style="background: #eee;" /></div><div><label style="font-size: 0.8rem; font-weight: bold;">"Category"</label><select on:change=move |ev| set_r_type.set(event_target_value(&ev)) prop:value=r_type><option value="Delux">"Delux"</option><option value="AC">"AC"</option><option value="non-AC">"non-AC"</option></select></div><div><label style="font-size: 0.8rem; font-weight: bold;">"Base Price"</label><input type="number" on:input=move |ev| set_r_price.set(event_target_value(&ev)) prop:value=r_price /></div></div><div style="display: flex; gap: 10px; margin-top: 25px;"><button type="submit" disabled=saving style="flex: 1; background: #3498db;">"Save"</button><button type="button" on:click=move |_| set_show_edit_room_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button></div></form></div></div> }
             })}
