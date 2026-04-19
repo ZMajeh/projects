@@ -17,6 +17,13 @@ pub struct Room {
     pub status: String,
 }
 
+#[derive(Serialize)]
+pub struct NewRoom {
+    pub number: String,
+    pub room_type: String,
+    pub status: String,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Customer {
     pub id: Option<String>,
@@ -226,13 +233,21 @@ fn Rooms() -> impl IntoView {
 
     let on_add_room = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
-        let new_room = Room { id: None, number: number.get(), room_type: room_type.get(), status: "Available".to_string() };
+        let new_room = NewRoom { 
+            number: number.get(), 
+            room_type: room_type.get(), 
+            status: "Available".to_string() 
+        };
         spawn_local(async move {
             wait_for_bridge().await;
-            let js_val = serde_wasm_bindgen::to_value(&new_room).unwrap();
-            match add_room_js(js_val).await {
-                Ok(_) => { set_number.set("".to_string()); load_rooms(); }
-                Err(e) => logging::error!("Error adding room: {:?}", e),
+            match serde_wasm_bindgen::to_value(&new_room) {
+                Ok(js_val) => {
+                    match add_room_js(js_val).await {
+                        Ok(_) => { set_number.set("".to_string()); load_rooms(); }
+                        Err(e) => logging::error!("Error adding room: {:?}", e),
+                    }
+                },
+                Err(e) => logging::error!("Serialization Error: {:?}", e),
             }
         });
     };
