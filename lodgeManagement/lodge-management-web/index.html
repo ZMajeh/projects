@@ -365,7 +365,15 @@
                     const dobMatch = text.match(/\d{2}\/\d{2}\/\d{4}/);
                     const dob = dobMatch ? dobMatch[0] : null;
 
-                    // 3. Extract Name (Usually the line immediately before the one containing DOB)
+                    // 3. Extract Gender
+                    let gender = null;
+                    if (/FEMALE/i.test(text)) {
+                        gender = "Female";
+                    } else if (/MALE/i.test(text)) {
+                        gender = "Male";
+                    }
+
+                    // 4. Extract Name
                     let name = null;
                     for (let i = 0; i < lines.length; i++) {
                         if (lines[i].includes("DOB") || lines[i].includes("Year of Birth")) {
