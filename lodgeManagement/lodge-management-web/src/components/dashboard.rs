@@ -180,7 +180,7 @@ pub fn DashboardHome() -> impl IntoView {
                             <form on:submit=handle_book>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
                                     <div style="display: flex; gap: 10px;">
-                                        <div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Room"</label><input type="text" value=rnum_view.clone() disabled style="background: #eee;" /></div>
+                                        <div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Room"</label><input type="text" value=rnum_view disabled style="background: #eee;" /></div>
                                         <div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label><input type="text" value=selected_date.get() disabled style="background: #eee;" /></div>
                                     </div>
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Search Guest"</label><input type="text" placeholder="Search..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="margin-bottom: 5px;" /><select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) required prop:value=sel_cust><option value="">"Choose guest..."</option>{move || filtered_guests().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); let phone = c.phone.clone(); view! { <option value=cid>{c.full_name.clone()} " (" {phone} ")" </option> } }).collect_view()}</select></div>
@@ -228,19 +228,20 @@ pub fn DashboardHome() -> impl IntoView {
                 let b_rid_c = b_rid.clone();
                 let b_date_c = selected_date.get_untracked();
 
+                let b_data_save = b_data_orig.clone();
                 let handle_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default();
                     set_saving.set(true);
                     let bid = b_id_c.clone();
                     let extra = extra_payment.get().parse::<f64>().unwrap_or(0.0);
                     let date = b_date_c.clone();
-                    let mut updated_payments = b_data_orig.payments.clone();
+                    let mut updated_payments = b_data_save.payments.clone();
                     if extra > 0.0 { updated_payments.push(Payment { amount: extra, date }); }
                     let updated_booking = NewBooking {
-                        room_id: b_data_orig.room_id.clone(), customer_id: b_data_orig.customer_id.clone(),
-                        customer_name: b_data_orig.customer_name.clone(), room_number: b_data_orig.room_number.clone(),
-                        check_in_date: b_data_orig.check_in_date.clone(), check_out_date: check_out.get(),
-                        status: b_data_orig.status.clone(), total_amount: b_data_orig.total_amount, payments: updated_payments,
+                        room_id: b_data_save.room_id.clone(), customer_id: b_data_save.customer_id.clone(),
+                        customer_name: b_data_save.customer_name.clone(), room_number: b_data_save.room_number.clone(),
+                        check_in_date: b_data_save.check_in_date.clone(), check_out_date: check_out.get(),
+                        status: b_data_save.status.clone(), total_amount: b_data_save.total_amount, payments: updated_payments,
                     };
                     spawn_local(async move {
                         wait_for_bridge().await;
@@ -253,8 +254,8 @@ pub fn DashboardHome() -> impl IntoView {
                 let b_name_view = b_name.clone();
                 let b_room_view = b_room.clone();
                 let b_in_view = b_in.clone();
-                let bid_final = b_id.clone();
-                let rid_final = b_rid.clone();
+                let b_id_final = b_id.clone();
+                let b_rid_final = b_rid.clone();
                 
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
@@ -273,7 +274,7 @@ pub fn DashboardHome() -> impl IntoView {
                                 <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 25px;">
                                     <button type="submit" disabled=saving style="background: #3498db;">"Save Changes"</button>
                                     {move || if confirm_cancel_stay.get() {
-                                        let bf = bid_final.clone(); let rf = rid_final.clone();
+                                        let bf = b_id_final.clone(); let rf = b_rid_final.clone();
                                         view! { <div style="background: #fee2e2; padding: 10px; border-radius: 8px; border: 1px solid #ef4444; margin-top: 10px;"><p style="color: #b91c1c; font-weight: bold; margin-bottom: 10px;">"Really cancel?"</p><div style="display: flex; gap: 5px;"><button type="button" on:click=move |_| { let bf2=bf.clone(); let rf2=rf.clone(); spawn_local(async move { wait_for_bridge().await; let _ = delete_booking_js(bf2, rf2).await; set_show_manage_stay_modal.set(None); load_data(); }); } style="background: #ef4444; flex: 1;">"YES"</button><button type="button" on:click=move |_| set_confirm_cancel_stay.set(false) style="background: #6c757d; flex: 1;">"No"</button></div></div> }.into_view()
                                     } else { view! { <button type="button" on:click=move |_| set_confirm_cancel_stay.set(true) style="background: #e67e22; margin-top: 10px;">"Cancel / Checkout"</button> }.into_view() }}
                                     <button type="button" on:click=move |_| set_show_manage_stay_modal.set(None) style="background: #6c757d; margin-top: 10px;">"Close"</button>
