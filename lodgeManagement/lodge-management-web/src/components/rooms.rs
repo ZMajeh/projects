@@ -26,17 +26,42 @@ pub fn Rooms() -> impl IntoView {
 
     let on_add_room = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
-        let p_val = price.get().parse::<f64>().unwrap_or(0.0);
-        let new_room = NewRoom { number: number.get(), room_type: room_type.get(), status: "Available".to_string(), price: p_val };
+        
+        // Use get_untracked to avoid reactive warning in action handler
+        let num_val = number.get_untracked();
+        let type_val = room_type.get_untracked();
+        let price_val = price.get_untracked().parse::<f64>().unwrap_or(0.0);
+        let edit_id_val = editing_id.get_untracked();
+
+        logging::log!("RUST: Submitting Room: {} ({}) - ₹{}", num_val, type_val, price_val);
+
+        let new_room = NewRoom { 
+            number: num_val, 
+            room_type: type_val, 
+            status: "Available".to_string(), 
+            price: price_val 
+        };
+        
         spawn_local(async move {
+            logging::log!("RUST: Waiting for bridge...");
             wait_for_bridge().await;
+            logging::log!("RUST: Bridge ready, sending to JS...");
             match serde_wasm_bindgen::to_value(&new_room) {
                 Ok(js_val) => {
-                    if let Some(id) = editing_id.get() { let _ = update_room_js(id, js_val).await; } 
-                    else { let _ = add_room_js(js_val).await; }
-                    set_editing_id.set(None); set_number.set("".to_string()); set_price.set("".to_string()); load_rooms();
+                    if let Some(id) = edit_id_val { 
+                        logging::log!("RUST: Updating Room ID: {}", id);
+                        let _ = update_room_js(id, js_val).await; 
+                    } 
+                    else { 
+                        logging::log!("RUST: Adding New Room");
+                        let _ = add_room_js(js_val).await; 
+                    }
+                    set_editing_id.set(None); 
+                    set_number.set("".to_string()); 
+                    set_price.set("".to_string()); 
+                    load_rooms();
                 },
-                Err(e) => logging::error!("Serialization Error: {:?}", e),
+                Err(e) => logging::error!("RUST ERROR: Serialization Error: {:?}", e),
             }
         });
     };
