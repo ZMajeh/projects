@@ -255,7 +255,7 @@ fn Rooms() -> impl IntoView {
     };
     let on_edit = move |r: Room| { set_editing_id.set(r.id); set_number.set(r.number); set_room_type.set(r.room_type); window().scroll_to_with_x_and_y(0.0, 0.0); };
     let on_delete = move |id: String| { if window().confirm_with_message("Delete?").unwrap_or(false) { spawn_local(async move { wait_for_bridge().await; let _ = delete_room_js(id).await; load_rooms(); }); } };
-    view! { <div class="card"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;"><h1>"Rooms"</h1>{move || if editing_id.get().is_some() { view! { <button on:click=move |_| set_editing_id.set(None) style="background:#6c757d;">"Cancel"</button> }.into_view() } else { view! {}.into_view() }}</div><form on:submit=on_add_room class="grid-form" style="margin-bottom: 20px;"><div style="display: flex; flex-direction: column;"><label>"Number"</label><input type="text" on:input=move |ev| set_number.set(event_target_value(&ev)) prop:value=number required /></div><div style="display: flex; flex-direction: column;"><label>"Type"</label><select on:change=move |ev| set_room_type.set(event_target_value(&ev)) prop:value=room_type><option value="Delux">"Delux"</option><option value="AC">"AC"</option><option value="non-AC">"non-AC"</option></select></div><button type="submit" style="grid-column: 1 / -1;">{move || if editing_id.get().is_some() { "Update Room" } else { "Add Room" }}</button></form>{move || if loading.get() { view! { <p>"Loading rooms..."</p> }.into_view() } else { view! { <table><thead><tr style="background-color: #f2f2f2; text-align: left;"><th>"Number"</th><th>"Type"</th><th>"Status"</th><th>"Actions"</th></tr></thead><tbody><For each=move || rooms.get() key=|room| room.id.clone().unwrap_or_default() children=move |room| { let r_cloned = room.clone(); let id_cloned = room.id.clone().unwrap_or_default(); view! { <tr><td>{room.number.clone()}</td><td>{room.room_type.clone()}</td><td><span style=format!("padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; background-color: {}; color: white;", if room.status == "Available" { "#27ae60" } else { "#e67e22" })>{room.status.clone()}</span></td><td><button on:click=move |_| on_edit(r_cloned.clone()) style="padding: 5px 10px; margin-right: 5px; font-size: 0.8rem; background: #3498db;">"Edit"</button><button on:click=move |_| on_delete(id_cloned.clone()) style="padding: 5px 10px; font-size: 0.8rem; background: #e74c3c;">"Del"</button></td></tr> } } /></tbody></table> }.into_view() }}</div> }
+    view! { <div class="card"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;"><h1>"Rooms"</h1>{move || if editing_id.get().is_some() { view! { <button on:click=move |_| set_editing_id.set(None) style="background:#6c757d;">"Cancel Edit"</button> }.into_view() } else { view! {}.into_view() }}</div><form on:submit=on_add_room class="grid-form" style="margin-bottom: 20px;"><div style="display: flex; flex-direction: column;"><label>"Number"</label><input type="text" on:input=move |ev| set_number.set(event_target_value(&ev)) prop:value=number required /></div><div style="display: flex; flex-direction: column;"><label>"Type"</label><select on:change=move |ev| set_room_type.set(event_target_value(&ev)) prop:value=room_type><option value="Delux">"Delux"</option><option value="AC">"AC"</option><option value="non-AC">"non-AC"</option></select></div><button type="submit" style="grid-column: 1 / -1;">{move || if editing_id.get().is_some() { "Update Room" } else { "Add Room" }}</button></form>{move || if loading.get() { view! { <p>"Loading rooms..."</p> }.into_view() } else { view! { <table><thead><tr style="background-color: #f2f2f2; text-align: left;"><th>"Number"</th><th>"Type"</th><th>"Status"</th><th>"Actions"</th></tr></thead><tbody><For each=move || rooms.get() key=|room| room.id.clone().unwrap_or_default() children=move |room| { let r_cloned = room.clone(); let id_cloned = room.id.clone().unwrap_or_default(); view! { <tr><td>{room.number.clone()}</td><td>{room.room_type.clone()}</td><td><span style=format!("padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; background-color: {}; color: white;", if room.status == "Available" { "#27ae60" } else { "#e67e22" })>{room.status.clone()}</span></td><td><button on:click=move |_| on_edit(r_cloned.clone()) style="padding: 5px 10px; margin-right: 5px; font-size: 0.8rem; background: #3498db;">"Edit"</button><button on:click=move |_| on_delete(id_cloned.clone()) style="padding: 5px 10px; font-size: 0.8rem; background: #e74c3c;">"Del"</button></td></tr> } } /></tbody></table> }.into_view() }}</div> }
 }
 
 #[component]
@@ -303,18 +303,32 @@ fn Bookings() -> impl IntoView {
                         <label>"Select Room"</label>
                         <select on:change=move |ev| set_selected_room.set(event_target_value(&ev)) prop:value=selected_room required>
                             <option value="">"Choose Room..."</option>
-                            <For each=move || rooms.get().into_iter().filter(|r| r.status == "Available").collect::<Vec<_>>() 
-                                 key=|r| r.id.clone().unwrap_or_default()
-                                 children=|r| view! { <option value=r.id.clone()>{r.number.clone()} " (" {r.room_type.clone()} ")" </option> } />
+                            {move || {
+                                rooms.get().into_iter()
+                                    .filter(|r| r.status == "Available")
+                                    .map(|r| {
+                                        let r_id = r.id.clone().unwrap_or_default();
+                                        let r_num = r.number.clone();
+                                        let r_type = r.room_type.clone();
+                                        view! { <option value=r_id>{r_num} " (" {r_type} ")" </option> }
+                                    })
+                                    .collect_view()
+                            }}
                         </select>
                     </div>
                     <div style="display: flex; flex-direction: column;">
                         <label>"Select Customer"</label>
                         <select on:change=move |ev| set_selected_cust.set(event_target_value(&ev)) prop:value=selected_cust required>
                             <option value="">"Choose Customer..."</option>
-                            <For each=move || customers.get() 
-                                 key=|c| c.id.clone().unwrap_or_default()
-                                 children=|c| view! { <option value=c.id.clone()>{c.full_name.clone()}</option> } />
+                            {move || {
+                                customers.get().into_iter()
+                                    .map(|c| {
+                                        let c_id = c.id.clone().unwrap_or_default();
+                                        let c_name = c.full_name.clone();
+                                        view! { <option value=c_id>{c_name}</option> }
+                                    })
+                                    .collect_view()
+                            }}
                         </select>
                     </div>
                     <div style="display: flex; flex-direction: column;"><label>"Check-in"</label><input type="date" on:input=move |ev| set_check_in.set(event_target_value(&ev)) prop:value=check_in required /></div>
@@ -326,7 +340,15 @@ fn Bookings() -> impl IntoView {
             {move || if loading.get() { view! { <p>"Loading..."</p> }.into_view() } else { view! {
                 <table>
                     <thead><tr style="background-color: #f2f2f2; text-align: left;"><th>"Guest"</th><th>"Room"</th><th>"Check-in"</th><th>"Status"</th></tr></thead>
-                    <tbody><For each=move || bookings.get() key=|b| b.id.clone().unwrap_or_default() children=|b| view! { <tr><td>{b.customer_name.clone()}</td><td>{b.room_number.clone()}</td><td>{b.check_in_date.clone()}</td><td><span style="color: #27ae60; font-weight: bold;">{b.status.clone()}</span></td></tr> } /></tbody>
+                    <tbody>
+                        <For each=move || bookings.get() key=|b| b.id.clone().unwrap_or_default() children=move |b| {
+                            let b_name = b.customer_name.clone();
+                            let b_room = b.room_number.clone();
+                            let b_date = b.check_in_date.clone();
+                            let b_status = b.status.clone();
+                            view! { <tr><td>{b_name}</td><td>{b_room}</td><td>{b_date}</td><td><span style="color: #27ae60; font-weight: bold;">{b_status}</span></td></tr> }
+                        } />
+                    </tbody>
                 </table>
             }.into_view() }}
         </div>
