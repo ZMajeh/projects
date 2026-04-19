@@ -263,9 +263,9 @@ fn Rooms() -> impl IntoView {
                 <div style="display: flex; flex-direction: column;">
                     <label>"Type"</label>
                     <select on:change=move |ev| set_room_type.set(event_target_value(&ev)) prop:value=room_type>
-                        <option value="Single">"Single"</option>
-                        <option value="Double">"Double"</option>
-                        <option value="Suite">"Suite"</option>
+                        <option value="Delux">"Delux"</option>
+                        <option value="AC">"AC"</option>
+                        <option value="non-AC">"non-AC"</option>
                     </select>
                 </div>
                 <button type="submit" style="grid-column: 1 / -1;">"Add Room"</button>
