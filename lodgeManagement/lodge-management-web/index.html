@@ -191,14 +191,15 @@
             const functions = getFunctions(app);
 
             window.verifyAadhaarAPI = async (aadhaarNumber) => {
-                const verifyFunc = httpsCallable(functions, 'verifyAadhaar');
+                // 1. Copy to clipboard
                 try {
-                    const result = await verifyFunc({ aadhaarNumber });
-                    return result.data;
-                } catch (error) {
-                    console.error("Cloud Function Error:", error);
-                    throw error;
-                }
+                    await navigator.clipboard.writeText(aadhaarNumber);
+                } catch (e) { console.error("Clipboard failed", e); }
+
+                // 2. Open UIDAI site
+                window.open("https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en", "_blank");
+                
+                return { status: "manual_started" };
             };
 
             window.loginUser = async (email, password) => {
