@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
-        <title>Anand Lodge Management</title>
+        <title>Lodge Management System</title>
         <link rel="rust" data-trunk href="Cargo.toml"/>
         <style>
             :root {
@@ -160,15 +160,6 @@
             const db = getFirestore(app);
             const auth = getAuth(app);
 
-            const cleanData = (obj) => {
-                if (!obj || typeof obj !== 'object') return {};
-                const newObj = {};
-                Object.keys(obj).forEach(key => {
-                    if (obj[key] !== undefined && obj[key] !== null) newObj[key] = obj[key];
-                });
-                return newObj;
-            };
-
             // --- AUTH BRIDGE ---
             window.loginUser = async (email, password) => {
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -183,7 +174,6 @@
 
             // --- DATABASE BRIDGE ---
             window.getRooms = async () => {
-                console.log("Database: Fetching rooms...");
                 const q = query(collection(db, "rooms"), orderBy("number"));
                 const querySnapshot = await getDocs(q);
                 const rooms = [];
@@ -191,29 +181,22 @@
                 return rooms;
             };
 
+            const cleanData = (obj) => {
+                const newObj = {};
+                Object.keys(obj).forEach(key => {
+                    if (obj[key] !== undefined) newObj[key] = obj[key];
+                });
+                return newObj;
+            };
+
             window.addRoom = async (room) => {
-                console.log("Firestore: addRoom", room);
-                try {
-                    const data = { ...cleanData(room), createdAt: serverTimestamp() };
-                    const docRef = await addDoc(collection(db, "rooms"), data);
-                    console.log("Firestore: addRoom success", docRef.id);
-                    return docRef.id;
-                } catch (e) {
-                    console.error("Firestore: addRoom error", e);
-                    throw e;
-                }
+                const docRef = await addDoc(collection(db, "rooms"), { ...cleanData(room), createdAt: serverTimestamp() });
+                return docRef.id;
             };
 
             window.updateRoom = async (id, room) => {
-                console.log("Firestore: updateRoom", id, room);
-                try {
-                    const data = { ...cleanData(room), updatedAt: serverTimestamp() };
-                    await updateDoc(doc(db, "rooms", id), data);
-                    return true;
-                } catch (e) {
-                    console.error("Firestore: updateRoom error", e);
-                    throw e;
-                }
+                await updateDoc(doc(db, "rooms", id), { ...cleanData(room), updatedAt: serverTimestamp() });
+                return true;
             };
 
             window.deleteRoom = async (id) => {
@@ -225,31 +208,33 @@
             window.getBookings = async () => {
                 console.log("Database: Fetching recent stays...");
                 try {
-                    const q = query(collection(db, "bookings"), orderBy("checkInDate", "desc"), limit(50));
+                    const q = query(collection(db, "bookings"), orderBy("checkInDate", "desc"), limit(20));
                     const querySnapshot = await getDocs(q);
                     const bookings = [];
                     querySnapshot.forEach((doc) => { bookings.push({ id: doc.id, ...doc.data() }); });
+                    console.log(`Database: Successfully fetched ${bookings.length} stays.`);
                     return bookings;
                 } catch (e) {
-                    console.warn("Database: getBookings fallback (index likely building)");
-                    const qBasic = query(collection(db, "bookings"), limit(50));
-                    const querySnapshotBasic = await getDocs(qBasic);
-                    const basic = [];
-                    querySnapshotBasic.forEach((doc) => { basic.push({ id: doc.id, ...doc.data() }); });
-                    return basic;
+                    console.error("Database Error (Bookings):", e);
+                    throw e;
                 }
             };
 
             window.addBooking = async (booking) => {
                 console.log("Firestore SAVE Booking: ", booking);
                 try {
+                    // 1. Save Booking
                     const docRef = await addDoc(collection(db, "bookings"), { 
                         ...cleanData(booking), 
                         createdAt: serverTimestamp() 
                     });
-                    if (booking.roomId) {
-                        await updateDoc(doc(db, "rooms", booking.roomId), { status: "Occupied" });
-                    }
+                    console.log("Firestore SAVE Booking Success, ID:", docRef.id);
+                    
+                    // 2. Mark Room as Occupied
+                    const roomRef = doc(db, "rooms", booking.roomId);
+                    await updateDoc(roomRef, { status: "Occupied" });
+                    console.log("Firestore Room Status Updated to Occupied");
+                    
                     return docRef.id;
                 } catch (e) {
                     console.error("Firestore SAVE Booking Error:", e);
@@ -266,9 +251,15 @@
             window.deleteBooking = async (id, roomId) => {
                 console.log(`Firestore DELETE Booking: ID=${id}, RoomID=${roomId}`);
                 try {
+                    // 1. Delete Booking
                     await deleteDoc(doc(db, "bookings", id));
+                    console.log("Firestore Booking Deleted Successfully");
+                    
+                    // 2. Mark Room as Available
                     if (roomId) {
-                        await updateDoc(doc(db, "rooms", roomId), { status: "Available" });
+                        const roomRef = doc(db, "rooms", roomId);
+                        await updateDoc(roomRef, { status: "Available" });
+                        console.log(`Firestore Room ${roomId} marked as Available`);
                     }
                     return true;
                 } catch (e) {
@@ -282,6 +273,7 @@
                 try {
                     let q;
                     if (searchTerm) {
+                        // Server-side prefix search (Standard Firestore pattern)
                         q = query(
                             collection(db, "customers"), 
                             where("full_name", ">=", searchTerm),
@@ -289,12 +281,14 @@
                             limit(20)
                         );
                     } else {
+                        // Simple query to avoid index/field requirement issues
                         q = query(collection(db, "customers"), limit(20));
                     }
                     
                     const querySnapshot = await getDocs(q);
                     const customers = [];
                     querySnapshot.forEach((doc) => { customers.push({ id: doc.id, ...doc.data() }); });
+                    console.log(`Database: Found ${customers.length} matches.`);
                     return customers;
                 } catch (e) {
                     console.error("Database Search Error (Customers):", e);
@@ -303,7 +297,7 @@
             };
 
             window.addCustomer = async (customer) => {
-                console.log("Firestore SAVE Guest: ", customer);
+                console.log("Firestore SAVE: ", customer);
                 try {
                     const docRef = await addDoc(collection(db, "customers"), { 
                         ...cleanData(customer), 
@@ -317,7 +311,7 @@
             };
 
             window.updateCustomer = async (id, customer) => {
-                console.log(`Firestore UPDATE Guest (ID: ${id}):`, customer);
+                console.log(`Firestore UPDATE (ID: ${id}):`, customer);
                 try {
                     const docRef = doc(db, "customers", id);
                     await updateDoc(docRef, { ...cleanData(customer), updatedAt: serverTimestamp() });
