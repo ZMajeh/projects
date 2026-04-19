@@ -6,7 +6,7 @@ use crate::utils::{clear_user, wait_for_bridge};
 use crate::api::{sign_out_user, add_booking_js, update_room_js, update_booking_js, delete_booking_js};
 use crate::components::rooms::{fetch_rooms, Rooms};
 use crate::components::bookings::{fetch_bookings, Bookings};
-use crate::components::customers::{fetch_customers, Customers};
+use crate::components::customers::{fetch_customers, Customers, CustomerForm};
 
 #[component]
 pub fn DashboardHome() -> impl IntoView {
@@ -21,6 +21,7 @@ pub fn DashboardHome() -> impl IntoView {
     let (show_book_modal, set_show_book_modal) = create_signal(None::<Room>);
     let (show_edit_room_modal, set_show_edit_room_modal) = create_signal(None::<Room>);
     let (show_manage_stay_modal, set_show_manage_stay_modal) = create_signal(None::<Booking>);
+    let (show_add_guest_modal, set_show_add_guest_modal) = create_signal(false);
 
     let load_data = move || {
         spawn_local(async move {
@@ -53,7 +54,7 @@ pub fn DashboardHome() -> impl IntoView {
         <div class="card">
             <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 2rem;">
                 <h2>"Lodge Occupancy Overview"</h2>
-                <div style="display: flex; align-items: center; gap: 15px; background: #fff; padding: 10px 20px; border-radius: 50px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                <div style="display: flex; align-items: center; gap: 15px; background: #fff; padding: 10px 20px; border-radius: 50px;">
                     <button on:click=move |_| navigate_day(-1.0) style="background: none; color: var(--primary); font-weight: bold; font-size: 1.2rem; border: none; cursor: pointer;">"←"</button>
                     <input type="date" 
                         on:input=move |ev| set_selected_date.set(event_target_value(&ev))
@@ -134,6 +135,14 @@ pub fn DashboardHome() -> impl IntoView {
                 let (sel_cust, set_sel_cust) = create_signal("".to_string());
                 let (check_out, set_check_out) = create_signal("".to_string());
                 let (saving, set_saving) = create_signal(false);
+                let (guest_search, set_guest_search) = create_signal("".to_string());
+
+                let filtered_guests = move || {
+                    let q = guest_search.get().to_lowercase();
+                    customers.get().into_iter()
+                        .filter(|c| c.full_name.to_lowercase().contains(&q) || c.aadhaar.contains(&q))
+                        .collect::<Vec<_>>()
+                };
 
                 let handle_book = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default();
@@ -164,31 +173,38 @@ pub fn DashboardHome() -> impl IntoView {
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
                         <div class="card" style="width: 100%; max-width: 450px; padding: 2rem;">
-                            <h3>"Quick Check-in"</h3>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h3>"Quick Check-in"</h3>
+                                <button on:click=move |_| set_show_add_guest_modal.set(true) style="font-size: 0.7rem; background: #e67e22; padding: 5px 10px;">"+ New Guest"</button>
+                            </div>
                             <form on:submit=handle_book>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
-                                    <div>
-                                        <label style="font-size: 0.8rem; font-weight: bold;">"Room Number"</label>
-                                        <input type="text" value=room.number.clone() disabled style="background: #eee;" />
+                                    <div style="display: flex; gap: 10px;">
+                                        <div style="flex: 1;">
+                                            <label style="font-size: 0.8rem; font-weight: bold;">"Room"</label>
+                                            <input type="text" value=room.number.clone() disabled style="background: #eee;" />
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label>
+                                            <input type="text" value=selected_date.get() disabled style="background: #eee;" />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label style="font-size: 0.8rem; font-weight: bold;">"Check-in Date"</label>
-                                        <input type="text" value=selected_date.get() disabled style="background: #eee;" />
-                                    </div>
-                                    <div>
-                                        <label style="font-size: 0.8rem; font-weight: bold;">"Select Guest"</label>
-                                        <select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) required>
+                                        <label style="font-size: 0.8rem; font-weight: bold;">"Search & Select Guest"</label>
+                                        <input type="text" placeholder="Type name or Aadhaar..." 
+                                            on:input=move |ev| set_guest_search.set(event_target_value(&ev))
+                                            style="margin-bottom: 5px;"
+                                        />
+                                        <select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) required prop:value=sel_cust>
                                             <option value="">"Choose guest..."</option>
-                                            {move || {
-                                                customers.get().into_iter()
-                                                    .map(|c| {
-                                                        let cid = c.id.clone().unwrap_or_default();
-                                                        let cname = c.full_name.clone();
-                                                        let ver = if c.verified { "✅" } else { "⚠️" };
-                                                        view! { <option value=cid>{cname} " " {ver}</option> }
-                                                    })
-                                                    .collect_view()
-                                            }}
+                                            {move || filtered_guests().into_iter()
+                                                .map(|c| {
+                                                    let cid = c.id.clone().unwrap_or_default();
+                                                    let cname = c.full_name.clone();
+                                                    let ver = if c.verified { "✅" } else { "⚠️" };
+                                                    view! { <option value=cid>{cname} " " {ver}</option> }
+                                                }).collect_view()
+                                            }
                                         </select>
                                     </div>
                                     <div>
@@ -197,7 +213,7 @@ pub fn DashboardHome() -> impl IntoView {
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 10px; margin-top: 25px;">
-                                    <button type="submit" disabled=saving style="flex: 1; background: #27ae60;">"Confirm"</button>
+                                    <button type="submit" disabled=saving style="flex: 2; background: #27ae60;">"Confirm Check-in"</button>
                                     <button type="button" on:click=move |_| set_show_book_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button>
                                 </div>
                             </form>
@@ -205,6 +221,28 @@ pub fn DashboardHome() -> impl IntoView {
                     </div>
                 }
             })}
+
+            // --- ADD GUEST POPUP ---
+            {move || if show_add_guest_modal.get() {
+                view! {
+                    <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 4000; padding: 1rem;">
+                        <div class="card" style="width: 100%; max-width: 500px; padding: 1rem; max-height: 90vh; overflow-y: auto;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h3>"Register New Guest"</h3>
+                                <button on:click=move |_| set_show_add_guest_modal.set(false) style="background: none; color: black; font-size: 1.5rem;">"×"</button>
+                            </div>
+                            <CustomerForm 
+                                editing_id=create_memo(|_| None) 
+                                initial_data=None 
+                                on_success=Callback::new(move |_| {
+                                    set_show_add_guest_modal.set(false);
+                                    load_data();
+                                })
+                            />
+                        </div>
+                    </div>
+                }.into_view()
+            } else { view! {}.into_view() }}
 
             // --- MANAGE STAY MODAL ---
             {move || show_manage_stay_modal.get().map(|booking| {
@@ -242,7 +280,7 @@ pub fn DashboardHome() -> impl IntoView {
                 let handle_cancel = move |_| {
                     if window().confirm_with_message("Cancel this booking?").unwrap_or(false) {
                         let bid = b_id.clone();
-                        let rid = b_rid.clone();
+                        let rid = b_rid_c.clone();
                         spawn_local(async move {
                             wait_for_bridge().await;
                             let _ = delete_booking_js(bid, rid).await;
