@@ -34,11 +34,11 @@ fn PrintableBill(booking: Booking, customer: Option<Customer>, on_close: Callbac
             // The Bill
             <div style="max-width: 850px; margin: 0 auto; background: white; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 2px solid #2c3e50; position: relative; min-height: 1000px;" class="bill-container">
                 
-                // Decorative Corner
-                <div style="position: absolute; top: 0; right: 0; width: 150px; height: 150px; background: linear-gradient(135deg, transparent 50%, #2c3e50 50%); border-top-right-radius: 0;"></div>
+                // Decorative Corner (Moved to background)
+                <div style="position: absolute; top: 0; right: 0; width: 100px; height: 100px; background: linear-gradient(135deg, transparent 50%, #2c3e50 50%); z-index: 1;"></div>
 
                 // Header Logic
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 4px solid #2c3e50; padding-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 4px solid #2c3e50; padding-bottom: 20px; position: relative; z-index: 2;">
                     <div>
                         <h1 style="margin: 0; font-size: 3rem; color: #2c3e50; text-transform: uppercase; letter-spacing: 5px; font-weight: 900;">"ANAND"</h1>
                         <h3 style="margin: 0; font-size: 1.2rem; color: #7f8c8d; letter-spacing: 8px; text-transform: uppercase;">"Lodge & Stay"</h3>
@@ -51,8 +51,10 @@ fn PrintableBill(booking: Booking, customer: Option<Customer>, on_close: Callbac
                         <div style="background: #2c3e50; color: white; padding: 10px 20px; display: inline-block; border-radius: 4px; margin-bottom: 10px;">
                             <h2 style="margin: 0; font-size: 1.2rem; letter-spacing: 2px;">"INVOICE"</h2>
                         </div>
-                        <p style="margin: 0; font-size: 0.9rem;"><strong>"Date: "</strong> {today}</p>
-                        <p style="margin: 0; font-size: 0.9rem;"><strong>"Bill No: "</strong> "AL-" {booking.id.clone().unwrap_or_default().chars().take(6).collect::<String>().to_uppercase()}</p>
+                        <div style="background: rgba(255,255,255,0.8); padding: 5px; border-radius: 4px;">
+                            <p style="margin: 0; font-size: 0.9rem;"><strong>"Date: "</strong> {today}</p>
+                            <p style="margin: 0; font-size: 0.9rem;"><strong>"Bill No: "</strong> "AL-" {booking.id.clone().unwrap_or_default().chars().take(6).collect::<String>().to_uppercase()}</p>
+                        </div>
                     </div>
                 </div>
 
@@ -94,7 +96,7 @@ fn PrintableBill(booking: Booking, customer: Option<Customer>, on_close: Callbac
                     </thead>
                     <tbody>
                         <tr style="border-bottom: 1px solid #eee;">
-                            <td style="padding: 20px; font-weight: bold;">"Room Accommodation Charges" <br/><small style="font-weight: normal; color: #7f8c8d;">"Delux Category Room stay"</small></td>
+                            <td style="padding: 20px; font-weight: bold;">"Room Accommodation Charges" <br/><small style="font-weight: normal; color: #7f8c8d;">"Room stay & services"</small></td>
                             <td style="text-align: center; padding: 20px;">"₹" {booking.total_amount}</td>
                             <td style="text-align: center; padding: 20px;">"1"</td>
                             <td style="text-align: right; padding: 20px; font-weight: bold;">"₹" {booking.total_amount}</td>
@@ -110,7 +112,7 @@ fn PrintableBill(booking: Booking, customer: Option<Customer>, on_close: Callbac
                             {booking.payments.iter().map(|p| view! {
                                 <tr style="border-bottom: 1px solid #f0f0f0;">
                                     <td style="padding: 5px 0;">{p.date.clone()}</td>
-                                    <td style="padding: 5px 0; color: #7f8c8d;">"Via Cash/Online"</td>
+                                    <td style="padding: 5px 0; color: #7f8c8d;">"Payment Received"</td>
                                     <td style="padding: 5px 0; text-align: right; color: #27ae60;">"₹" {p.amount}</td>
                                 </tr>
                             }).collect_view()}
