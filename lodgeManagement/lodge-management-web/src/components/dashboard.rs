@@ -3,7 +3,7 @@ use leptos_router::*;
 use wasm_bindgen::prelude::*;
 use crate::models::{User, Room, Booking, NewBooking, NewRoom, Customer};
 use crate::utils::{clear_user, wait_for_bridge};
-use crate::api::{sign_out_user, add_booking_js, update_room_js};
+use crate::api::{sign_out_user, add_booking_js, update_room_js, update_booking_js, delete_booking_js};
 use crate::components::rooms::{fetch_rooms, Rooms};
 use crate::components::bookings::{fetch_bookings, Bookings};
 use crate::components::customers::{fetch_customers, Customers};
@@ -19,7 +19,8 @@ pub fn DashboardHome() -> impl IntoView {
     let (loading, set_loading) = create_signal(true);
 
     let (show_book_modal, set_show_book_modal) = create_signal(None::<Room>);
-    let (show_edit_modal, set_show_edit_modal) = create_signal(None::<Room>);
+    let (show_edit_room_modal, set_show_edit_room_modal) = create_signal(None::<Room>);
+    let (show_manage_stay_modal, set_show_manage_stay_modal) = create_signal(None::<Booking>);
 
     let load_data = move || {
         spawn_local(async move {
@@ -38,14 +39,14 @@ pub fn DashboardHome() -> impl IntoView {
         set_selected_date.set(new_date.to_iso_string().as_string().unwrap()[..10].to_string());
     };
 
-    let is_occupied = move |room_id: &str| {
+    let get_active_booking = move |room_id: &str| -> Option<Booking> {
         let date_str = selected_date.get();
-        bookings.get().iter().any(|b| {
+        bookings.get().iter().find(|b| {
             b.room_id == room_id && 
             b.status == "Checked-In" &&
             date_str >= b.check_in_date && 
             date_str < b.check_out_date
-        })
+        }).cloned()
     };
 
     view! {
@@ -77,10 +78,11 @@ pub fn DashboardHome() -> impl IntoView {
                             let rid_status = room_id.clone();
                             let rid_label = room_id.clone();
                             let rid_btn = room_id.clone();
+                            let rid_edit = room_id.clone();
                             
                             view! {
                                 <div style=move || {
-                                    let occupied = is_occupied(&rid_style);
+                                    let occupied = get_active_booking(&rid_style).is_some();
                                     format!("border: 1px solid #eee; border-radius: 12px; padding: 15px; text-align: center; background: #fff; border-top: 8px solid {};", 
                                         if occupied { "#e74c3c" } else { "#27ae60" }
                                     )
@@ -89,24 +91,30 @@ pub fn DashboardHome() -> impl IntoView {
                                     <span style="font-size: 0.8rem; color: #7f8c8d; background: #f8f9fa; padding: 2px 8px; border-radius: 10px;">{r.room_type.clone()}</span>
                                     
                                     <div style=move || {
-                                        let occupied = is_occupied(&rid_status);
+                                        let occupied = get_active_booking(&rid_status).is_some();
                                         format!("margin: 15px 0; font-size: 0.8rem; font-weight: bold; color: {};", 
                                             if occupied { "#e74c3c" } else { "#27ae60" }
                                         )
                                     }>
-                                        {move || if is_occupied(&rid_label) { "● OCCUPIED" } else { "● AVAILABLE" }}
+                                        {move || if get_active_booking(&rid_label).is_some() { "● OCCUPIED" } else { "● AVAILABLE" }}
                                     </div>
 
                                     <div style="display: flex; gap: 8px; margin-top: 10px;">
                                         <button 
                                             on:click=move |_| set_show_book_modal.set(Some(r_cloned.clone()))
-                                            disabled=move || is_occupied(&rid_btn)
+                                            disabled=move || get_active_booking(&rid_btn).is_some()
                                             style="flex: 1; padding: 8px; font-size: 0.75rem; background: #27ae60;"
                                         >
                                             "Book"
                                         </button>
                                         <button 
-                                            on:click=move |_| set_show_edit_modal.set(Some(r_cloned_2.clone()))
+                                            on:click=move |_| {
+                                                if let Some(booking) = get_active_booking(&rid_edit) {
+                                                    set_show_manage_stay_modal.set(Some(booking));
+                                                } else {
+                                                    set_show_edit_room_modal.set(Some(r_cloned_2.clone()));
+                                                }
+                                            }
                                             style="flex: 1; padding: 8px; font-size: 0.75rem; background: #3498db;"
                                         >
                                             "Edit"
@@ -200,27 +208,95 @@ pub fn DashboardHome() -> impl IntoView {
                 }
             })}
 
-            // --- QUICK ROOM EDIT MODAL ---
-            {move || show_edit_modal.get().map(|room| {
-                let r_id = room.id.clone().unwrap_or_default();
-                let r_num = room.number.clone();
-                let r_status = room.status.clone();
-                let (r_type, set_r_type) = create_signal(room.room_type.clone());
+            // --- MANAGE STAY MODAL ---
+            {move || show_manage_stay_modal.get().map(|booking| {
+                let b_id = booking.id.clone().unwrap_or_default();
+                let b_rid = booking.room_id.clone();
+                let (check_out, set_check_out) = create_signal(booking.check_out_date.clone());
                 let (saving, set_saving) = create_signal(false);
 
                 let handle_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default();
                     set_saving.set(true);
+                    let bid = b_id.clone();
+                    let updated_booking = NewBooking {
+                        room_id: booking.room_id.clone(),
+                        customer_id: booking.customer_id.clone(),
+                        customer_name: booking.customer_name.clone(),
+                        room_number: booking.room_number.clone(),
+                        check_in_date: booking.check_in_date.clone(),
+                        check_out_date: check_out.get(),
+                        status: booking.status.clone(),
+                    };
+                    spawn_local(async move {
+                        wait_for_bridge().await;
+                        let js_val = serde_wasm_bindgen::to_value(&updated_booking).unwrap();
+                        let _ = update_booking_js(bid, js_val).await;
+                        set_show_manage_stay_modal.set(None);
+                        load_data();
+                    });
+                };
+
+                let handle_cancel = move |_| {
+                    if window().confirm_with_message("Cancel this booking? This will free the room.").unwrap_or(false) {
+                        let bid = b_id.clone();
+                        let rid = b_rid.clone();
+                        spawn_local(async move {
+                            wait_for_bridge().await;
+                            let _ = delete_booking_js(bid, rid).await;
+                            set_show_manage_stay_modal.set(None);
+                            load_data();
+                        });
+                    }
+                };
+
+                view! {
+                    <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
+                        <div class="card" style="width: 100%; max-width: 450px; padding: 2rem;">
+                            <h3>"Manage Guest Stay"</h3>
+                            <div style="margin-bottom: 20px; text-align: left; background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+                                <p><strong>"Guest: "</strong> {booking.customer_name.clone()}</p>
+                                <p><strong>"Room: "</strong> {booking.room_number.clone()}</p>
+                                <p><strong>"Check-in: "</strong> {booking.check_in_date.clone()}</p>
+                            </div>
+                            <form on:submit=handle_update>
+                                <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
+                                    <div>
+                                        <label style="font-size: 0.8rem; font-weight: bold;">"Update Check-out Date"</label>
+                                        <input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) prop:value=check_out required />
+                                    </div>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 25px;">
+                                    <button type="submit" disabled=saving style="background: #3498db;">"Update Dates"</button>
+                                    <button type="button" on:click=handle_cancel style="background: #e67e22;">"Cancel / Checkout Booking"</button>
+                                    <button type="button" on:click=move |_| set_show_manage_stay_modal.set(None) style="background: #6c757d;">"Close"</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                }
+            })}
+
+            // --- QUICK ROOM SETTINGS MODAL (For non-occupied) ---
+            {move || show_edit_room_modal.get().map(|room| {
+                let r_id = room.id.clone().unwrap_or_default();
+                let (r_type, set_r_type) = create_signal(room.room_type.clone());
+                let (saving, set_saving) = create_signal(false);
+
+                let handle_room_update = move |ev: leptos::ev::SubmitEvent| {
+                    ev.prevent_default();
+                    set_saving.set(true);
                     let rid = r_id.clone();
-                    let rnum = r_num.clone();
-                    let rstat = r_status.clone();
-                    let rtype = r_type.get();
-                    let updated_room = NewRoom { number: rnum, room_type: rtype, status: rstat };
+                    let updated_room = NewRoom {
+                        number: room.number.clone(),
+                        room_type: r_type.get(),
+                        status: room.status.clone(),
+                    };
                     spawn_local(async move {
                         wait_for_bridge().await;
                         let js_val = serde_wasm_bindgen::to_value(&updated_room).unwrap();
                         let _ = update_room_js(rid, js_val).await;
-                        set_show_edit_modal.set(None);
+                        set_show_edit_room_modal.set(None);
                         load_data();
                     });
                 };
@@ -228,8 +304,8 @@ pub fn DashboardHome() -> impl IntoView {
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
                         <div class="card" style="width: 100%; max-width: 400px; padding: 2rem;">
-                            <h3>"Edit Room"</h3>
-                            <form on:submit=handle_update>
+                            <h3>"Edit Room Settings"</h3>
+                            <form on:submit=handle_room_update>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
                                     <div>
                                         <label style="font-size: 0.8rem; font-weight: bold;">"Room Number"</label>
@@ -245,10 +321,8 @@ pub fn DashboardHome() -> impl IntoView {
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 10px; margin-top: 25px;">
-                                    <button type="submit" disabled=saving style="flex: 1; background: #3498db;">
-                                        {move || if saving.get() { "Saving..." } else { "Save" }}
-                                    </button>
-                                    <button type="button" on:click=move |_| set_show_edit_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button>
+                                    <button type="submit" disabled=saving style="flex: 1; background: #3498db;">"Save"</button>
+                                    <button type="button" on:click=move |_| set_show_edit_room_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button>
                                 </div>
                             </form>
                         </div>
