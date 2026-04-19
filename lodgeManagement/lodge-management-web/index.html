@@ -213,17 +213,25 @@
             };
 
             window.addBooking = async (booking) => {
-                // 1. Save Booking
-                const docRef = await addDoc(collection(db, "bookings"), { 
-                    ...booking, 
-                    createdAt: serverTimestamp() 
-                });
-                
-                // 2. Mark Room as Occupied
-                const roomRef = doc(db, "rooms", booking.roomId);
-                await updateDoc(roomRef, { status: "Occupied" });
-                
-                return docRef.id;
+                console.log("Firestore SAVE Booking: ", booking);
+                try {
+                    // 1. Save Booking
+                    const docRef = await addDoc(collection(db, "bookings"), { 
+                        ...booking, 
+                        createdAt: serverTimestamp() 
+                    });
+                    console.log("Firestore SAVE Booking Success, ID:", docRef.id);
+                    
+                    // 2. Mark Room as Occupied
+                    const roomRef = doc(db, "rooms", booking.roomId);
+                    await updateDoc(roomRef, { status: "Occupied" });
+                    console.log("Firestore Room Status Updated to Occupied");
+                    
+                    return docRef.id;
+                } catch (e) {
+                    console.error("Firestore SAVE Booking Error:", e);
+                    throw e;
+                }
             };
 
             window.getCustomers = async (searchTerm = "") => {
