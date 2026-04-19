@@ -271,14 +271,14 @@ pub fn DashboardHome() -> impl IntoView {
                     let updated_room = NewRoom { number: rnum, room_type: r_type.get(), status: "Available".to_string(), price: r_price.get().parse::<f64>().unwrap_or(0.0) };
                     spawn_local(async move { wait_for_bridge().await; let _ = update_room_js(rid, serde_wasm_bindgen::to_value(&updated_room).unwrap()).await; set_show_edit_room_modal.set(None); load_data(); });
                 };
-                let rnum_view = r_num.clone();
+                let rnum_val = r_num.clone();
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
                         <div class="card" style="width: 100%; max-width: 400px; padding: 2rem;">
                             <h3>"Edit Room Settings"</h3>
                             <form on:submit=handle_room_update>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
-                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Room Number"</label><input type="text" value=rnum_view disabled style="background: #eee;" /></div>
+                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Room Number"</label><input type="text" value=rnum_val disabled style="background: #eee;" /></div>
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Category"</label><select on:change=move |ev| set_r_type.set(event_target_value(&ev)) prop:value=r_type><option value="Delux">"Delux"</option><option value="AC">"AC"</option><option value="non-AC">"non-AC"</option></select></div>
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Base Price"</label><input type="number" on:input=move |ev| set_r_price.set(event_target_value(&ev)) prop:value=r_price /></div>
                                 </div>
@@ -293,7 +293,7 @@ pub fn DashboardHome() -> impl IntoView {
 }
 
 #[component]
-pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: impl IntoView) -> impl IntoView {
+pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: Children) -> impl IntoView {
     let (menu_open, set_menu_open) = create_signal(false);
     let handle_logout = move |_| { clear_user(); spawn_local(async move { wait_for_bridge().await; let _ = sign_out_user().await; on_logout.call(()); }); };
     view! { 
@@ -320,7 +320,7 @@ pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: impl IntoV
                     <div style="width: 30px;"></div>
                 </header>
                 <div style="padding: 1rem;">
-                    {children}
+                    {children()}
                 </div>
             </main>
         </div> 
