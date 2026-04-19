@@ -8,7 +8,18 @@ use crate::components::customers::fetch_customers;
 pub async fn fetch_bookings() -> Vec<Booking> {
     wait_for_bridge().await;
     match get_bookings_js().await {
-        Ok(js_val) => serde_wasm_bindgen::from_value(js_val).unwrap_or_default(),
+        Ok(js_val) => {
+            match serde_wasm_bindgen::from_value::<Vec<Booking>>(js_val) {
+                Ok(bookings) => {
+                    logging::log!("RUST: Successfully deserialized {} bookings", bookings.length());
+                    bookings
+                },
+                Err(e) => {
+                    logging::error!("RUST ERROR: Failed to deserialize bookings: {:?}", e);
+                    vec![]
+                }
+            }
+        },
         Err(_) => vec![],
     }
 }
@@ -42,19 +53,20 @@ pub fn Bookings() -> impl IntoView {
         let c_id = selected_cust.get();
         let room_opt = rooms.get_untracked().into_iter().find(|r| r.id.as_deref() == Some(&r_id));
         let cust_opt = customers.get_untracked().into_iter().find(|c| c.id.as_deref() == Some(&c_id));
+
         if let (Some(r), Some(c)) = (room_opt, cust_opt) {
-            let new_booking = NewBooking { 
-                room_id: r_id, customer_id: c_id, customer_name: c.full_name, 
-                room_number: r.number, check_in_date: check_in.get(), 
-                check_out_date: check_out.get(), status: "Checked-In".to_string(), 
+            let new_booking = NewBooking {
+                room_id: r_id, customer_id: c_id, customer_name: c.full_name,
+                room_number: r.number, check_in_date: check_in.get(),
+                check_out_date: check_out.get(), status: "Checked-In".to_string(),
             };
-            spawn_local(async move { 
-                wait_for_bridge().await; 
-                let js_val = serde_wasm_bindgen::to_value(&new_booking).unwrap(); 
+            spawn_local(async move {
+                wait_for_bridge().await;
+                let js_val = serde_wasm_bindgen::to_value(&new_booking).unwrap();
                 match add_booking_js(js_val).await { 
                     Ok(_) => { load_data(); } 
                     Err(e) => logging::error!("Booking Error: {:?}", e), 
-                } 
+                }
             });
         }
     };
@@ -101,17 +113,20 @@ pub fn Bookings() -> impl IntoView {
                 </div>
                 <button type="submit" style="width: 100%; margin-top: 20px; background-color: #27ae60;">"Confirm Check-in"</button>
             </form>
+
             <h3>"Recent Stays"</h3>
             {move || if loading.get() { view! { <p>"Loading..."</p> }.into_view() } else { view! {
                 <table>
                     <thead><tr style="background-color: #f2f2f2; text-align: left;"><th>"Guest"</th><th>"Room"</th><th>"Check-in"</th><th>"Status"</th></tr></thead>
-                    <tbody><For each=move || bookings.get() key=|b| b.id.clone().unwrap_or_default() children=move |b| {
-                        let b_name = b.customer_name.clone();
-                        let b_room = b.room_number.clone();
-                        let b_date = b.check_in_date.clone();
-                        let b_status = b.status.clone();
-                        view! { <tr><td>{b_name}</td><td>{b_room}</td><td>{b_date}</td><td><span style="color: #27ae60; font-weight: bold;">{b_status}</span></td></tr> }
-                    } /></tbody>
+                    <tbody>
+                        <For each=move || bookings.get() key=|b| b.id.clone().unwrap_or_default() children=move |b| {
+                            let b_name = b.customer_name.clone();
+                            let b_room = b.room_number.clone();
+                            let b_date = b.check_in_date.clone();
+                            let b_status = b.status.clone();
+                            view! { <tr><td>{b_name}</td><td>{b_room}</td><td>{b_date}</td><td><span style="color: #27ae60; font-weight: bold;">{b_status}</span></td></tr> }
+                        } />
+                    </tbody>
                 </table>
             }.into_view() }}
         </div>
