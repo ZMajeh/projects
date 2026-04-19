@@ -12,7 +12,6 @@ pub fn CustomerForm(
 ) -> impl IntoView {
     let (name, set_name) = create_signal(initial_data.as_ref().map(|c| c.full_name.clone()).unwrap_or_default());
     let (phone, set_phone) = create_signal(initial_data.as_ref().map(|c| c.phone.clone()).unwrap_or_default());
-    let (email, _set_email) = create_signal(initial_data.as_ref().map(|c| c.email.clone()).unwrap_or_default());
     let (aadhaar, set_aadhaar) = create_signal(initial_data.as_ref().map(|c| c.aadhaar.clone()).unwrap_or_default());
     let (age, set_age) = create_signal(initial_data.as_ref().and_then(|c| c.age.clone()).unwrap_or_default());
     let (gender, set_gender) = create_signal(initial_data.as_ref().and_then(|c| c.gender.clone()).unwrap_or("Male".to_string()));
@@ -162,11 +161,17 @@ pub fn Customers() -> impl IntoView {
                 {move || if editing_id.get().is_some() { view! { <button on:click=move |_| { set_editing_id.set(None); set_editing_data.set(None); } style="background:#6c757d;">"Cancel Edit"</button> }.into_view() } else { view! {}.into_view() }}
             </div>
             
-            <CustomerForm 
-                editing_id=create_memo(move |_| editing_id.get()) 
-                initial_data=editing_data.get()
-                on_success=Callback::new(move |_| { set_editing_id.set(None); set_editing_data.set(None); load_customers(search_query.get_untracked()); }) 
-            />
+            {move || {
+                let e_id = editing_id.get();
+                let e_data = editing_data.get();
+                view! {
+                    <CustomerForm 
+                        editing_id=create_memo(move |_| e_id.clone()) 
+                        initial_data=e_data
+                        on_success=Callback::new(move |_| { set_editing_id.set(None); set_editing_data.set(None); load_customers(search_query.get_untracked()); }) 
+                    />
+                }
+            }}
 
             <div style="margin: 2rem 0;"><input type="text" placeholder="Search..." on:input=move |ev| set_search_query.set(event_target_value(&ev)) /></div>
             <h3>"Guest Directory"</h3>
