@@ -187,11 +187,18 @@
             };
 
             window.getCustomers = async () => {
-                const q = query(collection(db, "customers"), orderBy("full_name"));
-                const querySnapshot = await getDocs(q);
-                const customers = [];
-                querySnapshot.forEach((doc) => { customers.push({ id: doc.id, ...doc.data() }); });
-                return customers;
+                console.log("Database: Fetching customers...");
+                try {
+                    const q = query(collection(db, "customers"), orderBy("full_name"));
+                    const querySnapshot = await getDocs(q);
+                    const customers = [];
+                    querySnapshot.forEach((doc) => { customers.push({ id: doc.id, ...doc.data() }); });
+                    console.log(`Database: Successfully fetched ${customers.length} customers.`);
+                    return customers;
+                } catch (e) {
+                    console.error("Database Error (Fetching Customers):", e);
+                    throw e;
+                }
             };
 
             window.addCustomer = async (customer) => {
