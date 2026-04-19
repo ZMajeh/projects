@@ -24,8 +24,8 @@ pub struct Customer {
     pub phone: String,
     pub email: String,
     pub aadhaar: String,
-    pub age: String,
-    pub gender: String,
+    pub age: Option<String>,
+    pub gender: Option<String>,
     pub photo_data: Option<String>,
     pub id_card_data: Option<String>,
 }
@@ -58,7 +58,6 @@ extern "C" {
     async fn manual_verify_aadhaar(num: String) -> Result<JsValue, JsValue>;
 }
 
-// Check if JS Bridge is initialized
 fn is_bridge_ready() -> bool {
     if let Ok(ready) = js_sys::Reflect::get(&window(), &JsValue::from_str("bridgeReady")) {
         ready.as_bool().unwrap_or(false)
@@ -75,23 +74,12 @@ async fn wait_for_bridge() {
 
 fn validate_aadhaar_checksum(aadhaar: &str) -> bool {
     let clean_aadhaar = aadhaar.trim().replace(" ", "").replace("-", "");
-    logging::log!("Validating Aadhaar: '{}' (Length: {})", clean_aadhaar, clean_aadhaar.len());
-
-    if clean_aadhaar.len() != 12 || !clean_aadhaar.chars().all(|c| c.is_ascii_digit()) { 
-        logging::error!("Aadhaar validation failed: invalid format");
-        return false; 
-    }
-    
+    if clean_aadhaar.len() != 12 || !clean_aadhaar.chars().all(|c| c.is_ascii_digit()) { return false; }
     let multiplication_table = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 0, 6, 7, 8, 9, 5],[2, 3, 4, 0, 1, 7, 8, 9, 5, 6],[3, 4, 0, 1, 2, 8, 9, 5, 6, 7],[4, 0, 1, 2, 3, 9, 5, 6, 7, 8],[5, 9, 8, 7, 6, 4, 3, 2, 1, 0],[6, 5, 9, 8, 7, 0, 4, 3, 2, 1],[7, 6, 5, 9, 8, 1, 0, 4, 3, 2],[8, 7, 6, 5, 9, 2, 1, 0, 4, 3],[9, 8, 7, 6, 5, 3, 2, 1, 0, 4]];
     let permutation_table = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 5, 7, 6, 2, 8, 3, 0, 9, 4],[5, 8, 0, 3, 7, 9, 6, 1, 4, 2],[8, 9, 1, 6, 0, 4, 3, 5, 2, 7],[9, 4, 5, 3, 1, 2, 6, 8, 7, 0],[4, 2, 8, 6, 5, 7, 3, 9, 0, 1],[2, 7, 9, 3, 8, 0, 6, 4, 1, 5],[7, 0, 4, 6, 9, 1, 3, 2, 5, 8]];
-    
     let mut c = 0;
     let digits: Vec<usize> = clean_aadhaar.chars().map(|d| d.to_digit(10).unwrap() as usize).collect();
-    for (i, &digit) in digits.iter().rev().enumerate() { 
-        c = multiplication_table[c][permutation_table[i % 8][digit]]; 
-    }
-    
-    logging::log!("Checksum result: c = {}", c);
+    for (i, &digit) in digits.iter().rev().enumerate() { c = multiplication_table[c][permutation_table[i % 8][digit]]; }
     c == 0
 }
 
@@ -132,7 +120,15 @@ async fn fetch_rooms() -> Vec<Room> {
 async fn fetch_customers() -> Vec<Customer> {
     wait_for_bridge().await;
     match get_customers_js().await {
-        Ok(js_val) => serde_wasm_bindgen::from_value(js_val).unwrap_or_default(),
+        Ok(js_val) => {
+            match serde_wasm_bindgen::from_value::<Vec<Customer>>(js_val) {
+                Ok(customers) => customers,
+                Err(e) => {
+                    logging::error!("RUST ERROR: Failed to deserialize customers: {:?}", e);
+                    vec![]
+                }
+            }
+        },
         Err(_) => vec![],
     }
 }
@@ -258,10 +254,10 @@ fn Rooms() -> impl IntoView {
                         <tbody>
                             <For each=move || rooms.get() key=|room| room.id.clone().unwrap_or_default() children=|room| view! {
                                 <tr>
-                                    <td style="padding: 12px; border: 1px solid #ddd;">{room.number}</td>
-                                    <td style="padding: 12px; border: 1px solid #ddd;">{room.room_type}</td>
+                                    <td style="padding: 12px; border: 1px solid #ddd;">{room.number.clone()}</td>
+                                    <td style="padding: 12px; border: 1px solid #ddd;">{room.room_type.clone()}</td>
                                     <td style="padding: 12px; border: 1px solid #ddd;">
-                                        <span style=format!("padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; background-color: {}; color: white;", if room.status == "Available" { "#27ae60" } else { "#e67e22" })>{room.status}</span>
+                                        <span style=format!("padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; background-color: {}; color: white;", if room.status == "Available" { "#27ae60" } else { "#e67e22" })>{room.status.clone()}</span>
                                     </td>
                                 </tr>
                             } />
@@ -353,11 +349,7 @@ fn Customers() -> impl IntoView {
 
     let on_verify_aadhaar = move |_| {
         let num = aadhaar.get();
-        // Log result instead of blocking
-        if !validate_aadhaar_checksum(&num) { 
-            logging::warn!("Local checksum failed for {}", num);
-        }
-        
+        if !validate_aadhaar_checksum(&num) { logging::warn!("Checksum failed locally"); }
         spawn_local(async move {
             wait_for_bridge().await;
             let _ = manual_verify_aadhaar(num.clone()).await;
@@ -375,24 +367,17 @@ fn Customers() -> impl IntoView {
             phone: phone.get(), 
             email: email.get(), 
             aadhaar: aadhaar.get(), 
-            age: age.get(), 
-            gender: gender.get(), 
+            age: Some(age.get()), 
+            gender: Some(gender.get()), 
             photo_data: photo.get(), 
             id_card_data: id_card.get() 
         };
 
         spawn_local(async move {
             wait_for_bridge().await;
-            
-            // Serialize to JSON first and then back to JsValue to strip the "id: None"
             let json = serde_json::to_string(&new_cust_full).unwrap();
             let mut map: serde_json::Value = serde_json::from_str(&json).unwrap();
-            
-            // Explicitly remove the ID field so Firebase doesn't see it as undefined
-            if let Some(obj) = map.as_object_mut() {
-                obj.remove("id");
-            }
-            
+            if let Some(obj) = map.as_object_mut() { obj.remove("id"); }
             let js_val = serde_wasm_bindgen::to_value(&map).unwrap();
             
             match add_customer_js(js_val).await {
@@ -439,7 +424,6 @@ fn Customers() -> impl IntoView {
                                 prop:value=aadhaar style=move || format!("border-color: {};", if is_verified.get() { "green" } else { "#ddd" }) required />
                             <button type="button" on:click=on_verify_aadhaar disabled=ocr_loading>"Verify"</button>
                         </div>
-                        <span style="font-size: 0.7rem; color: #666;">{move || if is_verified.get() { "✅ Validated" } else { "Manual check required" }}</span>
                     </div>
                 </div>
                 <div class="grid-form" style="margin-top: 20px;">
@@ -492,13 +476,33 @@ fn Customers() -> impl IntoView {
                 });
             } style="background: green;">"CAPTURE"</button><button on:click=move |_: leptos::ev::MouseEvent| {
                 spawn_local(async move {
-                    wait_for_bridge().await;
                     let _ = stop_camera().await;
                     set_camera_active.set(false);
                 });
             } style="background: red;">"CLOSE"</button></div></div> }.into_view() } else { view! {}.into_view() }}
             <h3>"Directory"</h3>
-            {move || if loading.get() { view! { <p>"Loading..."</p> }.into_view() } else { view! { <table><thead><tr style="background-color: #f2f2f2; text-align: left;"><th style="padding: 12px; border: 1px solid #ddd;">"Name"</th><th style="padding: 12px; border: 1px solid #ddd;">"Aadhaar"</th><th style="padding: 12px; border: 1px solid #ddd;">"Age/Gender"</th></tr></thead><tbody><For each=move || customers.get() key=|c| c.id.clone().unwrap_or_default() children=|c| view! { <tr><td style="padding: 12px; border: 1px solid #ddd;">{c.full_name}</td><td style="padding: 12px; border: 1px solid #ddd;">{c.aadhaar}</td><td style="padding: 12px; border: 1px solid #ddd;">{c.age} " / " {c.gender}</td></tr> } /></tbody></table> }.into_view() }}
+            {move || if loading.get() { view! { <p>"Loading..."</p> }.into_view() } else { view! { 
+                <table>
+                    <thead>
+                        <tr style="background-color: #f2f2f2; text-align: left;">
+                            <th style="padding: 12px; border: 1px solid #ddd;">"Name"</th>
+                            <th style="padding: 12px; border: 1px solid #ddd;">"Aadhaar"</th>
+                            <th style="padding: 12px; border: 1px solid #ddd;">"Age / Gender"</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <For each=move || customers.get() key=|c| c.id.clone().unwrap_or_default() children=|c| view! { 
+                            <tr>
+                                <td style="padding: 12px; border: 1px solid #ddd;">{c.full_name.clone()}</td>
+                                <td style="padding: 12px; border: 1px solid #ddd;">{c.aadhaar.clone()}</td>
+                                <td style="padding: 12px; border: 1px solid #ddd;">
+                                    {c.age.clone().unwrap_or_else(|| "??".to_string())} " / " {c.gender.clone().unwrap_or_else(|| "??".to_string())}
+                                </td>
+                            </tr> 
+                        } />
+                    </tbody>
+                </table> 
+            }.into_view() }}
         </div>
     }
 }
