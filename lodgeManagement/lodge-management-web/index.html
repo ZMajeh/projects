@@ -349,7 +349,7 @@
             // OCR Bridge using Tesseract.js
             import "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
             window.extractAadhaar = async (base64Image) => {
-                console.log("OCR: Starting enhanced extraction...");
+                console.log("OCR: Starting refined extraction...");
                 try {
                     const worker = await Tesseract.createWorker('eng');
                     const { data: { text } } = await worker.recognize(base64Image);
@@ -357,35 +357,49 @@
 
                     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
                     
-                    // 1. Extract 12-digit ID (handles spaces like 7012 5536 7225)
-                    const idMatch = text.replace(/[^0-9]/g, '').match(/\d{12}/);
-                    const aadhaar = idMatch ? idMatch[0] : null;
+                    // 1. Extract 12-digit ID
+                    // Pattern A: 4 digits, space, 4 digits, space, 4 digits (e.g. 7012 5536 7225)
+                    let idMatch = text.match(/\d{4}\s\d{4}\s\d{4}/);
+                    let aadhaar = idMatch ? idMatch[0].replace(/\s/g, '') : null;
+
+                    // Pattern B: If Pattern A fails, look for 12 digits but AVOID the ones that match DOB
+                    if (!aadhaar) {
+                        const dobDigits = text.match(/\d{2}\/\d{2}\/\d{4}/);
+                        const dobClean = dobDigits ? dobDigits[0].replace(/\//g, '') : "";
+                        
+                        const allDigitGroups = text.match(/\d{12}/g) || [];
+                        for (let group of allDigitGroups) {
+                            if (group !== dobClean) {
+                                aadhaar = group;
+                                break;
+                            }
+                        }
+                    }
 
                     // 2. Extract DOB
                     const dobMatch = text.match(/\d{2}\/\d{2}\/\d{4}/);
                     const dob = dobMatch ? dobMatch[0] : null;
 
-                    // 3. Extract Gender
-                    let gender = null;
-                    if (/FEMALE/i.test(text)) {
+                    // 3. Extract Gender (More robust check)
+                    let gender = "Male"; // Default
+                    if (text.toUpperCase().includes("FEMALE")) {
                         gender = "Female";
-                    } else if (/MALE/i.test(text)) {
+                    } else if (text.toUpperCase().includes("MALE")) {
                         gender = "Male";
                     }
 
                     // 4. Extract Name
                     let name = null;
                     for (let i = 0; i < lines.length; i++) {
-                        if (lines[i].includes("DOB") || lines[i].includes("Year of Birth")) {
+                        if (lines[i].includes("DOB") || lines[i].includes("Year of Birth") || lines[i].includes("Birth")) {
                             if (i > 0) {
-                                // Clean up prefix garbage like "g " or "® "
                                 name = lines[i-1].replace(/^[^a-zA-Z]+/, '').trim();
                             }
                             break;
                         }
                     }
 
-                    return { aadhaar, name, dob, raw_text: text };
+                    return { aadhaar, name, dob, gender, raw_text: text };
                 } catch (err) {
                     console.error("OCR Error:", err);
                     throw err;
