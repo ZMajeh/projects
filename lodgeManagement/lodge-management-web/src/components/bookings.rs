@@ -26,6 +26,8 @@ pub fn Bookings() -> impl IntoView {
     let (loading, set_loading) = create_signal(true);
 
     let (editing_id, set_editing_id) = create_signal(None::<String>);
+    let (confirm_delete_id, set_confirm_delete_id) = create_signal(None::<String>);
+
     let (selected_room, set_selected_room) = create_signal("".to_string());
     let (selected_cust, set_selected_cust) = create_signal("".to_string());
     let (check_in, set_check_in) = create_signal("".to_string());
@@ -80,26 +82,17 @@ pub fn Bookings() -> impl IntoView {
         window().scroll_to_with_x_and_y(0.0, 0.0);
     };
 
-    let on_delete = move |b: Booking| {
+    let on_delete_final = move |b: Booking| {
         let id = b.id.clone().unwrap_or_default();
         let room_id = b.room_id.clone();
-        logging::log!("RUST: Attempting to delete booking {} for room {}", id, room_id);
-        
-        if window().confirm_with_message(&format!("Delete stay for Room {} and mark as Available?", b.room_number)).unwrap_or(false) {
-            spawn_local(async move {
-                wait_for_bridge().await;
-                logging::log!("RUST: Calling delete_booking_js for ID: {}", id);
-                match delete_booking_js(id, room_id).await {
-                    Ok(_) => { 
-                        logging::log!("RUST: Delete successful, reloading...");
-                        load_data(); 
-                    }
-                    Err(e) => logging::error!("RUST ERROR: Delete failed: {:?}", e),
-                }
-            });
-        } else {
-            logging::log!("RUST: Delete cancelled by user.");
-        }
+        spawn_local(async move {
+            wait_for_bridge().await;
+            logging::log!("RUST: Calling delete_booking_js for ID: {}", id);
+            match delete_booking_js(id, room_id).await {
+                Ok(_) => { load_data(); set_confirm_delete_id.set(None); }
+                Err(e) => logging::error!("RUST ERROR: Delete failed: {:?}", e),
+            }
+        });
     };
 
     view! {
@@ -159,8 +152,11 @@ pub fn Bookings() -> impl IntoView {
                     <thead><tr style="background-color: #f2f2f2; text-align: left;"><th>"Guest"</th><th>"Room"</th><th>"Check-in"</th><th>"Status"</th><th>"Actions"</th></tr></thead>
                     <tbody>
                         <For each=move || bookings.get() key=|b| b.id.clone().unwrap_or_default() children=move |b| {
+                            let b_id = b.id.clone().unwrap_or_default();
                             let b_edit = b.clone();
                             let b_del = b.clone();
+                            let b_id_c = b_id.clone();
+                            
                             view! { 
                                 <tr>
                                     <td>{b.customer_name.clone()}</td>
@@ -168,8 +164,25 @@ pub fn Bookings() -> impl IntoView {
                                     <td>{b.check_in_date.clone()}</td>
                                     <td><span style="color: #27ae60; font-weight: bold;">{b.status.clone()}</span></td>
                                     <td style="white-space: nowrap;">
-                                        <button on:click=move |_| on_edit(b_edit.clone()) style="padding: 5px 10px; margin-right: 5px; font-size: 0.8rem; background: #3498db;">"Edit"</button>
-                                        <button on:click=move |_| on_delete(b_del.clone()) style="padding: 5px 10px; font-size: 0.8rem; background: #e74c3c;">"Del"</button>
+                                        {move || if confirm_delete_id.get() == Some(b_id_c.clone()) {
+                                            let b_final = b_del.clone();
+                                            view! { 
+                                                <div style="display: flex; gap: 5px; align-items: center;">
+                                                    <span style="font-size: 0.7rem; color: red;">"Sure?"</span>
+                                                    <button on:click=move |_| on_delete_final(b_final.clone()) style="padding: 2px 8px; font-size: 0.7rem; background: #e74c3c;">"YES"</button>
+                                                    <button on:click=move |_| set_confirm_delete_id.set(None) style="padding: 2px 8px; font-size: 0.7rem; background: #6c757d;">"NO"</button>
+                                                </div>
+                                            }.into_view()
+                                        } else {
+                                            let b_edit_c = b_edit.clone();
+                                            let b_id_del = b_id_c.clone();
+                                            view! {
+                                                <div style="display: flex; gap: 5px;">
+                                                    <button on:click=move |_| on_edit(b_edit_c.clone()) style="padding: 5px 10px; font-size: 0.8rem; background: #3498db;">"Edit"</button>
+                                                    <button on:click=move |_| set_confirm_delete_id.set(Some(b_id_del.clone())) style="padding: 5px 10px; font-size: 0.8rem; background: #e74c3c;">"Del"</button>
+                                                </div>
+                                            }.into_view()
+                                        }}
                                     </td>
                                 </tr> 
                             }
