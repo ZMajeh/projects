@@ -25,148 +25,149 @@ fn PrintableBill(booking: Booking, customer: Option<Customer>, on_close: Callbac
     
     view! {
         <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #f0f2f5; z-index: 5000; overflow-y: auto; padding: 2rem;" class="bill-page">
-            // Header Controls
             <div style="max-width: 850px; margin: 0 auto 1rem auto; display: flex; justify-content: space-between; align-items: center;" class="no-print">
                 <button on:click=move |_| on_close.call(()) style="background: #34495e; padding: 10px 20px;">"← Back to Dashboard"</button>
                 <button on:click=move |_| { let _ = window().print(); } style="background: #27ae60; padding: 10px 30px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">"PRINT INVOICE"</button>
             </div>
 
-            // The Bill
-            <div style="max-width: 850px; margin: 0 auto; background: white; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 2px solid #2c3e50; position: relative; min-height: 1000px;" class="bill-container">
+            <div style="max-width: 850px; margin: 0 auto; background: white; padding: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #ddd; min-height: 1000px; color: #000;" class="bill-container">
                 
-                // Decorative Corner (Moved to background)
-                <div style="position: absolute; top: 0; right: 0; width: 100px; height: 100px; background: linear-gradient(135deg, transparent 50%, #2c3e50 50%); z-index: 1;"></div>
-
-                // Header Logic
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 4px solid #2c3e50; padding-bottom: 20px; position: relative; z-index: 2;">
-                    <div>
-                        <h1 style="margin: 0; font-size: 3rem; color: #2c3e50; text-transform: uppercase; letter-spacing: 5px; font-weight: 900;">"ANAND"</h1>
-                        <h3 style="margin: 0; font-size: 1.2rem; color: #7f8c8d; letter-spacing: 8px; text-transform: uppercase;">"Lodge & Stay"</h3>
-                        <div style="margin-top: 15px; font-size: 0.9rem; color: #34495e; line-height: 1.4;">
+                // Header: Robust layout to prevent clipping
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 50px; border-bottom: 4px solid #2c3e50; padding-bottom: 20px;">
+                    <div style="flex: 1;">
+                        <h1 style="margin: 0; font-size: 2.8rem; color: #2c3e50; text-transform: uppercase; letter-spacing: 4px; font-weight: 900; line-height: 1;">"ANAND"</h1>
+                        <h3 style="margin: 5px 0 0 0; font-size: 1.1rem; color: #7f8c8d; letter-spacing: 6px; text-transform: uppercase;">"Lodge & Stay"</h3>
+                        <div style="margin-top: 20px; font-size: 0.85rem; color: #34495e; line-height: 1.5;">
                             <p style="margin: 0;">"Main Road, Near Railway Station"</p>
-                            <p style="margin: 0;">"Contact: +91 98XXX XXXXX • GSTIN: 27AAAAA0000A1Z5"</p>
+                            <p style="margin: 0;">"Phone: +91 98XXX XXXXX"</p>
+                            <p style="margin: 0;">"GSTIN: 27AAAAA0000A1Z5"</p>
                         </div>
                     </div>
-                    <div style="text-align: right; margin-top: 10px;">
-                        <div style="background: #2c3e50; color: white; padding: 10px 20px; display: inline-block; border-radius: 4px; margin-bottom: 10px;">
-                            <h2 style="margin: 0; font-size: 1.2rem; letter-spacing: 2px;">"INVOICE"</h2>
+                    <div style="text-align: right; min-width: 200px;">
+                        <div style="background: #2c3e50; color: white; padding: 8px 15px; display: inline-block; border-radius: 4px; margin-bottom: 15px;">
+                            <h2 style="margin: 0; font-size: 1.1rem; letter-spacing: 2px; text-transform: uppercase;">"Tax Invoice"</h2>
                         </div>
-                        <div style="background: rgba(255,255,255,0.8); padding: 5px; border-radius: 4px;">
-                            <p style="margin: 0; font-size: 0.9rem;"><strong>"Date: "</strong> {today}</p>
-                            <p style="margin: 0; font-size: 0.9rem;"><strong>"Bill No: "</strong> "AL-" {booking.id.clone().unwrap_or_default().chars().take(6).collect::<String>().to_uppercase()}</p>
-                        </div>
+                        <p style="margin: 2px 0; font-size: 0.9rem;"><strong>"Date: "</strong> {today}</p>
+                        <p style="margin: 2px 0; font-size: 0.9rem;"><strong>"Bill No: "</strong> "AL-" {booking.id.clone().unwrap_or_default().chars().take(6).collect::<String>().to_uppercase()}</p>
                     </div>
                 </div>
 
-                // Details Grid
-                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 30px; margin-bottom: 40px;">
-                    <div style="background: #f8f9fa; padding: 20px; border-left: 5px solid #2c3e50; border-radius: 4px;">
-                        <h4 style="margin: 0 0 15px 0; color: #2c3e50; border-bottom: 1px solid #ddd; padding-bottom: 5px; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">"Billed To (Guest)"</h4>
-                        <p style="margin: 5px 0; font-size: 1.1rem;"><strong>{booking.customer_name.clone()}</strong></p>
+                // Details Grid: Better alignment
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 50px;">
+                    <div style="background: #f8f9fa; padding: 25px; border-left: 5px solid #2c3e50; border-radius: 4px;">
+                        <h4 style="margin: 0 0 15px 0; color: #7f8c8d; border-bottom: 1px solid #ddd; padding-bottom: 5px; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">"Billed To (Guest)"</h4>
+                        <p style="margin: 5px 0; font-size: 1.2rem; color: #2c3e50;"><strong>{booking.customer_name.clone()}</strong></p>
                         {if !booking.extra_guests.is_empty() {
                             view! {
-                                <p style="margin: 5px 0; font-size: 0.85rem; color: #666;">
-                                    "With: " {booking.extra_guests.iter().map(|g| g.name.clone()).collect::<Vec<_>>().join(", ")}
+                                <p style="margin: 8px 0; font-size: 0.85rem; color: #666; line-height: 1.4;">
+                                    "Additional Guests: " <br/> 
+                                    <span style="font-weight: 600;">{booking.extra_guests.iter().map(|g| g.name.clone()).collect::<Vec<_>>().join(", ")}</span>
                                 </p>
                             }.into_view()
                         } else { view! {}.into_view() }}
-                        <p style="margin: 5px 0; font-size: 0.9rem;">"Mob: " {customer.as_ref().map(|c| c.phone.clone()).unwrap_or_else(|| "N/A".to_string())}</p>
-                        <p style="margin: 5px 0; font-size: 0.9rem;">"Aadhar: " {customer.as_ref().map(|c| c.aadhaar.clone()).unwrap_or_else(|| "N/A".to_string())}</p>
+                        <div style="margin-top: 15px; font-size: 0.9rem; color: #34495e;">
+                            <p style="margin: 3px 0;"><strong>"Phone: "</strong> {customer.as_ref().map(|c| c.phone.clone()).unwrap_or_else(|| "N/A".to_string())}</p>
+                            <p style="margin: 3px 0;"><strong>"Aadhar: "</strong> {customer.as_ref().map(|c| c.aadhaar.clone()).unwrap_or_else(|| "N/A".to_string())}</p>
+                        </div>
                     </div>
-                    <div style="background: #f8f9fa; padding: 20px; border-left: 5px solid #3498db; border-radius: 4px;">
-                        <h4 style="margin: 0 0 15px 0; color: #2c3e50; border-bottom: 1px solid #ddd; padding-bottom: 5px; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">"Stay Information"</h4>
-                        <table style="width: 100%; font-size: 0.9rem;">
-                            <tr><td style="padding: 3px 0; color: #7f8c8d;">"Room No:"</td><td style="text-align: right;"><strong>"Room " {booking.room_number.clone()}</strong></td></tr>
-                            <tr><td style="padding: 3px 0; color: #7f8c8d;">"Arrival:"</td><td style="text-align: right;">{booking.check_in_date.clone()} " (" {booking.in_time.clone().unwrap_or_else(|| "--:--".to_string())} ")"</td></tr>
-                            <tr><td style="padding: 3px 0; color: #7f8c8d;">"Departure:"</td><td style="text-align: right;">{booking.check_out_date.clone()} " (" {booking.out_time.clone().unwrap_or_else(|| "--:--".to_string())} ")"</td></tr>
-                            <tr><td style="padding: 3px 0; color: #7f8c8d;">"Status:"</td><td style="text-align: right; color: #27ae60;"><strong>{booking.status.clone().to_uppercase()}</strong></td></tr>
+                    <div style="background: #f8f9fa; padding: 25px; border-left: 5px solid #3498db; border-radius: 4px;">
+                        <h4 style="margin: 0 0 15px 0; color: #7f8c8d; border-bottom: 1px solid #ddd; padding-bottom: 5px; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">"Stay Information"</h4>
+                        <table style="width: 100%; font-size: 0.95rem; border-spacing: 0 8px;">
+                            <tr><td style="color: #7f8c8d;">"Room No:"</td><td style="text-align: right; font-weight: 700; color: #2c3e50;">"Room " {booking.room_number.clone()}</td></tr>
+                            <tr><td style="color: #7f8c8d;">"In Date:"</td><td style="text-align: right;">{booking.check_in_date.clone()}</td></tr>
+                            <tr><td style="color: #7f8c8d;">"In Time:"</td><td style="text-align: right;">{booking.in_time.clone().unwrap_or_else(|| "--:--".to_string())}</td></tr>
+                            <tr><td style="color: #7f8c8d;">"Out Date:"</td><td style="text-align: right;">{booking.check_out_date.clone()}</td></tr>
+                            <tr><td style="color: #7f8c8d;">"Out Time:"</td><td style="text-align: right;">{booking.out_time.clone().unwrap_or_else(|| "--:--".to_string())}</td></tr>
+                            <tr><td style="color: #7f8c8d;">"Status:"</td><td style="text-align: right; color: #27ae60; font-weight: 800;">{booking.status.clone().to_uppercase()}</td></tr>
                         </table>
                     </div>
                 </div>
 
                 // Charges Table
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; border: 1px solid #eee;">
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px;">
                     <thead>
                         <tr style="background: #2c3e50; color: white;">
-                            <th style="text-align: left; padding: 15px; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">"Description"</th>
-                            <th style="text-align: center; padding: 15px; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">"Price/Day"</th>
-                            <th style="text-align: center; padding: 15px; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">"Qty"</th>
-                            <th style="text-align: right; padding: 15px; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">"Total"</th>
+                            <th style="text-align: left; padding: 15px; text-transform: uppercase; font-size: 0.75rem;">"Description"</th>
+                            <th style="text-align: center; padding: 15px; text-transform: uppercase; font-size: 0.75rem;">"Unit Price"</th>
+                            <th style="text-align: center; padding: 15px; text-transform: uppercase; font-size: 0.75rem;">"Qty"</th>
+                            <th style="text-align: right; padding: 15px; text-transform: uppercase; font-size: 0.75rem;">"Amount"</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr style="border-bottom: 1px solid #eee;">
-                            <td style="padding: 20px; font-weight: bold;">"Room Accommodation Charges" <br/><small style="font-weight: normal; color: #7f8c8d;">"Room stay & services"</small></td>
-                            <td style="text-align: center; padding: 20px;">"₹" {booking.total_amount}</td>
-                            <td style="text-align: center; padding: 20px;">"1"</td>
-                            <td style="text-align: right; padding: 20px; font-weight: bold;">"₹" {booking.total_amount}</td>
+                        <tr style="border-bottom: 2px solid #eee;">
+                            <td style="padding: 25px 15px;">
+                                <strong style="color: #2c3e50; font-size: 1rem;">"Room Stay Charges"</strong><br/>
+                                <small style="color: #7f8c8d;">"Guest accommodation and essential services"</small>
+                            </td>
+                            <td style="text-align: center; padding: 25px 15px;">"₹" {booking.total_amount}</td>
+                            <td style="text-align: center; padding: 25px 15px;">"1"</td>
+                            <td style="text-align: right; padding: 25px 15px; font-weight: 700; font-size: 1.1rem;">"₹" {booking.total_amount}</td>
                         </tr>
                     </tbody>
                 </table>
 
-                // Summary and Payments
-                <div style="display: grid; grid-template-columns: 1fr 300px; gap: 40px;">
+                // Spacing fix for Payment History
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 50px; align-items: start;">
                     <div>
-                        <h4 style="margin: 0 0 10px 0; font-size: 0.8rem; text-transform: uppercase; color: #7f8c8d;">"Payment History"</h4>
-                        <table style="width: 100%; font-size: 0.8rem; border-collapse: collapse;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 0.8rem; text-transform: uppercase; color: #7f8c8d; border-bottom: 1px solid #eee; padding-bottom: 5px;">"Payment History"</h4>
+                        <table style="width: 100%; font-size: 0.85rem; border-collapse: collapse;">
                             {booking.payments.iter().map(|p| view! {
                                 <tr style="border-bottom: 1px solid #f0f0f0;">
-                                    <td style="padding: 5px 0;">{p.date.clone()}</td>
-                                    <td style="padding: 5px 0; color: #7f8c8d;">"Payment Received"</td>
-                                    <td style="padding: 5px 0; text-align: right; color: #27ae60;">"₹" {p.amount}</td>
+                                    <td style="padding: 10px 0; width: 120px;"><strong>{p.date.clone()}</strong></td>
+                                    <td style="padding: 10px 0; color: #7f8c8d;">"Received Payment"</td>
+                                    <td style="padding: 10px 0; text-align: right; color: #27ae60; font-weight: 700;">"₹" {p.amount}</td>
                                 </tr>
                             }).collect_view()}
                         </table>
                     </div>
-                    <div>
-                        <div style="background: #f8f9fa; padding: 20px; border-radius: 4px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span>"Sub Total:"</span>
-                                <span>"₹" {booking.total_amount}</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; color: #27ae60;">
-                                <span>"Total Paid:"</span>
-                                <span>"- ₹" {paid}</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; border-top: 2px solid #2c3e50; padding-top: 10px; font-size: 1.3rem; font-weight: 900; color: #2c3e50;">
-                                <span>"DUE:"</span>
-                                <span>"₹" {balance}</span>
-                            </div>
+                    <div style="background: #f8f9fa; padding: 25px; border-radius: 4px; border: 1px solid #eee;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.95rem;">
+                            <span style="color: #7f8c8d;">"Gross Total:"</span>
+                            <span>"₹" {booking.total_amount}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 12px; color: #27ae60; font-size: 0.95rem;">
+                            <span>"Total Paid:"</span>
+                            <span>"- ₹" {paid}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-top: 3px solid #2c3e50; padding-top: 15px; margin-top: 5px;">
+                            <span style="font-weight: 900; color: #2c3e50; font-size: 1.2rem;">"BALANCE DUE:"</span>
+                            <span style="font-weight: 900; color: #2c3e50; font-size: 1.4rem;">"₹" {balance}</span>
                         </div>
                     </div>
                 </div>
 
-                // Signatures
-                <div style="margin-top: 80px; display: flex; justify-content: space-between; align-items: flex-end;">
+                // Improved Signature Section
+                <div style="margin-top: 100px; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 20px;">
                     <div style="text-align: center;">
-                        <p style="font-size: 0.8rem; color: #7f8c8d; margin-bottom: 50px;">"For Guest Signature"</p>
-                        <div style="width: 180px; border-bottom: 1px dashed #333;"></div>
+                        <div style="width: 200px; border-bottom: 1px solid #333; margin-bottom: 10px;"></div>
+                        <p style="font-size: 0.85rem; color: #7f8c8d; margin: 0;">"Guest Signature"</p>
                     </div>
                     <div style="text-align: center;">
-                        <div style="margin-bottom: 10px; color: #2c3e50; font-weight: bold; font-family: 'Brush Script MT', cursive; font-size: 1.5rem;">"Anand"</div>
-                        <p style="font-size: 0.8rem; color: #7f8c8d; margin-bottom: 10px;">"Authorized Signatory"</p>
-                        <div style="width: 180px; border-bottom: 1px solid #333;"></div>
+                        <div style="font-family: 'Brush Script MT', cursive; font-size: 1.8rem; color: #2c3e50; margin-bottom: 5px;">"Anand"</div>
+                        <div style="width: 200px; border-bottom: 1px solid #333; margin-bottom: 10px;"></div>
+                        <p style="font-size: 0.85rem; color: #7f8c8d; margin: 0; font-weight: bold;">"Authorized Signatory"</p>
                     </div>
                 </div>
 
-                // Legal Footer
-                <div style="margin-top: 60px; border-top: 1px solid #eee; padding-top: 20px; font-size: 0.75rem; color: #95a5a6; line-height: 1.6;">
-                    <p style="margin: 0; font-weight: bold; color: #7f8c8d; margin-bottom: 5px;">"Terms & Conditions:"</p>
-                    <ol style="margin: 0; padding-left: 15px;">
-                        <li>"Checkout time is 12:00 Noon. Late checkout may incur additional charges."</li>
-                        <li>"Guests are requested to produce original ID at the time of check-in."</li>
-                        <li>"The management is not responsible for loss of any valuables."</li>
-                        <li>"Any damage to room property will be charged to the guest."</li>
-                    </ol>
+                // Professional Footer
+                <div style="margin-top: 80px; border-top: 1px solid #eee; padding-top: 20px; font-size: 0.75rem; color: #95a5a6; line-height: 1.8;">
+                    <p style="margin: 0 0 8px 0; font-weight: bold; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px;">"Terms & Conditions:"</p>
+                    <ul style="margin: 0; padding-left: 18px;">
+                        <li>"Official checkout time is 12:00 Noon."</li>
+                        <li>"All disputes are subject to local jurisdiction only."</li>
+                        <li>"Management is not responsible for any loss of guest property."</li>
+                        <li>"Please return room keys to the reception at the time of checkout."</li>
+                    </ul>
+                    <p style="text-align: center; margin-top: 40px; color: #bdc3c7; letter-spacing: 2px;">"--- THANK YOU FOR YOUR STAY ---"</p>
                 </div>
             </div>
 
             <style>
                 "@media print { 
                     .no-print { display: none !important; } 
-                    body { background: white !important; padding: 0 !important; } 
+                    body { background: white !important; padding: 0 !important; margin: 0 !important; } 
                     .bill-page { padding: 0 !important; background: white !important; position: static !important; }
-                    .bill-container { box-shadow: none !important; border: 1px solid #eee !important; width: 100% !important; max-width: none !important; margin: 0 !important; }
+                    .bill-container { box-shadow: none !important; border: none !important; width: 100% !important; max-width: none !important; margin: 0 !important; padding: 40px !important; }
                 }"
             </style>
         </div>
