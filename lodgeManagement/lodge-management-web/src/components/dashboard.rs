@@ -73,9 +73,16 @@ pub fn DashboardHome() -> impl IntoView {
                             let r_cloned = r.clone();
                             let r_cloned_2 = r.clone();
                             
+                            // Clone for style closure
+                            let rid_style = room_id.clone();
+                            // Clone for status closure
+                            let rid_status = room_id.clone();
+                            // Clone for button closure
+                            let rid_btn = room_id.clone();
+                            
                             view! {
                                 <div style=move || {
-                                    let occupied = is_occupied(&room_id);
+                                    let occupied = is_occupied(&rid_style);
                                     format!("border: 1px solid #eee; border-radius: 12px; padding: 15px; text-align: center; background: #fff; border-top: 8px solid {};", 
                                         if occupied { "#e74c3c" } else { "#27ae60" }
                                     )
@@ -84,18 +91,18 @@ pub fn DashboardHome() -> impl IntoView {
                                     <span style="font-size: 0.8rem; color: #7f8c8d; background: #f8f9fa; padding: 2px 8px; border-radius: 10px;">{r.room_type.clone()}</span>
                                     
                                     <div style=move || {
-                                        let occupied = is_occupied(&room_id);
+                                        let occupied = is_occupied(&rid_status);
                                         format!("margin: 15px 0; font-size: 0.8rem; font-weight: bold; color: {};", 
                                             if occupied { "#e74c3c" } else { "#27ae60" }
                                         )
                                     }>
-                                        {move || if is_occupied(&room_id) { "● OCCUPIED" } else { "● AVAILABLE" }}
+                                        {move || if is_occupied(&rid_status) { "● OCCUPIED" } else { "● AVAILABLE" }}
                                     </div>
 
                                     <div style="display: flex; gap: 8px; margin-top: 10px;">
                                         <button 
                                             on:click=move |_| set_show_book_modal.set(Some(r_cloned.clone()))
-                                            disabled=move || is_occupied(&room_id)
+                                            disabled=move || is_occupied(&rid_btn)
                                             style="flex: 1; padding: 8px; font-size: 0.75rem; background: #27ae60;"
                                         >
                                             "Book"
