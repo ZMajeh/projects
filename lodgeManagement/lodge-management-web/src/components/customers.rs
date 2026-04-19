@@ -8,7 +8,7 @@ use crate::utils::{wait_for_bridge, calculate_age};
 pub fn CustomerForm(
     editing_id: Memo<Option<String>>,
     on_success: Callback<()>,
-    #[prop(optional)] initial_data: Option<Customer>,
+    initial_data: Option<Customer>,
 ) -> impl IntoView {
     let (name, set_name) = create_signal(initial_data.as_ref().map(|c| c.full_name.clone()).unwrap_or_default());
     let (phone, set_phone) = create_signal(initial_data.as_ref().map(|c| c.phone.clone()).unwrap_or_default());
