@@ -306,17 +306,22 @@ pub fn DashboardHome() -> impl IntoView {
                     if guests.is_empty() { set_saving.set(false); return; }
                     let primary = &guests[0];
                     let extras = guests[1..].to_vec();
+                    let date = selected_date.get_untracked();
+                    let cout = check_out.get();
+                    let total = final_price.get().parse().unwrap_or(0.0);
+                    let paid = paid_now.get().parse().unwrap_or(0.0);
+                    
                     let new_booking = NewBooking { 
                         room_id: r_id.clone(), 
                         customer_id: primary.id.clone(), 
                         customer_name: primary.name.clone(), 
                         extra_guests: extras,
                         room_number: r_num.clone(), 
-                        check_in_date: selected_date.get_untracked(), 
-                        check_out_date: check_out.get(), 
+                        check_in_date: date.clone(), 
+                        check_out_date: cout, 
                         in_time: None, out_time: None, status: "Checked-In".to_string(), 
-                        total_amount: final_price.get().parse().unwrap_or(0.0), 
-                        payments: vec![Payment { amount: paid_now.get().parse().unwrap_or(0.0), date: selected_date.get_untracked() }] 
+                        total_amount: total, 
+                        payments: vec![Payment { amount: paid, date: date }] 
                     };
                     spawn_local(async move { wait_for_bridge().await; let _ = add_booking_js(serde_wasm_bindgen::to_value(&new_booking).unwrap()).await; set_show_book_modal.set(None); load_data(); });
                 };
@@ -366,20 +371,22 @@ pub fn DashboardHome() -> impl IntoView {
                 let (extra_payment, set_extra_payment) = create_signal((booking.total_amount - booking.payments.iter().map(|p| p.amount).sum::<f64>()).to_string());
                 let (saving, set_saving) = create_signal(false);
                 let b_id = booking.id.clone().unwrap_or_default();
-                let b_data = booking.clone();
+                let b_data_orig = booking.clone();
+                let date_str = selected_date.get_untracked();
                 
+                let b_id_upd = b_id.clone(); let b_data_upd = b_data_orig.clone(); let date_upd = date_str.clone();
                 let handle_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default(); set_saving.set(true);
-                    let bid = b_id.clone(); let extra = extra_payment.get().parse::<f64>().unwrap_or(0.0);
-                    let mut updated_payments = b_data.payments.clone();
-                    if extra > 0.0 { updated_payments.push(Payment { amount: extra, date: selected_date.get_untracked() }); }
-                    let updated_booking = NewBooking { room_id: b_data.room_id.clone(), customer_id: b_data.customer_id.clone(), customer_name: b_data.customer_name.clone(), extra_guests: b_data.extra_guests.clone(), room_number: b_data.room_number.clone(), check_in_date: b_data.check_in_date.clone(), check_out_date: check_out.get(), in_time: b_data.in_time.clone(), out_time: b_data.out_time.clone(), status: b_data.status.clone(), total_amount: b_data.total_amount, payments: updated_payments };
+                    let bid = b_id_upd.clone(); let extra = extra_payment.get().parse::<f64>().unwrap_or(0.0);
+                    let mut updated_payments = b_data_upd.payments.clone();
+                    if extra > 0.0 { updated_payments.push(Payment { amount: extra, date: date_upd.clone() }); }
+                    let updated_booking = NewBooking { room_id: b_data_upd.room_id.clone(), customer_id: b_data_upd.customer_id.clone(), customer_name: b_data_upd.customer_name.clone(), extra_guests: b_data_upd.extra_guests.clone(), room_number: b_data_upd.room_number.clone(), check_in_date: b_data_upd.check_in_date.clone(), check_out_date: check_out.get(), in_time: b_data_upd.in_time.clone(), out_time: b_data_upd.out_time.clone(), status: b_data_upd.status.clone(), total_amount: b_data_upd.total_amount, payments: updated_payments };
                     spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(bid, serde_wasm_bindgen::to_value(&updated_booking).unwrap()).await; set_show_manage_stay_modal.set(None); load_data(); });
                 };
 
-                let bid_co = b_id.clone(); let bdata_co = b_data.clone();
+                let b_id_co = b_id.clone(); let b_data_co = b_data_orig.clone(); let date_co = date_str.clone();
                 let on_checkout_final = move |_| {
-                    let bid = bid_co.clone(); let b_data = bdata_co.clone(); let today = selected_date.get_untracked();
+                    let bid = b_id_co.clone(); let b_data = b_data_co.clone(); let today = date_co.clone();
                     let paid_so_far: f64 = b_data.payments.iter().map(|p| p.amount).sum();
                     let mut final_payments = b_data.payments.clone();
                     if b_data.total_amount > paid_so_far { final_payments.push(Payment { amount: b_data.total_amount - paid_so_far, date: today.clone() }); }
@@ -387,12 +394,17 @@ pub fn DashboardHome() -> impl IntoView {
                     spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(bid, serde_wasm_bindgen::to_value(&co_booking).unwrap()).await; let _ = update_room_js(b_data.room_id.clone(), JsValue::from_str("Available")).await; set_show_manage_stay_modal.set(None); load_data(); });
                 };
 
-                let bid_del = b_id.clone(); let rid_del = b_data.room_id.clone();
+                let b_id_del = b_id.clone(); let b_rid_del = b_data_orig.room_id.clone();
+                let b_name_view = b_data_orig.customer_name.clone();
+                let b_extras_view = b_data_orig.extra_guests.clone();
+                let b_rnum_view = b_data_orig.room_number.clone();
+                let b_checkin_view = b_data_orig.check_in_date.clone();
+
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: center; justify-content: center; z-index: 3000; padding: 1rem; display: flex; align-items: center;">
                         <div class="card" style="width: 100%; max-width: 450px; padding: 2rem;">
                             <h3>"Manage Guest Stay"</h3>
-                            <div style="margin-bottom: 20px; text-align: left; background: #f8f9fa; padding: 1rem; border-radius: 8px;"><p><strong>"Guest(s): "</strong> {b_data.customer_name.clone()} {b_data.extra_guests.iter().map(|g| format!(", {}", g.name)).collect::<String>()}</p><p><strong>"Room: "</strong> {b_data.room_number.clone()} " | " <strong>"In: "</strong> {b_data.check_in_date.clone()}</p></div>
+                            <div style="margin-bottom: 20px; text-align: left; background: #f8f9fa; padding: 1rem; border-radius: 8px;"><p><strong>"Guest(s): "</strong> {b_name_view} {b_extras_view.iter().map(|g| format!(", {}", g.name)).collect::<String>()}</p><p><strong>"Room: "</strong> {b_rnum_view} " | " <strong>"In: "</strong> {b_checkin_view}</p></div>
                             <form on:submit=handle_update>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Collect Payment"</label><input type="number" on:input=move |ev| set_extra_payment.set(event_target_value(&ev)) prop:value=extra_payment /></div>
@@ -401,7 +413,7 @@ pub fn DashboardHome() -> impl IntoView {
                                 <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 25px;">
                                     <button type="submit" disabled=saving style="background: #3498db;">"Save Changes"</button>
                                     {let co_f = on_checkout_final.clone(); move || if confirm_checkout.get() { let co_f2 = co_f.clone(); view! { <div style="background: #dcfce7; padding: 10px; border-radius: 8px; border: 1px solid #22c55e; margin-top: 10px;"><p style="color: #166534; font-weight: bold; margin-bottom: 10px;">"Finalize Checkout?"</p><div style="display: flex; gap: 5px;"><button type="button" on:click=move |_| co_f2(()) style="background: #22c55e; flex: 1;">"YES"</button><button type="button" on:click=move |_| set_confirm_checkout.set(false) style="background: #6c757d; flex: 1;">"No"</button></div></div> }.into_view() } else { view! { <button type="button" on:click=move |_| { set_confirm_checkout.set(true); set_confirm_cancel_stay.set(false); } style="background: #27ae60; margin-top: 10px;">"Checkout (Paid & Completed)"</button> }.into_view() }}
-                                    {move || if confirm_cancel_stay.get() { let bid2=bid_del.clone(); let rid2=rid_del.clone(); view! { <div style="background: #fee2e2; padding: 10px; border-radius: 8px; border: 1px solid #ef4444; margin-top: 10px;"><p style="color: #b91c1c; font-weight: bold; margin-bottom: 10px;">"Really cancel?"</p><div style="display: flex; gap: 5px;"><button type="button" on:click=move |_| { let b=bid2.clone(); let r=rid2.clone(); spawn_local(async move { wait_for_bridge().await; let _ = delete_booking_js(b, r).await; set_show_manage_stay_modal.set(None); load_data(); }); } style="background: #ef4444; flex: 1;">"YES"</button><button type="button" on:click=move |_| set_confirm_cancel_stay.set(false) style="background: #6c757d; flex: 1;">"No"</button></div></div> }.into_view() } else { view! { <button type="button" on:click=move |_| { set_confirm_cancel_stay.set(true); set_confirm_checkout.set(false); } style="background: #e74c3c; margin-top: 10px;">"Cancel Stay (Delete)"</button> }.into_view() }}
+                                    {move || if confirm_cancel_stay.get() { let bid=b_id_del.clone(); let rid=b_rid_del.clone(); view! { <div style="background: #fee2e2; padding: 10px; border-radius: 8px; border: 1px solid #ef4444; margin-top: 10px;"><p style="color: #b91c1c; font-weight: bold; margin-bottom: 10px;">"Really cancel?"</p><div style="display: flex; gap: 5px;"><button type="button" on:click=move |_| { let b=bid.clone(); let r=rid.clone(); spawn_local(async move { wait_for_bridge().await; let _ = delete_booking_js(b, r).await; set_show_manage_stay_modal.set(None); load_data(); }); } style="background: #ef4444; flex: 1;">"YES"</button><button type="button" on:click=move |_| set_confirm_cancel_stay.set(false) style="background: #6c757d; flex: 1;">"No"</button></div></div> }.into_view() } else { view! { <button type="button" on:click=move |_| { set_confirm_cancel_stay.set(true); set_confirm_checkout.set(false); } style="background: #e74c3c; margin-top: 10px;">"Cancel Stay (Delete)"</button> }.into_view() }}
                                     <button type="button" on:click=move |_| set_show_manage_stay_modal.set(None) style="background: #6c757d; margin-top: 10px;">"Close"</button>
                                 </div>
                             </form>
