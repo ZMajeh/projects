@@ -1,5 +1,5 @@
 use leptos::*;
-use crate::models::{Booking, NewBooking, Room, Customer};
+use crate::models::{Booking, NewBooking, Room, Customer, Payment};
 use crate::api::{get_bookings_js, add_booking_js, update_booking_js, delete_booking_js};
 use crate::utils::wait_for_bridge;
 use crate::components::rooms::fetch_rooms;
@@ -56,6 +56,8 @@ pub fn Bookings() -> impl IntoView {
                 room_id: r_id, customer_id: c_id, customer_name: c.full_name,
                 room_number: r.number, check_in_date: check_in.get(),
                 check_out_date: check_out.get(), status: "Checked-In".to_string(),
+                total_amount: r.price,
+                payments: vec![Payment { amount: r.price, date: check_in.get() }],
             };
             spawn_local(async move {
                 wait_for_bridge().await;
@@ -87,7 +89,6 @@ pub fn Bookings() -> impl IntoView {
         let room_id = b.room_id.clone();
         spawn_local(async move {
             wait_for_bridge().await;
-            logging::log!("RUST: Calling delete_booking_js for ID: {}", id);
             match delete_booking_js(id, room_id).await {
                 Ok(_) => { load_data(); set_confirm_delete_id.set(None); }
                 Err(e) => logging::error!("RUST ERROR: Delete failed: {:?}", e),
@@ -125,17 +126,13 @@ pub fn Bookings() -> impl IntoView {
                     </div>
                     <div style="display: flex; flex-direction: column;">
                         <label>"Select Customer"</label>
-                        <select on:change=move |ev| set_selected_cust.set(event_target_value(&ev)) prop:value=selected_cust required>
-                            <option value="">"Choose Customer..."</option>
-                            {move || {
-                                customers.get().into_iter()
-                                    .map(|c| {
-                                        let c_id = c.id.clone().unwrap_or_default();
-                                        let c_name = c.full_name.clone();
-                                        view! { <option value=c_id>{c_name}</option> }
-                                    })
-                                    .collect_view()
-                            }}
+                        <select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) required prop:value=selected_cust>
+                            <option value="">"Choose guest..."</option>
+                            {move || customers.get().into_iter().map(|c| { 
+                                let cid = c.id.clone().unwrap_or_default(); 
+                                let phone = c.phone.clone();
+                                view! { <option value=cid>{c.full_name.clone()} " (" {phone} ")" </option> } 
+                            }).collect_view()}
                         </select>
                     </div>
                     <div style="display: flex; flex-direction: column;"><label>"Check-in"</label><input type="date" on:input=move |ev| set_check_in.set(event_target_value(&ev)) prop:value=check_in required /></div>
@@ -149,20 +146,25 @@ pub fn Bookings() -> impl IntoView {
             <h3>"Recent Stays"</h3>
             {move || if loading.get() { view! { <p>"Loading..."</p> }.into_view() } else { view! {
                 <table>
-                    <thead><tr style="background-color: #f2f2f2; text-align: left;"><th>"Guest"</th><th>"Room"</th><th>"Check-in"</th><th>"Status"</th><th>"Actions"</th></tr></thead>
+                    <thead><tr style="background-color: #f2f2f2; text-align: left;"><th>"Guest"</th><th>"Room"</th><th>"Check-in"</th><th>"Paid"</th><th>"Actions"</th></tr></thead>
                     <tbody>
                         <For each=move || bookings.get() key=|b| b.id.clone().unwrap_or_default() children=move |b| {
                             let b_id = b.id.clone().unwrap_or_default();
                             let b_edit = b.clone();
                             let b_del = b.clone();
                             let b_id_c = b_id.clone();
+                            let paid: f64 = b.payments.iter().map(|p| p.amount).sum();
                             
                             view! { 
                                 <tr>
                                     <td>{b.customer_name.clone()}</td>
                                     <td>{b.room_number.clone()}</td>
                                     <td>{b.check_in_date.clone()}</td>
-                                    <td><span style="color: #27ae60; font-weight: bold;">{b.status.clone()}</span></td>
+                                    <td>
+                                        <span style=format!("color: {}; font-weight: bold;", if b.total_amount > paid { "#e67e22" } else { "#27ae60" })>
+                                            "₹" {paid} " / ₹" {b.total_amount}
+                                        </span>
+                                    </td>
                                     <td style="white-space: nowrap;">
                                         {move || if confirm_delete_id.get() == Some(b_id_c.clone()) {
                                             let b_final = b_del.clone();

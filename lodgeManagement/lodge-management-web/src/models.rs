@@ -27,6 +27,37 @@ pub struct NewRoom {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Customer {
+    pub id: Option<String>,
+    pub full_name: String,
+    pub phone: String,
+    pub email: String,
+    pub aadhaar: String,
+    pub age: Option<String>,
+    pub gender: Option<String>,
+    pub photo_data: Option<String>,
+    pub id_card_data: Option<String>,
+    #[serde(default)]
+    pub verified: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewCustomer {
+    pub full_name: String,
+    pub phone: String,
+    pub email: String,
+    pub aadhaar: String,
+    pub age: Option<String>,
+    pub gender: Option<String>,
+    pub photo_data: Option<String>,
+    pub id_card_data: Option<String>,
+    #[serde(default)]
+    pub verified: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Payment {
     pub amount: f64,
     pub date: String,
