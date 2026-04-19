@@ -263,8 +263,15 @@
 
             // --- MANUAL VERIFY BRIDGE ---
             window.manualVerifyAadhaar = async (aadhaarNumber) => {
+                // Open window FIRST to avoid popup blocker (must be immediate after user gesture)
+                const win = window.open("https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en", "_blank");
+                if (!win) {
+                    alert("Popup blocked! Please allow popups for this site to verify Aadhaar.");
+                    return false;
+                }
+
+                // Copy to clipboard in background
                 try { await navigator.clipboard.writeText(aadhaarNumber); } catch (e) {}
-                window.open("https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en", "_blank");
                 return true;
             };
 
