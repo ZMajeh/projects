@@ -207,7 +207,7 @@
                 return true;
             };
 
-            window.takeSnapshot = (videoElementId) => {
+            window.takeSnapshot = async (videoElementId) => {
                 const video = document.getElementById(videoElementId);
                 const canvas = document.createElement("canvas");
                 canvas.width = video.videoWidth;
@@ -217,12 +217,13 @@
                 return canvas.toDataURL("image/jpeg", 0.7);
             };
 
-            window.stopCamera = () => {
+            window.stopCamera = async () => {
                 if (stream) { stream.getTracks().forEach(track => track.stop()); }
+                return true;
             };
 
             // --- FILE BRIDGE ---
-            window.readFileAsDataURL = (file) => {
+            window.readFileAsDataURL = async (file) => {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = () => resolve(reader.result);

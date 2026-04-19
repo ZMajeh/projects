@@ -46,10 +46,10 @@ extern "C" {
     async fn add_customer_js(customer: JsValue) -> Result<JsValue, JsValue>;
     #[wasm_bindgen(catch, js_name = startCamera)]
     async fn start_camera(id: String) -> Result<JsValue, JsValue>;
-    #[wasm_bindgen(js_name = takeSnapshot)]
-    fn take_snapshot(id: String) -> String;
-    #[wasm_bindgen(js_name = stopCamera)]
-    fn stop_camera();
+    #[wasm_bindgen(catch, js_name = takeSnapshot)]
+    async fn take_snapshot(id: String) -> Result<JsValue, JsValue>;
+    #[wasm_bindgen(catch, js_name = stopCamera)]
+    async fn stop_camera() -> Result<JsValue, JsValue>;
     #[wasm_bindgen(catch, js_name = extractAadhaar)]
     async fn extract_aadhaar_js(base64: String) -> Result<JsValue, JsValue>;
     #[wasm_bindgen(catch, js_name = readFileAsDataURL)]
@@ -304,12 +304,17 @@ fn Customers() -> impl IntoView {
         });
     };
 
-    let do_capture = move |_| {
-        let data = take_snapshot("cam-preview".to_string());
-        if capture_target.get() == "photo" { set_photo.set(Some(data)); } 
-        else { set_id_card.set(Some(data.clone())); process_id_ocr(data); }
-        stop_camera();
-        set_camera_active.set(false);
+    let do_capture = move |_: leptos::ev::MouseEvent| {
+        spawn_local(async move {
+            if let Ok(data_js) = take_snapshot("cam-preview".to_string()).await {
+                if let Some(data) = data_js.as_string() {
+                    if capture_target.get() == "photo" { set_photo.set(Some(data)); } 
+                    else { set_id_card.set(Some(data.clone())); process_id_ocr(data); }
+                }
+            }
+            let _ = stop_camera().await;
+            set_camera_active.set(false);
+        });
     };
 
     let on_file_upload = move |ev: leptos::ev::Event, target: &'static str| {
@@ -426,7 +431,23 @@ fn Customers() -> impl IntoView {
                 }.into_view()
             } else { view! {}.into_view() }}
 
-            {move || if camera_active.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; padding: 1rem;"><video id="cam-preview" style="width: 100%; max-width: 500px; border: 2px solid white;"></video><div style="margin-top: 20px; display: flex; gap: 10px;"><button on:click=do_capture style="background: green;">"CAPTURE"</button><button on:click=move |_| { stop_camera(); set_camera_active.set(false); } style="background: red;">"CLOSE"</button></div></div> }.into_view() } else { view! {}.into_view() }}
+            {move || if camera_active.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; padding: 1rem;"><video id="cam-preview" style="width: 100%; max-width: 500px; border: 2px solid white;"></video><div style="margin-top: 20px; display: flex; gap: 10px;"><button on:click=move |_| {
+                spawn_local(async move {
+                    if let Ok(data_js) = take_snapshot("cam-preview".to_string()).await {
+                        if let Some(data) = data_js.as_string() {
+                            if capture_target.get() == "photo" { set_photo.set(Some(data)); } 
+                            else { set_id_card.set(Some(data.clone())); process_id_ocr(data); }
+                        }
+                    }
+                    let _ = stop_camera().await;
+                    set_camera_active.set(false);
+                });
+            } style="background: green;">"CAPTURE"</button><button on:click=move |_| {
+                spawn_local(async move {
+                    let _ = stop_camera().await;
+                    set_camera_active.set(false);
+                });
+            } style="background: red;">"CLOSE"</button></div></div> }.into_view() } else { view! {}.into_view() }}
             <h3>"Directory"</h3>
             {move || if loading.get() { view! { <p>"Loading..."</p> }.into_view() } else { view! { <table><thead><tr style="background-color: #f2f2f2; text-align: left;"><th style="padding: 12px; border: 1px solid #ddd;">"Name"</th><th style="padding: 12px; border: 1px solid #ddd;">"Aadhaar"</th><th style="padding: 12px; border: 1px solid #ddd;">"Age/Gender"</th></tr></thead><tbody><For each=move || customers.get() key=|c| c.id.clone().unwrap_or_default() children=|c| view! { <tr><td style="padding: 12px; border: 1px solid #ddd;">{c.full_name}</td><td style="padding: 12px; border: 1px solid #ddd;">{c.aadhaar}</td><td style="padding: 12px; border: 1px solid #ddd;">{c.age} " / " {c.gender}</td></tr> } /></tbody></table> }.into_view() }}
         </div>
