@@ -1,4 +1,5 @@
 use leptos::*;
+use leptos_router::*;
 use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -8,13 +9,31 @@ pub struct User {
     pub uid: String,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct Room {
+    pub id: Option<String>,
+    pub number: String,
+    pub room_type: String,
+    pub status: String,
+}
+
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(catch, js_name = addTestLodge)]
-    async fn add_test_lodge() -> Result<JsValue, JsValue>;
-
     #[wasm_bindgen(catch, js_name = loginUser)]
     async fn login_user(email: String, pass: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = getRooms)]
+    async fn get_rooms_js() -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = addRoom)]
+    async fn add_room_js(room: JsValue) -> Result<JsValue, JsValue>;
+}
+
+async fn fetch_rooms() -> Vec<Room> {
+    match get_rooms_js().await {
+        Ok(js_val) => serde_wasm_bindgen::from_value(js_val).unwrap_or_default(),
+        Err(_) => vec![],
+    }
 }
 
 #[component]
@@ -40,7 +59,7 @@ fn Login(on_login: Callback<User>) -> impl IntoView {
                     }
                 }
                 Err(_) => {
-                    set_error.set(Some("Login failed. Please check credentials or Firebase setup.".to_string()));
+                    set_error.set(Some("Login failed. Check credentials.".to_string()));
                 }
             }
             set_loading.set(false);
@@ -48,68 +67,197 @@ fn Login(on_login: Callback<User>) -> impl IntoView {
     };
 
     view! {
-        <div class="container" style="max-width: 400px;">
-            <h2>"Lodge Management Login"</h2>
-            <form on:submit=on_submit>
-                <div style="margin-bottom: 15px; text-align: left;">
-                    <label style="display: block; margin-bottom: 5px;">"Email"</label>
-                    <input 
-                        type="email" 
-                        style="width: 100%; padding: 8px; box-sizing: border-box;"
-                        on:input=move |ev| set_email.set(event_target_value(&ev))
-                        prop:value=email
-                        required
-                    />
-                </div>
-                <div style="margin-bottom: 15px; text-align: left;">
-                    <label style="display: block; margin-bottom: 5px;">"Password"</label>
-                    <input 
-                        type="password" 
-                        style="width: 100%; padding: 8px; box-sizing: border-box;"
-                        on:input=move |ev| set_password.set(event_target_value(&ev))
-                        prop:value=password
-                        required
-                    />
-                </div>
-                {move || error.get().map(|err| view! { <p style="color: red; font-size: 0.9rem;">{err}</p> })}
-                <button type="submit" style="width: 100%;" disabled=loading>
-                    {move || if loading.get() { "Logging in..." } else { "Login" }}
-                </button>
-            </form>
+        <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+            <div class="container" style="max-width: 400px; text-align: center;">
+                <h2>"Lodge Management Login"</h2>
+                <form on:submit=on_submit>
+                    <div style="margin-bottom: 15px; text-align: left;">
+                        <label style="display: block; margin-bottom: 5px;">"Email"</label>
+                        <input 
+                            type="email" 
+                            style="width: 100%;"
+                            on:input=move |ev| set_email.set(event_target_value(&ev))
+                            prop:value=email
+                            required
+                        />
+                    </div>
+                    <div style="margin-bottom: 15px; text-align: left;">
+                        <label style="display: block; margin-bottom: 5px;">"Password"</label>
+                        <input 
+                            type="password" 
+                            style="width: 100%;"
+                            on:input=move |ev| set_password.set(event_target_value(&ev))
+                            prop:value=password
+                            required
+                        />
+                    </div>
+                    {move || error.get().map(|err| view! { <p style="color: red; font-size: 0.9rem;">{err}</p> })}
+                    <button type="submit" style="width: 100%;" disabled=loading>
+                        {move || if loading.get() { "Logging in..." } else { "Login" }}
+                    </button>
+                </form>
+            </div>
         </div>
     }
 }
 
 #[component]
-fn Dashboard(user: User) -> impl IntoView {
-    let (status, set_status) = create_signal("Ready".to_string());
+fn DashboardHome() -> impl IntoView {
+    view! {
+        <div class="card">
+            <h1>"Dashboard Overview"</h1>
+            <p>"Welcome to your Lodge Management System. Select a category from the sidebar to manage your lodge."</p>
+        </div>
+    }
+}
+
+#[component]
+fn Rooms() -> impl IntoView {
+    let (rooms, set_rooms) = create_signal(Vec::<Room>::new());
+    let (loading, set_loading) = create_signal(true);
     
-    let on_test_click = move |_| {
+    // Form signals
+    let (number, set_number) = create_signal("".to_string());
+    let (room_type, set_room_type) = create_signal("Single".to_string());
+
+    let load_rooms = move || {
         spawn_local(async move {
-            set_status.set("Writing to database...".to_string());
-            match add_test_lodge().await {
-                Ok(id) => {
-                    let id_str = id.as_string().unwrap_or_else(|| "unknown".to_string());
-                    set_status.set(format!("Success! New Lodge ID: {}", id_str));
+            set_loading.set(true);
+            set_rooms.set(fetch_rooms().await);
+            set_loading.set(false);
+        });
+    };
+
+    // Initial load
+    create_effect(move |_| {
+        load_rooms();
+    });
+
+    let on_add_room = move |ev: leptos::ev::SubmitEvent| {
+        ev.prevent_default();
+        let new_room = Room {
+            id: None,
+            number: number.get(),
+            room_type: room_type.get(),
+            status: "Available".to_string(),
+        };
+
+        spawn_local(async move {
+            let js_val = serde_wasm_bindgen::to_value(&new_room).unwrap();
+            match add_room_js(js_val).await {
+                Ok(_) => {
+                    set_number.set("".to_string());
+                    load_rooms();
                 }
-                Err(_) => set_status.set("Database Error!".to_string()),
+                Err(e) => logging::error!("Error adding room: {:?}", e),
             }
         });
     };
 
     view! {
-        <div class="container">
-            <h1>"Lodge Dashboard"</h1>
-            <p>"Welcome, " {user.email}</p>
-            <hr/>
-            <div style="display: flex; gap: 20px; justify-content: center; margin-top: 20px;">
-                <div style="padding: 20px; border: 1px solid #ccc; border-radius: 8px;">
-                    <h3>"Quick Actions"</h3>
-                    <button on:click=on_test_click>"Test Database Write"</button>
-                    <p style="font-size: 0.8rem;">{move || status.get()}</p>
+        <div class="card">
+            <h1>"Rooms Management"</h1>
+            
+            <form on:submit=on_add_room style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 20px;">
+                <div style="display: flex; flex-direction: column;">
+                    <label>"Room Number"</label>
+                    <input type="text" on:input=move |ev| set_number.set(event_target_value(&ev)) prop:value=number required />
                 </div>
-            </div>
+                <div style="display: flex; flex-direction: column;">
+                    <label>"Type"</label>
+                    <select on:change=move |ev| set_room_type.set(event_target_value(&ev)) prop:value=room_type>
+                        <option value="Single">"Single"</option>
+                        <option value="Double">"Double"</option>
+                        <option value="Suite">"Suite"</option>
+                    </select>
+                </div>
+                <button type="submit" style="margin-bottom: 1rem;">"Add Room"</button>
+            </form>
+
+            {move || if loading.get() {
+                view! { <p>"Loading rooms..."</p> }.into_view()
+            } else {
+                view! {
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                        <thead>
+                            <tr style="background-color: #f2f2f2; text-align: left;">
+                                <th style="padding: 12px; border: 1px solid #ddd;">"Number"</th>
+                                <th style="padding: 12px; border: 1px solid #ddd;">"Type"</th>
+                                <th style="padding: 12px; border: 1px solid #ddd;">"Status"</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <For
+                                each=move || rooms.get()
+                                key=|room| room.id.clone().unwrap_or_default()
+                                children=|room| view! {
+                                    <tr>
+                                        <td style="padding: 12px; border: 1px solid #ddd;">{room.number}</td>
+                                        <td style="padding: 12px; border: 1px solid #ddd;">{room.room_type}</td>
+                                        <td style="padding: 12px; border: 1px solid #ddd;">
+                                            <span style=format!("padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; background-color: {}; color: white;", 
+                                                if room.status == "Available" { "#27ae60" } else { "#e67e22" })>
+                                                {room.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            />
+                        </tbody>
+                    </table>
+                }.into_view()
+            }}
         </div>
+    }
+}
+
+#[component]
+fn Bookings() -> impl IntoView {
+    view! {
+        <div class="card">
+            <h1>"Bookings"</h1>
+            <p>"View and manage customer reservations and check-ins."</p>
+        </div>
+    }
+}
+
+#[component]
+fn Customers() -> impl IntoView {
+    view! {
+        <div class="card">
+            <h1>"Customer Directory"</h1>
+            <p>"Manage customer profiles and secure identification documents."</p>
+        </div>
+    }
+}
+
+#[component]
+fn DashboardLayout(user: User) -> impl IntoView {
+    view! {
+        <Router>
+            <div class="app-layout">
+                <nav class="sidebar">
+                    <h2>"Lodge Manager"</h2>
+                    <A href="" class="nav-link" active_class="active" exact=true>"Overview"</A>
+                    <A href="rooms" class="nav-link" active_class="active">"Rooms"</A>
+                    <A href="bookings" class="nav-link" active_class="active">"Bookings"</A>
+                    <A href="customers" class="nav-link" active_class="active">"Customers"</A>
+                    
+                    <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid #444; font-size: 0.8rem;">
+                        <p style="color: #bdc3c7; margin-bottom: 5px;">"Logged in as:"</p>
+                        <p style="overflow: hidden; text-overflow: ellipsis;">{user.email}</p>
+                    </div>
+                </nav>
+                <main class="content">
+                    <Routes>
+                        <Route path="" view=DashboardHome />
+                        <Route path="rooms" view=Rooms />
+                        <Route path="bookings" view=Bookings />
+                        <Route path="customers" view=Customers />
+                    </Routes>
+                </main>
+            </div>
+        </Router>
     }
 }
 
@@ -120,7 +268,7 @@ fn App() -> impl IntoView {
     view! {
         <main>
             {move || match user.get() {
-                Some(u) => view! { <Dashboard user=u/> }.into_view(),
+                Some(u) => view! { <DashboardLayout user=u/> }.into_view(),
                 None => view! { <Login on_login=Callback::new(move |u| set_user.set(Some(u)))/> }.into_view(),
             }}
         </main>
