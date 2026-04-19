@@ -202,26 +202,30 @@
             };
 
             window.addCustomer = async (customer) => {
-                console.log("Database: Attempting to add customer:", customer);
+                console.log("Firestore SAVE: ", customer);
                 try {
-                    const docRef = await addDoc(collection(db, "customers"), {
-                        ...customer,
-                        createdAt: serverTimestamp()
+                    const docRef = await addDoc(collection(db, "customers"), { 
+                        ...customer, 
+                        createdAt: serverTimestamp() 
                     });
-                    console.log("Database: Customer added with ID:", docRef.id);
                     return docRef.id;
                 } catch (e) {
-                    console.error("Database Error (Adding Customer):", e);
+                    console.error("Firestore SAVE Error:", e);
                     throw e;
                 }
             };
 
             window.updateCustomer = async (id, customer) => {
-                const docRef = doc(db, "customers", id);
-                await updateDoc(docRef, { ...customer, updatedAt: serverTimestamp() });
-                return true;
+                console.log(`Firestore UPDATE (ID: ${id}):`, customer);
+                try {
+                    const docRef = doc(db, "customers", id);
+                    await updateDoc(docRef, { ...customer, updatedAt: serverTimestamp() });
+                    return true;
+                } catch (e) {
+                    console.error("Firestore UPDATE Error:", e);
+                    throw e;
+                }
             };
-
             window.deleteCustomer = async (id) => {
                 await deleteDoc(doc(db, "customers", id));
                 return true;
