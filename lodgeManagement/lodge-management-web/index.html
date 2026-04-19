@@ -172,7 +172,8 @@
         <script type="module">
             import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
             import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-            import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+            import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+            import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
             const firebaseConfig = {
                 apiKey: "AIzaSyB_UNAaB6Enl87Yiw3zQONsjqITtYKKP_Y",
@@ -187,6 +188,18 @@
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
             const auth = getAuth(app);
+            const functions = getFunctions(app);
+
+            window.verifyAadhaarAPI = async (aadhaarNumber) => {
+                const verifyFunc = httpsCallable(functions, 'verifyAadhaar');
+                try {
+                    const result = await verifyFunc({ aadhaarNumber });
+                    return result.data;
+                } catch (error) {
+                    console.error("Cloud Function Error:", error);
+                    throw error;
+                }
+            };
 
             window.loginUser = async (email, password) => {
                 console.log("LOGIN_DEBUG: Starting login process...");

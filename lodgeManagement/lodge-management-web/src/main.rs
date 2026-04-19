@@ -54,6 +54,8 @@ extern "C" {
     async fn extract_aadhaar_js(base64: String) -> Result<JsValue, JsValue>;
     #[wasm_bindgen(catch, js_name = readFileAsDataURL)]
     async fn read_file_as_data_url(file: web_sys::File) -> Result<JsValue, JsValue>;
+    #[wasm_bindgen(catch, js_name = verifyAadhaarAPI)]
+    async fn verify_aadhaar_api(num: String) -> Result<JsValue, JsValue>;
 }
 
 fn validate_aadhaar_checksum(aadhaar: &str) -> bool {
@@ -329,15 +331,33 @@ fn Customers() -> impl IntoView {
 
     let on_verify_aadhaar = move |_| {
         let num = aadhaar.get();
-        let provided_name = name.get();
-        if !validate_aadhaar_checksum(&num) { window().alert_with_message("Invalid Aadhaar ID checksum.").ok(); return; }
+        if !validate_aadhaar_checksum(&num) {
+            window().alert_with_message("Checksum verification failed! Invalid Aadhaar ID.").ok();
+            return;
+        }
+        
         set_ocr_loading.set(true);
         spawn_local(async move {
-            gloo_timers::future::TimeoutFuture::new(1500).await;
-            if provided_name.len() > 2 {
-                set_is_verified.set(true);
-                window().alert_with_message(&format!("Verified: {}", provided_name)).ok();
-            } else { window().alert_with_message("Name required for verification.").ok(); }
+            match verify_aadhaar_api(num.clone()).await {
+                Ok(result_js) => {
+                    if let Some(obj) = js_sys::Object::try_from(&result_js) {
+                        if let Ok(name_js) = js_sys::Reflect::get(obj, &JsValue::from_str("verifiedName")) {
+                            if let Some(n) = name_js.as_string() {
+                                set_is_verified.set(true);
+                                window().alert_with_message(&format!("LIVE API SUCCESS:\nAadhaar Verified.\nOfficial Name: {}", n)).ok();
+                                // Optionally update form name with official government name
+                                if name.get_untracked().is_empty() {
+                                    set_name.set(n);
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    logging::error!("Verification API Error: {:?}", e);
+                    window().alert_with_message("Public API verification failed. Please try again.").ok();
+                }
+            }
             set_ocr_loading.set(false);
         });
     };
