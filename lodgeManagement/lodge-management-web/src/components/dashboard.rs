@@ -53,7 +53,7 @@ pub fn DashboardHome() -> impl IntoView {
         <div class="card">
             <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 2rem;">
                 <h2>"Lodge Occupancy Overview"</h2>
-                <div style="display: flex; align-items: center; gap: 15px; background: #fff; padding: 10px 20px; border-radius: 50px;">
+                <div style="display: flex; align-items: center; gap: 15px; background: #fff; padding: 10px 20px; border-radius: 50px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
                     <button on:click=move |_| navigate_day(-1.0) style="background: none; color: var(--primary); font-weight: bold; font-size: 1.2rem; border: none; cursor: pointer;">"←"</button>
                     <input type="date" 
                         on:input=move |ev| set_selected_date.set(event_target_value(&ev))
@@ -77,8 +77,8 @@ pub fn DashboardHome() -> impl IntoView {
                             let rid_label = room_id.clone();
                             let rid_btn = room_id.clone();
                             let rid_edit = room_id.clone();
-                            let room_for_modal = r_cloned.clone();
-                            let room_for_edit = r_cloned.clone();
+                            let r_for_modal = r_cloned.clone();
+                            let r_for_edit = r_cloned.clone();
                             
                             view! {
                                 <div style=move || {
@@ -101,7 +101,7 @@ pub fn DashboardHome() -> impl IntoView {
 
                                     <div style="display: flex; gap: 8px; margin-top: 10px;">
                                         <button 
-                                            on:click=move |_| set_show_book_modal.set(Some(room_for_modal.clone()))
+                                            on:click=move |_| set_show_book_modal.set(Some(r_for_modal.clone()))
                                             disabled=move || is_occupied(&rid_btn).is_some()
                                             style="flex: 1; padding: 8px; font-size: 0.75rem; background: #27ae60;"
                                         >
@@ -112,7 +112,7 @@ pub fn DashboardHome() -> impl IntoView {
                                                 if let Some(booking) = is_occupied(&rid_edit) {
                                                     set_show_manage_stay_modal.set(Some(booking));
                                                 } else {
-                                                    set_show_edit_room_modal.set(Some(room_for_edit.clone()));
+                                                    set_show_edit_room_modal.set(Some(r_for_edit.clone()));
                                                 }
                                             }
                                             style="flex: 1; padding: 8px; font-size: 0.75rem; background: #3498db;"
@@ -334,7 +334,7 @@ pub fn DashboardHome() -> impl IntoView {
 }
 
 #[component]
-pub fn DashboardLayout(user: User, on_logout: Callback<()>) -> impl IntoView {
+pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: Children) -> impl IntoView {
     let (menu_open, set_menu_open) = create_signal(false);
     let handle_logout = move |_| { 
         clear_user(); 
@@ -365,12 +365,7 @@ pub fn DashboardLayout(user: User, on_logout: Callback<()>) -> impl IntoView {
                     <strong>"Lodge Manager"</strong>
                     <div style="width: 30px;"></div>
                 </header>
-                <Routes>
-                    <Route path="" view=DashboardHome />
-                    <Route path="rooms" view=Rooms />
-                    <Route path="customers" view=Customers />
-                    <Route path="bookings" view=Bookings />
-                </Routes>
+                {children()}
             </main>
         </div> 
     }
