@@ -143,7 +143,7 @@
 
         <script type="module">
             import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-            import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+            import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
             import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
             const firebaseConfig = {
@@ -204,9 +204,9 @@
             window.addCustomer = async (customer) => {
                 console.log("Database: Attempting to add customer:", customer);
                 try {
-                    const docRef = await addDoc(collection(db, "customers"), { 
-                        ...customer, 
-                        createdAt: serverTimestamp() 
+                    const docRef = await addDoc(collection(db, "customers"), {
+                        ...customer,
+                        createdAt: serverTimestamp()
                     });
                     console.log("Database: Customer added with ID:", docRef.id);
                     return docRef.id;
@@ -216,6 +216,16 @@
                 }
             };
 
+            window.updateCustomer = async (id, customer) => {
+                const docRef = doc(db, "customers", id);
+                await updateDoc(docRef, { ...customer, updatedAt: serverTimestamp() });
+                return true;
+            };
+
+            window.deleteCustomer = async (id) => {
+                await deleteDoc(doc(db, "customers", id));
+                return true;
+            };
             // --- CAMERA BRIDGE ---
             let stream = null;
             window.startCamera = async (videoElementId) => {
