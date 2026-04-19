@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <title>Lodge Management System</title>
+        <link rel="rust" data-trunk href="Cargo.toml"/>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                margin: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                background-color: #f0f2f5;
+            }
+            .container {
+                text-align: center;
+                padding: 2rem;
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            button {
+                padding: 0.5rem 1rem;
+                font-size: 1rem;
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            button:hover {
+                background-color: #0056b3;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="main"></div>
+
+        <!-- Firebase SDKs -->
+        <script type="module">
+            import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+            import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+            const firebaseConfig = {
+                apiKey: "AIzaSyB_UNAaB6Enl87Yiw3zQONsjqITtYKKP_Y",
+                authDomain: "lodge-management-a4cc9.firebaseapp.com",
+                projectId: "lodge-management-a4cc9",
+                storageBucket: "lodge-management-a4cc9.firebasestorage.app",
+                messagingSenderId: "539473298830",
+                appId: "1:539473298830:web:47ad1798d66207b22150df",
+                measurementId: "G-V79GBCVV8F"
+            };
+
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+
+            // Expose bridge functions to the window object so Rust can call them
+            window.addTestLodge = async () => {
+                try {
+                    const docRef = await addDoc(collection(db, "lodges"), {
+                        name: "Cozy Cabin (Test)",
+                        description: "A test lodge created from Rust/WASM",
+                        createdAt: serverTimestamp()
+                    });
+                    console.log("Document written with ID: ", docRef.id);
+                    return docRef.id;
+                } catch (e) {
+                    console.error("Error adding document: ", e);
+                    throw e;
+                }
+            };
+        </script>
+    </body>
+</html>
