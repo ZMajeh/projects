@@ -22,6 +22,7 @@ pub fn DashboardHome() -> impl IntoView {
     let (show_edit_room_modal, set_show_edit_room_modal) = create_signal(None::<Room>);
     let (show_manage_stay_modal, set_show_manage_stay_modal) = create_signal(None::<Booking>);
     let (show_add_guest_modal, set_show_add_guest_modal) = create_signal(false);
+    let (confirm_cancel_stay, set_confirm_cancel_stay) = create_signal(false);
 
     let load_data = move || {
         spawn_local(async move {
@@ -40,7 +41,7 @@ pub fn DashboardHome() -> impl IntoView {
         set_selected_date.set(new_date.to_iso_string().as_string().unwrap()[..10].to_string());
     };
 
-    let is_occupied = move |room_id: &str| -> Option<Booking> {
+    let get_active_booking = move |room_id: &str| -> Option<Booking> {
         let date_str = selected_date.get();
         bookings.get().iter().find(|b| {
             b.room_id == room_id && 
@@ -78,12 +79,12 @@ pub fn DashboardHome() -> impl IntoView {
                             let rid_label = room_id.clone();
                             let rid_btn = room_id.clone();
                             let rid_edit = room_id.clone();
-                            let r_for_modal = r_cloned.clone();
-                            let r_for_edit = r_cloned.clone();
+                            let room_for_modal = r_cloned.clone();
+                            let room_for_edit = r_cloned.clone();
                             
                             view! {
                                 <div style=move || {
-                                    let occupied = is_occupied(&rid_style).is_some();
+                                    let occupied = get_active_booking(&rid_style).is_some();
                                     format!("border: 1px solid #eee; border-radius: 12px; padding: 15px; text-align: center; background: #fff; border-top: 8px solid {};", 
                                         if occupied { "#e74c3c" } else { "#27ae60" }
                                     )
@@ -92,28 +93,29 @@ pub fn DashboardHome() -> impl IntoView {
                                     <span style="font-size: 0.8rem; color: #7f8c8d; background: #f8f9fa; padding: 2px 8px; border-radius: 10px;">{r.room_type.clone()}</span>
                                     
                                     <div style=move || {
-                                        let occupied = is_occupied(&rid_status).is_some();
+                                        let occupied = get_active_booking(&rid_status).is_some();
                                         format!("margin: 15px 0; font-size: 0.8rem; font-weight: bold; color: {};", 
                                             if occupied { "#e74c3c" } else { "#27ae60" }
                                         )
                                     }>
-                                        {move || if is_occupied(&rid_label).is_some() { "● OCCUPIED" } else { "● AVAILABLE" }}
+                                        {move || if get_active_booking(&rid_label).is_some() { "● OCCUPIED" } else { "● AVAILABLE" }}
                                     </div>
 
                                     <div style="display: flex; gap: 8px; margin-top: 10px;">
                                         <button 
-                                            on:click=move |_| set_show_book_modal.set(Some(r_for_modal.clone()))
-                                            disabled=move || is_occupied(&rid_btn).is_some()
+                                            on:click=move |_| set_show_book_modal.set(Some(room_for_modal.clone()))
+                                            disabled=move || get_active_booking(&rid_btn).is_some()
                                             style="flex: 1; padding: 8px; font-size: 0.75rem; background: #27ae60;"
                                         >
                                             "Book"
                                         </button>
                                         <button 
                                             on:click=move |_| {
-                                                if let Some(booking) = is_occupied(&rid_edit) {
+                                                if let Some(booking) = get_active_booking(&rid_edit) {
+                                                    set_confirm_cancel_stay.set(false);
                                                     set_show_manage_stay_modal.set(Some(booking));
                                                 } else {
-                                                    set_show_edit_room_modal.set(Some(r_for_edit.clone()));
+                                                    set_show_edit_room_modal.set(Some(room_for_edit.clone()));
                                                 }
                                             }
                                             style="flex: 1; padding: 8px; font-size: 0.75rem; background: #3498db;"
@@ -136,14 +138,12 @@ pub fn DashboardHome() -> impl IntoView {
                 let (check_out, set_check_out) = create_signal("".to_string());
                 let (saving, set_saving) = create_signal(false);
                 let (guest_search, set_guest_search) = create_signal("".to_string());
-
                 let filtered_guests = move || {
                     let q = guest_search.get().to_lowercase();
                     customers.get().into_iter()
                         .filter(|c| c.full_name.to_lowercase().contains(&q) || c.aadhaar.contains(&q))
                         .collect::<Vec<_>>()
                 };
-
                 let handle_book = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default();
                     set_saving.set(true);
@@ -153,7 +153,6 @@ pub fn DashboardHome() -> impl IntoView {
                     let date = selected_date.get_untracked();
                     let cout = check_out.get();
                     let cust_opt = customers.get_untracked().into_iter().find(|c| c.id.as_deref() == Some(&c_id));
-                    
                     if let Some(c) = cust_opt {
                         let new_booking = NewBooking {
                             room_id: rid, customer_id: c_id, customer_name: c.full_name,
@@ -169,7 +168,6 @@ pub fn DashboardHome() -> impl IntoView {
                         });
                     }
                 };
-
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
                         <div class="card" style="width: 100%; max-width: 450px; padding: 2rem;">
@@ -180,42 +178,13 @@ pub fn DashboardHome() -> impl IntoView {
                             <form on:submit=handle_book>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
                                     <div style="display: flex; gap: 10px;">
-                                        <div style="flex: 1;">
-                                            <label style="font-size: 0.8rem; font-weight: bold;">"Room"</label>
-                                            <input type="text" value=room.number.clone() disabled style="background: #eee;" />
-                                        </div>
-                                        <div style="flex: 1;">
-                                            <label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label>
-                                            <input type="text" value=selected_date.get() disabled style="background: #eee;" />
-                                        </div>
+                                        <div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Room"</label><input type="text" value=room.number.clone() disabled style="background: #eee;" /></div>
+                                        <div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label><input type="text" value=selected_date.get() disabled style="background: #eee;" /></div>
                                     </div>
-                                    <div>
-                                        <label style="font-size: 0.8rem; font-weight: bold;">"Search & Select Guest"</label>
-                                        <input type="text" placeholder="Type name or Aadhaar..." 
-                                            on:input=move |ev| set_guest_search.set(event_target_value(&ev))
-                                            style="margin-bottom: 5px;"
-                                        />
-                                        <select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) required prop:value=sel_cust>
-                                            <option value="">"Choose guest..."</option>
-                                            {move || filtered_guests().into_iter()
-                                                .map(|c| {
-                                                    let cid = c.id.clone().unwrap_or_default();
-                                                    let cname = c.full_name.clone();
-                                                    let ver = if c.verified { "✅" } else { "⚠️" };
-                                                    view! { <option value=cid>{cname} " " {ver}</option> }
-                                                }).collect_view()
-                                            }
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label style="font-size: 0.8rem; font-weight: bold;">"Check-out Date"</label>
-                                        <input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) required />
-                                    </div>
+                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Search Guest"</label><input type="text" placeholder="Search..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="margin-bottom: 5px;" /><select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) required prop:value=sel_cust><option value="">"Choose guest..."</option>{move || filtered_guests().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); let cname = c.full_name.clone(); let ver = if c.verified { "✅" } else { "⚠️" }; view! { <option value=cid>{cname} " " {ver}</option> } }).collect_view()}</select></div>
+                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Check-out Date"</label><input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) required /></div>
                                 </div>
-                                <div style="display: flex; gap: 10px; margin-top: 25px;">
-                                    <button type="submit" disabled=saving style="flex: 2; background: #27ae60;">"Confirm Check-in"</button>
-                                    <button type="button" on:click=move |_| set_show_book_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button>
-                                </div>
+                                <div style="display: flex; gap: 10px; margin-top: 25px;"><button type="submit" disabled=saving style="flex: 2; background: #27ae60;">"Confirm Check-in"</button><button type="button" on:click=move |_| set_show_book_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button></div>
                             </form>
                         </div>
                     </div>
@@ -231,14 +200,7 @@ pub fn DashboardHome() -> impl IntoView {
                                 <h3>"Register New Guest"</h3>
                                 <button on:click=move |_| set_show_add_guest_modal.set(false) style="background: none; color: black; font-size: 1.5rem;">"×"</button>
                             </div>
-                            <CustomerForm 
-                                editing_id=create_memo(|_| None) 
-                                initial_data=None 
-                                on_success=Callback::new(move |_| {
-                                    set_show_add_guest_modal.set(false);
-                                    load_data();
-                                })
-                            />
+                            <CustomerForm editing_id=create_memo(|_| None) initial_data=None on_success=Callback::new(move |_| { set_show_add_guest_modal.set(false); load_data(); }) />
                         </div>
                     </div>
                 }.into_view()
@@ -277,17 +239,15 @@ pub fn DashboardHome() -> impl IntoView {
                     });
                 };
 
-                let handle_cancel = move |_| {
-                    if window().confirm_with_message("Cancel this booking?").unwrap_or(false) {
-                        let bid = b_id.clone();
-                        let rid = b_rid_c.clone();
-                        spawn_local(async move {
-                            wait_for_bridge().await;
-                            let _ = delete_booking_js(bid, rid).await;
-                            set_show_manage_stay_modal.set(None);
-                            load_data();
-                        });
-                    }
+                let on_cancel_final = move |_| {
+                    let bid = b_id.clone();
+                    let rid = b_rid.clone();
+                    spawn_local(async move {
+                        wait_for_bridge().await;
+                        let _ = delete_booking_js(bid, rid).await;
+                        set_show_manage_stay_modal.set(None);
+                        load_data();
+                    });
                 };
 
                 view! {
@@ -308,8 +268,24 @@ pub fn DashboardHome() -> impl IntoView {
                                 </div>
                                 <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 25px;">
                                     <button type="submit" disabled=saving style="background: #3498db;">"Update Dates"</button>
-                                    <button type="button" on:click=handle_cancel style="background: #e67e22;">"Cancel / Checkout"</button>
-                                    <button type="button" on:click=move |_| set_show_manage_stay_modal.set(None) style="background: #6c757d;">"Close"</button>
+                                    
+                                    {move || if confirm_cancel_stay.get() {
+                                        view! {
+                                            <div style="background: #fee2e2; padding: 10px; border-radius: 8px; border: 1px solid #ef4444; margin-top: 10px;">
+                                                <p style="color: #b91c1c; font-weight: bold; margin-bottom: 10px;">"Really cancel this booking?"</p>
+                                                <div style="display: flex; gap: 5px;">
+                                                    <button type="button" on:click=on_cancel_final style="background: #ef4444; flex: 1;">"YES, Cancel"</button>
+                                                    <button type="button" on:click=move |_| set_confirm_cancel_stay.set(false) style="background: #6c757d; flex: 1;">"No"</button>
+                                                </div>
+                                            </div>
+                                        }.into_view()
+                                    } else {
+                                        view! {
+                                            <button type="button" on:click=move |_| set_confirm_cancel_stay.set(true) style="background: #e67e22; margin-top: 10px;">"Cancel / Checkout"</button>
+                                        }.into_view()
+                                    }}
+                                    
+                                    <button type="button" on:click=move |_| set_show_manage_stay_modal.set(None) style="background: #6c757d; margin-top: 10px;">"Close"</button>
                                 </div>
                             </form>
                         </div>
@@ -324,7 +300,6 @@ pub fn DashboardHome() -> impl IntoView {
                 let r_status = room.status.clone();
                 let (r_type, set_r_type) = create_signal(room.room_type.clone());
                 let (saving, set_saving) = create_signal(false);
-
                 let handle_room_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default();
                     set_saving.set(true);
@@ -338,30 +313,16 @@ pub fn DashboardHome() -> impl IntoView {
                         load_data();
                     });
                 };
-
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
                         <div class="card" style="width: 100%; max-width: 400px; padding: 2rem;">
                             <h3>"Edit Room"</h3>
                             <form on:submit=handle_room_update>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
-                                    <div>
-                                        <label style="font-size: 0.8rem; font-weight: bold;">"Room Number"</label>
-                                        <input type="text" value=room.number.clone() disabled style="background: #eee;" />
-                                    </div>
-                                    <div>
-                                        <label style="font-size: 0.8rem; font-weight: bold;">"Category"</label>
-                                        <select on:change=move |ev| set_r_type.set(event_target_value(&ev)) prop:value=r_type>
-                                            <option value="Delux">"Delux"</option>
-                                            <option value="AC">"AC"</option>
-                                            <option value="non-AC">"non-AC"</option>
-                                        </select>
-                                    </div>
+                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Room Number"</label><input type="text" value=room.number.clone() disabled style="background: #eee;" /></div>
+                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Category"</label><select on:change=move |ev| set_r_type.set(event_target_value(&ev)) prop:value=r_type><option value="Delux">"Delux"</option><option value="AC">"AC"</option><option value="non-AC">"non-AC"</option></select></div>
                                 </div>
-                                <div style="display: flex; gap: 10px; margin-top: 25px;">
-                                    <button type="submit" disabled=saving style="flex: 1; background: #3498db;">"Save"</button>
-                                    <button type="button" on:click=move |_| set_show_edit_room_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button>
-                                </div>
+                                <div style="display: flex; gap: 10px; margin-top: 25px;"><button type="submit" disabled=saving style="flex: 1; background: #3498db;">"Save"</button><button type="button" on:click=move |_| set_show_edit_room_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button></div>
                             </form>
                         </div>
                     </div>
