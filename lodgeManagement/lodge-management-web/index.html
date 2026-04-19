@@ -264,6 +264,10 @@
                 window.open("https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en", "_blank");
                 return true;
             };
+
+            // Signal that everything is ready
+            window.bridgeReady = true;
+            console.log("JS Bridge initialized and ready.");
         </script>
     </body>
 </html>

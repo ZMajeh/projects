@@ -58,6 +58,21 @@ extern "C" {
     async fn manual_verify_aadhaar(num: String) -> Result<JsValue, JsValue>;
 }
 
+// Check if JS Bridge is initialized
+fn is_bridge_ready() -> bool {
+    if let Ok(ready) = js_sys::Reflect::get(&window(), &JsValue::from_str("bridgeReady")) {
+        ready.as_bool().unwrap_or(false)
+    } else {
+        false
+    }
+}
+
+async fn wait_for_bridge() {
+    while !is_bridge_ready() {
+        gloo_timers::future::TimeoutFuture::new(100).await;
+    }
+}
+
 fn validate_aadhaar_checksum(aadhaar: &str) -> bool {
     let clean_aadhaar = aadhaar.trim().replace(" ", "");
     if clean_aadhaar.len() != 12 || !clean_aadhaar.chars().all(|c| c.is_ascii_digit()) { return false; }
@@ -96,6 +111,7 @@ fn clear_user() {
 }
 
 async fn fetch_rooms() -> Vec<Room> {
+    wait_for_bridge().await;
     match get_rooms_js().await {
         Ok(js_val) => serde_wasm_bindgen::from_value(js_val).unwrap_or_default(),
         Err(_) => vec![],
@@ -103,6 +119,7 @@ async fn fetch_rooms() -> Vec<Room> {
 }
 
 async fn fetch_customers() -> Vec<Customer> {
+    wait_for_bridge().await;
     match get_customers_js().await {
         Ok(js_val) => serde_wasm_bindgen::from_value(js_val).unwrap_or_default(),
         Err(_) => vec![],
@@ -123,6 +140,7 @@ fn Login(on_login: Callback<User>) -> impl IntoView {
         let email_val = email.get();
         let pass_val = password.get();
         spawn_local(async move {
+            wait_for_bridge().await;
             match login_user(email_val, pass_val).await {
                 Ok(user_js) => {
                     if let Ok(user) = serde_wasm_bindgen::from_value::<User>(user_js) {
@@ -189,6 +207,7 @@ fn Rooms() -> impl IntoView {
         ev.prevent_default();
         let new_room = Room { id: None, number: number.get(), room_type: room_type.get(), status: "Available".to_string() };
         spawn_local(async move {
+            wait_for_bridge().await;
             let js_val = serde_wasm_bindgen::to_value(&new_room).unwrap();
             match add_room_js(js_val).await {
                 Ok(_) => { set_number.set("".to_string()); load_rooms(); }
@@ -261,7 +280,6 @@ fn Customers() -> impl IntoView {
     let (ocr_loading, set_ocr_loading) = create_signal(false);
     let (is_verified, set_is_verified) = create_signal(false);
     let (show_manual_verify, set_show_manual_verify) = create_signal(false);
-    let (ocr_raw_text, set_ocr_raw_text) = create_signal("".to_string());
 
     let load_customers = move || {
         spawn_local(async move {
@@ -275,12 +293,16 @@ fn Customers() -> impl IntoView {
     let start_capture = move |target: &'static str| {
         set_capture_target.set(target);
         set_camera_active.set(true);
-        spawn_local(async move { let _ = start_camera("cam-preview".to_string()).await; });
+        spawn_local(async move { 
+            wait_for_bridge().await;
+            let _ = start_camera("cam-preview".to_string()).await; 
+        });
     };
 
     let process_id_ocr = move |data: String| {
         set_ocr_loading.set(true);
         spawn_local(async move {
+            wait_for_bridge().await;
             if let Ok(result_js) = extract_aadhaar_js(data).await {
                 if let Some(obj) = js_sys::Object::try_from(&result_js) {
                     if let Ok(id_js) = js_sys::Reflect::get(obj, &JsValue::from_str("aadhaar")) {
@@ -288,9 +310,6 @@ fn Customers() -> impl IntoView {
                     }
                     if let Ok(name_js) = js_sys::Reflect::get(obj, &JsValue::from_str("name")) {
                         if let Some(n) = name_js.as_string() { if name.get_untracked().is_empty() { set_name.set(n); } }
-                    }
-                    if let Ok(raw_js) = js_sys::Reflect::get(obj, &JsValue::from_str("raw_text")) {
-                        if let Some(txt) = raw_js.as_string() { set_ocr_raw_text.set(txt); }
                     }
                     if let Ok(dob_js) = js_sys::Reflect::get(obj, &JsValue::from_str("dob")) {
                         if let Some(d) = dob_js.as_string() { if let Some(a) = calculate_age(&d) { set_age.set(a); } }
@@ -304,24 +323,12 @@ fn Customers() -> impl IntoView {
         });
     };
 
-    let do_capture = move |_: leptos::ev::MouseEvent| {
-        spawn_local(async move {
-            if let Ok(data_js) = take_snapshot("cam-preview".to_string()).await {
-                if let Some(data) = data_js.as_string() {
-                    if capture_target.get() == "photo" { set_photo.set(Some(data)); } 
-                    else { set_id_card.set(Some(data.clone())); process_id_ocr(data); }
-                }
-            }
-            let _ = stop_camera().await;
-            set_camera_active.set(false);
-        });
-    };
-
     let on_file_upload = move |ev: leptos::ev::Event, target: &'static str| {
         let input: web_sys::HtmlInputElement = event_target(&ev);
         if let Some(files) = input.files() {
             if let Some(file) = files.get(0) {
                 spawn_local(async move {
+                    wait_for_bridge().await;
                     if let Ok(data_js) = read_file_as_data_url(file).await {
                         if let Some(data) = data_js.as_string() {
                             if target == "photo" { set_photo.set(Some(data)); } 
@@ -337,6 +344,7 @@ fn Customers() -> impl IntoView {
         let num = aadhaar.get();
         if !validate_aadhaar_checksum(&num) { window().alert_with_message("Checksum verification failed!").ok(); return; }
         spawn_local(async move {
+            wait_for_bridge().await;
             let _ = manual_verify_aadhaar(num.clone()).await;
             set_show_manual_verify.set(true);
         });
@@ -347,12 +355,13 @@ fn Customers() -> impl IntoView {
         if !is_verified.get() { window().alert_with_message("Please verify Aadhaar before saving!").ok(); return; }
         let new_cust = Customer { id: None, full_name: name.get(), phone: phone.get(), email: email.get(), aadhaar: aadhaar.get(), age: age.get(), gender: gender.get(), photo_data: photo.get(), id_card_data: id_card.get() };
         spawn_local(async move {
+            wait_for_bridge().await;
             let js_val = serde_wasm_bindgen::to_value(&new_cust).unwrap();
             match add_customer_js(js_val).await {
                 Ok(_) => { 
                     set_name.set("".to_string()); set_phone.set("".to_string()); set_email.set("".to_string()); 
                     set_aadhaar.set("".to_string()); set_age.set("".to_string()); set_gender.set("Male".to_string());
-                    set_photo.set(None); set_id_card.set(None); set_is_verified.set(false); set_ocr_raw_text.set("".to_string());
+                    set_photo.set(None); set_id_card.set(None); set_is_verified.set(false);
                     load_customers(); 
                 }
                 Err(e) => logging::error!("Error adding customer: {:?}", e),
@@ -431,8 +440,9 @@ fn Customers() -> impl IntoView {
                 }.into_view()
             } else { view! {}.into_view() }}
 
-            {move || if camera_active.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; padding: 1rem;"><video id="cam-preview" style="width: 100%; max-width: 500px; border: 2px solid white;"></video><div style="margin-top: 20px; display: flex; gap: 10px;"><button on:click=move |_| {
+            {move || if camera_active.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; padding: 1rem;"><video id="cam-preview" style="width: 100%; max-width: 500px; border: 2px solid white;"></video><div style="margin-top: 20px; display: flex; gap: 10px;"><button on:click=move |_: leptos::ev::MouseEvent| {
                 spawn_local(async move {
+                    wait_for_bridge().await;
                     if let Ok(data_js) = take_snapshot("cam-preview".to_string()).await {
                         if let Some(data) = data_js.as_string() {
                             if capture_target.get() == "photo" { set_photo.set(Some(data)); } 
@@ -442,8 +452,9 @@ fn Customers() -> impl IntoView {
                     let _ = stop_camera().await;
                     set_camera_active.set(false);
                 });
-            } style="background: green;">"CAPTURE"</button><button on:click=move |_| {
+            } style="background: green;">"CAPTURE"</button><button on:click=move |_: leptos::ev::MouseEvent| {
                 spawn_local(async move {
+                    wait_for_bridge().await;
                     let _ = stop_camera().await;
                     set_camera_active.set(false);
                 });
@@ -457,7 +468,11 @@ fn Customers() -> impl IntoView {
 #[component]
 fn DashboardLayout(user: User, on_logout: Callback<()>) -> impl IntoView {
     let (menu_open, set_menu_open) = create_signal(false);
-    let handle_logout = move |_| { clear_user(); spawn_local(async move { let _ = sign_out_user().await; on_logout.call(()); }); };
+    let handle_logout = move |_| { clear_user(); spawn_local(async move { 
+        wait_for_bridge().await;
+        let _ = sign_out_user().await; 
+        on_logout.call(()); 
+    }); };
     view! { <div class="app-layout"><div class=move || format!("sidebar-overlay {}", if menu_open.get() { "show" } else { "" }) on:click=move |_| set_menu_open.set(false)></div><nav class=move || format!("sidebar {}", if menu_open.get() { "open" } else { "" })><h2>"Lodge Manager"</h2><A href="" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active" exact=true>"Overview"</A><A href="rooms" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active">"Rooms"</A><A href="customers" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active">"Customers"</A><div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid #444; font-size: 0.8rem;"><p style="color: #bdc3c7; overflow: hidden; text-overflow: ellipsis;">{user.email}</p><button on:click=handle_logout style="background-color: #e74c3c; width: 100%; margin-top: 10px;">"Logout"</button></div></nav><main class="content"><header class="mobile-header"><button on:click=move |_| set_menu_open.update(|v| *v = !*v) style="background: none; color: black; font-size: 1.5rem; padding: 0;">"☰"</button><strong>"Lodge Manager"</strong><div style="width: 30px;"></div></header><Routes><Route path="" view=DashboardHome /><Route path="rooms" view=Rooms /><Route path="customers" view=Customers /></Routes></main></div> }
 }
 
