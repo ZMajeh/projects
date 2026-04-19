@@ -181,7 +181,21 @@ pub fn DashboardHome() -> impl IntoView {
                                         <div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Room"</label><input type="text" value=room.number.clone() disabled style="background: #eee;" /></div>
                                         <div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label><input type="text" value=selected_date.get() disabled style="background: #eee;" /></div>
                                     </div>
-                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Search Guest"</label><input type="text" placeholder="Search..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="margin-bottom: 5px;" /><select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) required prop:value=sel_cust><option value="">"Choose guest..."</option>{move || filtered_guests().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); let cname = c.full_name.clone(); let ver = if c.verified { "✅" } else { "⚠️" }; view! { <option value=cid>{cname} " " {ver}</option> } }).collect_view()}</select></div>
+                                    <div>
+                                        <label style="font-size: 0.8rem; font-weight: bold;">"Search & Select Guest"</label>
+                                        <input type="text" placeholder="Search name or Aadhaar..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="margin-bottom: 5px;" />
+                                        <select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) required prop:value=sel_cust>
+                                            <option value="">"Choose guest..."</option>
+                                            {move || filtered_guests().into_iter().map(|c| { 
+                                                let cid = c.id.clone().unwrap_or_default(); 
+                                                let cname = c.full_name.clone(); 
+                                                let phone = c.phone.clone();
+                                                let aadh = if c.aadhaar.len() >= 4 { format!("...{}", &c.aadhaar[8..]) } else { "N/A".to_string() };
+                                                let ver = if c.verified { "✅" } else { "⚠️" }; 
+                                                view! { <option value=cid>{cname} " (" {aadh} " | " {phone} ") " {ver}</option> } 
+                                            }).collect_view()}
+                                        </select>
+                                    </div>
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Check-out Date"</label><input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) required /></div>
                                 </div>
                                 <div style="display: flex; gap: 10px; margin-top: 25px;"><button type="submit" disabled=saving style="flex: 2; background: #27ae60;">"Confirm Check-in"</button><button type="button" on:click=move |_| set_show_book_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button></div>
@@ -240,7 +254,7 @@ pub fn DashboardHome() -> impl IntoView {
                 };
 
                 let bid_for_cancel = b_id.clone();
-                let rid_for_cancel = b_rid.clone();
+                let rid_for_cancel = b_rid_c.clone();
 
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
