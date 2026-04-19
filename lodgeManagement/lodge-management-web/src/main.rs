@@ -49,7 +49,6 @@ pub struct NewCustomer {
     pub gender: Option<String>,
     pub photo_data: Option<String>,
     pub id_card_data: Option<String>,
-    #[serde(default)]
     pub verified: bool,
 }
 
@@ -63,6 +62,10 @@ extern "C" {
     async fn get_rooms_js() -> Result<JsValue, JsValue>;
     #[wasm_bindgen(catch, js_name = addRoom)]
     async fn add_room_js(room: JsValue) -> Result<JsValue, JsValue>;
+    #[wasm_bindgen(catch, js_name = updateRoom)]
+    async fn update_room_js(id: String, room: JsValue) -> Result<JsValue, JsValue>;
+    #[wasm_bindgen(catch, js_name = deleteRoom)]
+    async fn delete_room_js(id: String) -> Result<JsValue, JsValue>;
     #[wasm_bindgen(catch, js_name = getCustomers)]
     async fn get_customers_js(search: String) -> Result<JsValue, JsValue>;
     #[wasm_bindgen(catch, js_name = addCustomer)]
@@ -220,7 +223,8 @@ fn Rooms() -> impl IntoView {
     let (rooms, set_rooms) = create_signal(Vec::<Room>::new());
     let (loading, set_loading) = create_signal(true);
     let (number, set_number) = create_signal("".to_string());
-    let (room_type, set_room_type) = create_signal("Single".to_string());
+    let (room_type, set_room_type) = create_signal("Delux".to_string());
+    let (editing_id, set_editing_id) = create_signal(None::<String>);
 
     let load_rooms = move || {
         spawn_local(async move {
@@ -240,21 +244,46 @@ fn Rooms() -> impl IntoView {
         };
         spawn_local(async move {
             wait_for_bridge().await;
-            match serde_wasm_bindgen::to_value(&new_room) {
-                Ok(js_val) => {
-                    match add_room_js(js_val).await {
-                        Ok(_) => { set_number.set("".to_string()); load_rooms(); }
-                        Err(e) => logging::error!("Error adding room: {:?}", e),
-                    }
-                },
-                Err(e) => logging::error!("Serialization Error: {:?}", e),
+            let js_val = serde_wasm_bindgen::to_value(&new_room).unwrap();
+            
+            if let Some(id) = editing_id.get() {
+                let _ = update_room_js(id, js_val).await;
+            } else {
+                let _ = add_room_js(js_val).await;
             }
+            
+            set_editing_id.set(None);
+            set_number.set("".to_string());
+            load_rooms();
         });
+    };
+
+    let on_edit = move |r: Room| {
+        set_editing_id.set(r.id);
+        set_number.set(r.number);
+        set_room_type.set(r.room_type);
+        window().scroll_to_with_x_and_y(0.0, 0.0);
+    };
+
+    let on_delete = move |id: String| {
+        if window().confirm_with_message("Delete this room?").unwrap_or(false) {
+            spawn_local(async move {
+                wait_for_bridge().await;
+                let _ = delete_room_js(id).await;
+                load_rooms();
+            });
+        }
     };
 
     view! {
         <div class="card">
-            <h1>"Rooms Management"</h1>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h1>"Rooms Management"</h1>
+                {move || if editing_id.get().is_some() {
+                    view! { <button on:click=move |_| set_editing_id.set(None) style="background:#6c757d;">"Cancel Edit"</button> }.into_view()
+                } else { view! {}.into_view() }}
+            </div>
+            
             <form on:submit=on_add_room class="grid-form" style="margin-bottom: 20px;">
                 <div style="display: flex; flex-direction: column;">
                     <label>"Room Number"</label>
@@ -268,7 +297,9 @@ fn Rooms() -> impl IntoView {
                         <option value="non-AC">"non-AC"</option>
                     </select>
                 </div>
-                <button type="submit" style="grid-column: 1 / -1;">"Add Room"</button>
+                <button type="submit" style="grid-column: 1 / -1;">
+                    {move || if editing_id.get().is_some() { "Update Room" } else { "Add Room" }}
+                </button>
             </form>
             {move || if loading.get() { view! { <p>"Loading rooms..."</p> }.into_view() } else {
                 view! {
@@ -278,17 +309,26 @@ fn Rooms() -> impl IntoView {
                                 <th style="padding: 12px; border: 1px solid #ddd;">"Number"</th>
                                 <th style="padding: 12px; border: 1px solid #ddd;">"Type"</th>
                                 <th style="padding: 12px; border: 1px solid #ddd;">"Status"</th>
+                                <th style="padding: 12px; border: 1px solid #ddd;">"Actions"</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <For each=move || rooms.get() key=|room| room.id.clone().unwrap_or_default() children=|room| view! {
-                                <tr>
-                                    <td style="padding: 12px; border: 1px solid #ddd;">{room.number.clone()}</td>
-                                    <td style="padding: 12px; border: 1px solid #ddd;">{room.room_type.clone()}</td>
-                                    <td style="padding: 12px; border: 1px solid #ddd;">
-                                        <span style=format!("padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; background-color: {}; color: white;", if room.status == "Available" { "#27ae60" } else { "#e67e22" })>{room.status.clone()}</span>
-                                    </td>
-                                </tr>
+                            <For each=move || rooms.get() key=|room| room.id.clone().unwrap_or_default() children=move |room| {
+                                let r_cloned = room.clone();
+                                let id_cloned = room.id.clone().unwrap_or_default();
+                                view! {
+                                    <tr>
+                                        <td style="padding: 12px; border: 1px solid #ddd;">{room.number.clone()}</td>
+                                        <td style="padding: 12px; border: 1px solid #ddd;">{room.room_type.clone()}</td>
+                                        <td style="padding: 12px; border: 1px solid #ddd;">
+                                            <span style=format!("padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; background-color: {}; color: white;", if room.status == "Available" { "#27ae60" } else { "#e67e22" })>{room.status.clone()}</span>
+                                        </td>
+                                        <td style="padding: 12px; border: 1px solid #ddd; white-space: nowrap;">
+                                            <button on:click=move |_| on_edit(r_cloned.clone()) style="padding: 5px 10px; margin-right: 5px; font-size: 0.8rem; background: #3498db;">"Edit"</button>
+                                            <button on:click=move |_| on_delete(id_cloned.clone()) style="padding: 5px 10px; font-size: 0.8rem; background: #e74c3c;">"Del"</button>
+                                        </td>
+                                    </tr>
+                                }
                             } />
                         </tbody>
                     </table>

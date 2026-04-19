@@ -186,6 +186,16 @@
                 return docRef.id;
             };
 
+            window.updateRoom = async (id, room) => {
+                await updateDoc(doc(db, "rooms", id), { ...room, updatedAt: serverTimestamp() });
+                return true;
+            };
+
+            window.deleteRoom = async (id) => {
+                await deleteDoc(doc(db, "rooms", id));
+                return true;
+            };
+
             window.getCustomers = async (searchTerm = "") => {
                 console.log(`Database: Searching for "${searchTerm}" (Limit 10)...`);
                 try {
