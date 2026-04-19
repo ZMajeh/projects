@@ -223,9 +223,12 @@
             window.addBooking = async (booking) => {
                 console.log("Firestore SAVE Booking: ", booking);
                 try {
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     // 1. Save Booking
                     const docRef = await addDoc(collection(db, "bookings"), { 
                         ...cleanData(booking), 
+                        inTime: timeStr,
                         createdAt: serverTimestamp() 
                     });
                     console.log("Firestore SAVE Booking Success, ID:", docRef.id);
@@ -243,8 +246,13 @@
             };
 
             window.updateBooking = async (id, booking) => {
+                let extraData = {};
+                if (booking.status === "Checked-Out") {
+                    const now = new Date();
+                    extraData.outTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
                 const docRef = doc(db, "bookings", id);
-                await updateDoc(docRef, { ...cleanData(booking), updatedAt: serverTimestamp() });
+                await updateDoc(docRef, { ...cleanData(booking), ...extraData, updatedAt: serverTimestamp() });
                 return true;
             };
 

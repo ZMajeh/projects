@@ -73,6 +73,8 @@ pub struct Booking {
     pub room_number: String,
     pub check_in_date: String,
     pub check_out_date: String,
+    pub in_time: Option<String>,
+    pub out_time: Option<String>,
     pub status: String,
     #[serde(default)]
     pub total_amount: f64,
@@ -89,6 +91,8 @@ pub struct NewBooking {
     pub room_number: String,
     pub check_in_date: String,
     pub check_out_date: String,
+    pub in_time: Option<String>,
+    pub out_time: Option<String>,
     pub status: String,
     pub total_amount: f64,
     pub payments: Vec<Payment>,

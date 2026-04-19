@@ -18,6 +18,96 @@ fn get_active_booking_helper(bookings: &[Booking], date_str: &str, room_id: &str
 }
 
 #[component]
+fn PrintableBill(booking: Booking, customer: Option<Customer>, on_close: Callback<()>) -> impl IntoView {
+    let paid: f64 = booking.payments.iter().map(|p| p.amount).sum();
+    let balance = booking.total_amount - paid;
+    
+    view! {
+        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: white; z-index: 5000; overflow-y: auto; padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 2px solid #333; padding-bottom: 1rem;" class="no-print">
+                <button on:click=move |_| on_close.call(()) style="background: #6c757d;">"← Back to Dashboard"</button>
+                <button on:click=move |_| { let _ = window().print(); } style="background: #27ae60;">"Print Bill"</button>
+            </div>
+
+            <div style="max-width: 800px; margin: 0 auto; border: 1px solid #eee; padding: 3rem; background: #fff; color: #000;">
+                // Header
+                <div style="text-align: center; margin-bottom: 3rem;">
+                    <h1 style="margin: 0; font-size: 2.5rem; color: #2c3e50; text-transform: uppercase; letter-spacing: 3px;">"Anand Lodge"</h1>
+                    <p style="margin: 5px 0; color: #7f8c8d;">"Main Road, Near Station • Phone: +91 XXXXX XXXXX"</p>
+                    <h2 style="margin-top: 2rem; border-top: 1px solid #333; border-bottom: 1px solid #333; padding: 10px 0; display: inline-block; width: 100%;">"TAX INVOICE"</h2>
+                </div>
+
+                // Bill Content
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 3rem;">
+                    <div>
+                        <h3 style="border-bottom: 1px solid #eee; padding-bottom: 5px;">"GUEST DETAILS"</h3>
+                        <p><strong>"Name: "</strong> {booking.customer_name.clone()}</p>
+                        <p><strong>"Phone: "</strong> {customer.as_ref().map(|c| c.phone.clone()).unwrap_or_else(|| "N/A".to_string())}</p>
+                        <p><strong>"Aadhar: "</strong> {customer.as_ref().map(|c| c.aadhaar.clone()).unwrap_or_else(|| "N/A".to_string())}</p>
+                    </div>
+                    <div>
+                        <h3 style="border-bottom: 1px solid #eee; padding-bottom: 5px;">"STAY DETAILS"</h3>
+                        <p><strong>"Room: "</strong> {booking.room_number.clone()}</p>
+                        <p><strong>"Check-In: "</strong> {booking.check_in_date.clone()} " (" {booking.in_time.clone().unwrap_or_else(|| "--:--".to_string())} ")"</p>
+                        <p><strong>"Check-Out: "</strong> {booking.check_out_date.clone()} " (" {booking.out_time.clone().unwrap_or_else(|| "--:--".to_string())} ")"</p>
+                    </div>
+                </div>
+
+                // Charges Table
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 3rem;">
+                    <thead>
+                        <tr style="background: #f8f9fa; border-bottom: 2px solid #333;">
+                            <th style="text-align: left; padding: 12px;">"Description"</th>
+                            <th style="text-align: right; padding: 12px;">"Amount"</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 12px;">"Room Rent (Total Stay)"</td>
+                            <td style="text-align: right; padding: 12px;">"₹" {booking.total_amount}</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td style="text-align: right; padding: 12px;"><strong>"Total Amount"</strong></td>
+                            <td style="text-align: right; padding: 12px;"><strong>"₹" {booking.total_amount}</strong></td>
+                        </tr>
+                        <tr style="color: #27ae60;">
+                            <td style="text-align: right; padding: 12px;">"Paid Amount"</td>
+                            <td style="text-align: right; padding: 12px;">"- ₹" {paid}</td>
+                        </tr>
+                        <tr style="border-top: 2px solid #333; font-size: 1.2rem;">
+                            <td style="text-align: right; padding: 12px;"><strong>"Balance Due"</strong></td>
+                            <td style="text-align: right; padding: 12px;"><strong>"₹" {balance}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                // Footer
+                <div style="margin-top: 5rem; display: flex; justify-content: space-between;">
+                    <div style="text-align: center;">
+                        <div style="width: 200px; border-bottom: 1px solid #333; margin-bottom: 10px;"></div>
+                        <p>"Guest Signature"</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="width: 200px; border-bottom: 1px solid #333; margin-bottom: 10px;"></div>
+                        <p>"Manager Signature"</p>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 5rem; color: #7f8c8d; font-size: 0.9rem;">
+                    <p>"Thank you for staying at Anand Lodge!"</p>
+                </div>
+            </div>
+
+            <style>
+                "@media print { .no-print { display: none !important; } body { background: white !important; } .card { box-shadow: none !important; border: none !important; } }"
+            </style>
+        </div>
+    }
+}
+
+#[component]
 pub fn DashboardHome() -> impl IntoView {
     let (selected_date, set_selected_date) = create_signal(
         js_sys::Date::new_0().to_iso_string().as_string().unwrap()[..10].to_string()
@@ -30,6 +120,7 @@ pub fn DashboardHome() -> impl IntoView {
     let (show_book_modal, set_show_book_modal) = create_signal(None::<Room>);
     let (show_edit_room_modal, set_show_edit_room_modal) = create_signal(None::<Room>);
     let (show_manage_stay_modal, set_show_manage_stay_modal) = create_signal(None::<Booking>);
+    let (show_bill_modal, set_show_bill_modal) = create_signal(None::<(Booking, Option<Customer>)>);
     let (show_add_guest_modal, set_show_add_guest_modal) = create_signal(false);
     let (confirm_cancel_stay, set_confirm_cancel_stay) = create_signal(false);
     let (confirm_checkout, set_confirm_checkout) = create_signal(false);
@@ -78,6 +169,8 @@ pub fn DashboardHome() -> impl IntoView {
 
     view! {
         <div class="card">
+            {move || show_bill_modal.get().map(|(b, c)| view! { <PrintableBill booking=b customer=c on_close=Callback::new(move |_| set_show_bill_modal.set(None)) /> })}
+
             <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 2rem;">
                 <h2 style="color: var(--primary); font-size: 1.8rem; font-weight: 800;">"Anand Lodge Occupancy"</h2>
                 <div style="display: flex; gap: 20px; align-items: center; width: 100%; justify-content: center; flex-wrap: wrap;">
@@ -156,6 +249,7 @@ pub fn DashboardHome() -> impl IntoView {
                                         <th>"Paid"</th>
                                         <th>"Balance"</th>
                                         <th>"Contact Info"</th>
+                                        <th>"Action"</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -168,6 +262,8 @@ pub fn DashboardHome() -> impl IntoView {
                                         let phone = c.as_ref().map(|x| x.phone.clone()).unwrap_or_else(|| "N/A".to_string());
                                         let aadhaar = c.as_ref().map(|x| x.aadhaar.clone()).unwrap_or_else(|| "N/A".to_string());
                                         
+                                        let b_bill = b.clone();
+                                        let c_bill = c.clone();
                                         view! {
                                             <tr>
                                                 <td><strong>{c_name}</strong><br/><small>{age} " yrs"</small></td>
@@ -182,6 +278,9 @@ pub fn DashboardHome() -> impl IntoView {
                                                     "₹" {balance}
                                                 </td>
                                                 <td><small><strong>"Mob: "</strong> {phone}</small><br/><small><strong>"Aadhar: "</strong> {aadhaar}</small></td>
+                                                <td>
+                                                    <button on:click=move |_| set_show_bill_modal.set(Some((b_bill.clone(), c_bill.clone()))) style="padding: 5px 12px; font-size: 0.75rem; background: #8e44ad;">"Bill"</button>
+                                                </td>
                                             </tr>
                                         }
                                     }/>
@@ -215,7 +314,7 @@ pub fn DashboardHome() -> impl IntoView {
                     let cust_opt = customers.get_untracked().into_iter().find(|c| c.id.as_deref() == Some(&c_id));
                     if let Some(c) = cust_opt {
                         let total = final_price.get().parse::<f64>().unwrap_or(0.0); let first_pay = paid_now.get().parse::<f64>().unwrap_or(0.0);
-                        let new_booking = NewBooking { room_id: rid, customer_id: c_id, customer_name: c.full_name, room_number: rnum, check_in_date: date, check_out_date: cout, status: "Checked-In".to_string(), total_amount: total, payments: vec![Payment { amount: first_pay, date: selected_date.get_untracked() }] };
+                        let new_booking = NewBooking { room_id: rid, customer_id: c_id, customer_name: c.full_name, room_number: rnum, check_in_date: date, check_out_date: cout, in_time: None, out_time: None, status: "Checked-In".to_string(), total_amount: total, payments: vec![Payment { amount: first_pay, date: selected_date.get_untracked() }] };
                         spawn_local(async move { wait_for_bridge().await; let _ = add_booking_js(serde_wasm_bindgen::to_value(&new_booking).unwrap()).await; set_show_book_modal.set(None); load_data(); });
                     }
                 };
@@ -269,7 +368,7 @@ pub fn DashboardHome() -> impl IntoView {
                     let bid = b_id_update.clone(); let extra = extra_payment.get().parse::<f64>().unwrap_or(0.0); let date = date_update.clone();
                     let mut updated_payments = b_data_update.payments.clone();
                     if extra > 0.0 { updated_payments.push(Payment { amount: extra, date }); }
-                    let updated_booking = NewBooking { room_id: b_data_update.room_id.clone(), customer_id: b_data_update.customer_id.clone(), customer_name: b_data_update.customer_name.clone(), room_number: b_data_update.room_number.clone(), check_in_date: b_data_update.check_in_date.clone(), check_out_date: check_out.get(), status: b_data_update.status.clone(), total_amount: b_data_update.total_amount, payments: updated_payments };
+                    let updated_booking = NewBooking { room_id: b_data_update.room_id.clone(), customer_id: b_data_update.customer_id.clone(), customer_name: b_data_update.customer_name.clone(), room_number: b_data_update.room_number.clone(), check_in_date: b_data_update.check_in_date.clone(), check_out_date: check_out.get(), in_time: b_data_update.in_time.clone(), out_time: b_data_update.out_time.clone(), status: b_data_update.status.clone(), total_amount: b_data_update.total_amount, payments: updated_payments };
                     spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(bid, serde_wasm_bindgen::to_value(&updated_booking).unwrap()).await; set_show_manage_stay_modal.set(None); load_data(); });
                 };
 
@@ -280,7 +379,7 @@ pub fn DashboardHome() -> impl IntoView {
                     let remaining = b_data.total_amount - paid_so_far;
                     let mut final_payments = b_data.payments.clone();
                     if remaining > 0.0 { final_payments.push(Payment { amount: remaining, date: today.clone() }); }
-                    let co_booking = NewBooking { room_id: b_data.room_id.clone(), customer_id: b_data.customer_id.clone(), customer_name: b_data.customer_name.clone(), room_number: b_data.room_number.clone(), check_in_date: b_data.check_in_date.clone(), check_out_date: today, status: "Checked-Out".to_string(), total_amount: b_data.total_amount, payments: final_payments };
+                    let co_booking = NewBooking { room_id: b_data.room_id.clone(), customer_id: b_data.customer_id.clone(), customer_name: b_data.customer_name.clone(), room_number: b_data.room_number.clone(), check_in_date: b_data.check_in_date.clone(), check_out_date: today, in_time: b_data.in_time.clone(), out_time: None, status: "Checked-Out".to_string(), total_amount: b_data.total_amount, payments: final_payments };
                     spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(bid, serde_wasm_bindgen::to_value(&co_booking).unwrap()).await; let _ = update_room_js(b_data.room_id.clone(), JsValue::from_str("Available")).await; set_show_manage_stay_modal.set(None); load_data(); });
                 };
                 let b_id_final = b_id.clone(); let b_rid_final = b_rid.clone();
@@ -316,10 +415,10 @@ pub fn DashboardHome() -> impl IntoView {
                 let (r_price, set_r_price) = create_signal(room.price.to_string());
                 let (saving, set_saving) = create_signal(false);
                 let r_num = room.number.clone();
-                let rid_update = r_id.clone(); let rnum_update = r_num.clone();
+                let r_num_update = r_num.clone();
                 let handle_room_update = move |ev: leptos::ev::SubmitEvent| {
                     ev.prevent_default(); set_saving.set(true);
-                    let rid = rid_update.clone(); let rnum = rnum_update.clone();
+                    let rid = r_id.clone(); let rnum = r_num_update.clone();
                     let updated_room = NewRoom { number: rnum, room_type: r_type.get(), status: "Available".to_string(), price: r_price.get().parse::<f64>().unwrap_or(0.0) };
                     spawn_local(async move { wait_for_bridge().await; let _ = update_room_js(rid, serde_wasm_bindgen::to_value(&updated_room).unwrap()).await; set_show_edit_room_modal.set(None); load_data(); });
                 };
@@ -360,7 +459,7 @@ pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: Children) 
                 <A href="rooms" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active">"Rooms"</A>
                 <A href="customers" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active">"Customers"</A>
                 <A href="bookings" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active">"Bookings"</A>
-                <div style="margin-top: auto; padding-rem: 1rem; border-top: 1px solid #ddd; font-size: 0.85rem;">
+                <div style="margin-top: auto; padding: 1rem; border-top: 1px solid #ddd; font-size: 0.85rem;">
                     <p style="color: #7f8c8d; overflow: hidden; text-overflow: ellipsis; margin-bottom: 8px; padding-left: 1rem;">{user.email}</p>
                     <button on:click=handle_logout style="background-color: #e74c3c; width: calc(100% - 2rem); margin: 0 1rem; border-radius: 6px;">"Logout"</button>
                 </div>
