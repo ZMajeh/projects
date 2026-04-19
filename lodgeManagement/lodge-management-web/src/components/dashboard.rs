@@ -41,7 +41,7 @@ pub fn DashboardHome() -> impl IntoView {
         set_selected_date.set(new_date.to_iso_string().as_string().unwrap()[..10].to_string());
     };
 
-    let get_active_booking = move |room_id: &str| -> Option<Booking> {
+    let is_occupied = move |room_id: &str| -> Option<Booking> {
         let date_str = selected_date.get();
         bookings.get().iter().find(|b| {
             b.room_id == room_id && 
@@ -79,12 +79,12 @@ pub fn DashboardHome() -> impl IntoView {
                             let rid_label = room_id.clone();
                             let rid_btn = room_id.clone();
                             let rid_edit = room_id.clone();
-                            let room_for_modal = r_cloned.clone();
-                            let room_for_edit = r_cloned.clone();
+                            let r_for_modal = r_cloned.clone();
+                            let r_for_edit = r_cloned.clone();
                             
                             view! {
                                 <div style=move || {
-                                    let occupied = get_active_booking(&rid_style).is_some();
+                                    let occupied = is_occupied(&rid_style).is_some();
                                     format!("border: 1px solid #eee; border-radius: 12px; padding: 15px; text-align: center; background: #fff; border-top: 8px solid {};", 
                                         if occupied { "#e74c3c" } else { "#27ae60" }
                                     )
@@ -93,29 +93,29 @@ pub fn DashboardHome() -> impl IntoView {
                                     <span style="font-size: 0.8rem; color: #7f8c8d; background: #f8f9fa; padding: 2px 8px; border-radius: 10px;">{r.room_type.clone()}</span>
                                     
                                     <div style=move || {
-                                        let occupied = get_active_booking(&rid_status).is_some();
+                                        let occupied = is_occupied(&rid_status).is_some();
                                         format!("margin: 15px 0; font-size: 0.8rem; font-weight: bold; color: {};", 
                                             if occupied { "#e74c3c" } else { "#27ae60" }
                                         )
                                     }>
-                                        {move || if get_active_booking(&rid_label).is_some() { "● OCCUPIED" } else { "● AVAILABLE" }}
+                                        {move || if is_occupied(&rid_label).is_some() { "● OCCUPIED" } else { "● AVAILABLE" }}
                                     </div>
 
                                     <div style="display: flex; gap: 8px; margin-top: 10px;">
                                         <button 
-                                            on:click=move |_| set_show_book_modal.set(Some(room_for_modal.clone()))
-                                            disabled=move || get_active_booking(&rid_btn).is_some()
+                                            on:click=move |_| set_show_book_modal.set(Some(r_for_modal.clone()))
+                                            disabled=move || is_occupied(&rid_btn).is_some()
                                             style="flex: 1; padding: 8px; font-size: 0.75rem; background: #27ae60;"
                                         >
                                             "Book"
                                         </button>
                                         <button 
                                             on:click=move |_| {
-                                                if let Some(booking) = get_active_booking(&rid_edit) {
+                                                if let Some(booking) = is_occupied(&rid_edit) {
                                                     set_confirm_cancel_stay.set(false);
                                                     set_show_manage_stay_modal.set(Some(booking));
                                                 } else {
-                                                    set_show_edit_room_modal.set(Some(room_for_edit.clone()));
+                                                    set_show_edit_room_modal.set(Some(r_for_edit.clone()));
                                                 }
                                             }
                                             style="flex: 1; padding: 8px; font-size: 0.75rem; background: #3498db;"
@@ -239,16 +239,8 @@ pub fn DashboardHome() -> impl IntoView {
                     });
                 };
 
-                let on_cancel_final = move |_| {
-                    let bid = b_id.clone();
-                    let rid = b_rid.clone();
-                    spawn_local(async move {
-                        wait_for_bridge().await;
-                        let _ = delete_booking_js(bid, rid).await;
-                        set_show_manage_stay_modal.set(None);
-                        load_data();
-                    });
-                };
+                let bid_for_cancel = b_id.clone();
+                let rid_for_cancel = b_rid.clone();
 
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
@@ -270,18 +262,29 @@ pub fn DashboardHome() -> impl IntoView {
                                     <button type="submit" disabled=saving style="background: #3498db;">"Update Dates"</button>
                                     
                                     {move || if confirm_cancel_stay.get() {
+                                        let bid = bid_for_cancel.clone();
+                                        let rid = rid_for_cancel.clone();
                                         view! {
                                             <div style="background: #fee2e2; padding: 10px; border-radius: 8px; border: 1px solid #ef4444; margin-top: 10px;">
                                                 <p style="color: #b91c1c; font-weight: bold; margin-bottom: 10px;">"Really cancel this booking?"</p>
                                                 <div style="display: flex; gap: 5px;">
-                                                    <button type="button" on:click=on_cancel_final style="background: #ef4444; flex: 1;">"YES, Cancel"</button>
+                                                    <button type="button" on:click=move |_| {
+                                                        let bid_f = bid.clone();
+                                                        let rid_f = rid.clone();
+                                                        spawn_local(async move {
+                                                            wait_for_bridge().await;
+                                                            let _ = delete_booking_js(bid_f, rid_f).await;
+                                                            set_show_manage_stay_modal.set(None);
+                                                            load_data();
+                                                        });
+                                                    } style="background: #ef4444; flex: 1;">"YES, Cancel"</button>
                                                     <button type="button" on:click=move |_| set_confirm_cancel_stay.set(false) style="background: #6c757d; flex: 1;">"No"</button>
                                                 </div>
                                             </div>
                                         }.into_view()
                                     } else {
                                         view! {
-                                            <button type="button" on:click=move |_| set_confirm_cancel_stay.set(true) style="background: #e67e22; margin-top: 10px;">"Cancel / Checkout"</button>
+                                            <button type="button" on:click=move |_| set_confirm_cancel_stay.set(true) style="background: #e67e22; margin-top: 10px;">"Cancel / Checkout Booking"</button>
                                         }.into_view()
                                     }}
                                     
