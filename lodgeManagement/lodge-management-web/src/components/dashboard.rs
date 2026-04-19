@@ -60,6 +60,18 @@ pub fn DashboardHome() -> impl IntoView {
             .sum::<f64>()
     };
 
+    let guests_on_day = move || {
+        let date_str = selected_date.get();
+        bookings.get().into_iter()
+            .filter(|b| b.status == "Checked-In" && date_str >= b.check_in_date && date_str < b.check_out_date)
+            .map(|b| {
+                let cust = customers.get().into_iter().find(|c| c.id.as_deref() == Some(&b.customer_id));
+                let paid: f64 = b.payments.iter().map(|p| p.amount).sum();
+                (b, cust, paid)
+            })
+            .collect::<Vec<_>>()
+    };
+
     view! {
         <div class="card">
             <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 2rem;">
@@ -126,6 +138,58 @@ pub fn DashboardHome() -> impl IntoView {
                 }.into_view()
             }}
 
+            <div style="margin-top: 3rem;">
+                <h3 style="border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 1rem;">"Guests in House (" {move || selected_date.get()} ")"</h3>
+                {move || if loading.get() { view! {}.into_view() } else {
+                    view! {
+                        <div style="overflow-x: auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>"Guest"</th>
+                                        <th>"Room"</th>
+                                        <th>"Paid"</th>
+                                        <th>"Balance"</th>
+                                        <th>"Contact Info"</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <For each=move || guests_on_day() key=|item| item.0.id.clone().unwrap_or_default() children=move |(b, c, paid)| {
+                                        let balance = b.total_amount - paid;
+                                        let c_name = b.customer_name.clone();
+                                        let r_num = b.room_number.clone();
+                                        let age = c.as_ref().and_then(|x| x.age.clone()).unwrap_or_else(|| "??".to_string());
+                                        let phone = c.as_ref().map(|x| x.phone.clone()).unwrap_or_else(|| "N/A".to_string());
+                                        let aadhaar = c.as_ref().map(|x| x.aadhaar.clone()).unwrap_or_else(|| "N/A".to_string());
+                                        
+                                        view! {
+                                            <tr>
+                                                <td>
+                                                    <strong>{c_name}</strong><br/>
+                                                    <small>{age} " yrs"</small>
+                                                </td>
+                                                <td>"Room " {r_num}</td>
+                                                <td style="color: #27ae60; font-weight: bold;">"₹" {paid}</td>
+                                                <td style=format!("color: {}; font-weight: bold;", if balance > 0.0 { "#e67e22" } else { "#27ae60" })>
+                                                    "₹" {balance}
+                                                </td>
+                                                <td>
+                                                    <small><strong>"Mob: "</strong> {phone}</small><br/>
+                                                    <small><strong>"Aadhar: "</strong> {aadhaar}</small>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }/>
+                                </tbody>
+                            </table>
+                            {move || if guests_on_day().is_empty() {
+                                view! { <p style="text-align: center; color: #7f8c8d; padding: 2rem;">"No guests staying on this day."</p> }.into_view()
+                            } else { view! {}.into_view() }}
+                        </div>
+                    }.into_view()
+                }}
+            </div>
+
             // --- QUICK BOOKING MODAL ---
             {move || show_book_modal.get().map(|room| {
                 let r_id = room.id.clone().unwrap_or_default();
@@ -137,6 +201,7 @@ pub fn DashboardHome() -> impl IntoView {
                 let (check_out, set_check_out) = create_signal("".to_string());
                 let (saving, set_saving) = create_signal(false);
                 let (guest_search, set_guest_search) = create_signal("".to_string());
+                
                 let filtered_guests = move || { let q = guest_search.get().to_lowercase(); customers.get().into_iter().filter(|c| c.full_name.to_lowercase().contains(&q) || c.aadhaar.contains(&q)).collect::<Vec<_>>() };
                 let rid_save = r_id.clone(); let rnum_save = r_num.clone();
                 let handle_book = move |ev: leptos::ev::SubmitEvent| {
@@ -241,14 +306,17 @@ pub fn DashboardHome() -> impl IntoView {
                                 </div>
                                 <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 25px;">
                                     <button type="submit" disabled=saving style="background: #3498db;">"Save Changes"</button>
+                                    
                                     {let co_f = co_final.clone(); move || if confirm_checkout.get() {
                                         let co_f2 = co_f.clone();
                                         view! { <div style="background: #dcfce7; padding: 10px; border-radius: 8px; border: 1px solid #22c55e; margin-top: 10px;"><p style="color: #166534; font-weight: bold; margin-bottom: 10px;">"Finalize Checkout? (Paid Stay)"</p><div style="display: flex; gap: 5px;"><button type="button" on:click=move |_| co_f2(()) style="background: #22c55e; flex: 1;">"YES"</button><button type="button" on:click=move |_| set_confirm_checkout.set(false) style="background: #6c757d; flex: 1;">"No"</button></div></div> }.into_view()
                                     } else { view! { <button type="button" on:click=move |_| { set_confirm_checkout.set(true); set_confirm_cancel_stay.set(false); } style="background: #27ae60; margin-top: 10px;">"Checkout (Paid & Completed)"</button> }.into_view() }}
+
                                     {move || if confirm_cancel_stay.get() {
                                         let bf = b_id_final.clone(); let rf = b_rid_final.clone();
                                         view! { <div style="background: #fee2e2; padding: 10px; border-radius: 8px; border: 1px solid #ef4444; margin-top: 10px;"><p style="color: #b91c1c; font-weight: bold; margin-bottom: 10px;">"Really cancel? (Deletes stay)"</p><div style="display: flex; gap: 5px;"><button type="button" on:click=move |_| { let bf2=bf.clone(); let rf2=rf.clone(); spawn_local(async move { wait_for_bridge().await; let _ = delete_booking_js(bf2, rf2).await; set_show_manage_stay_modal.set(None); load_data(); }); } style="background: #ef4444; flex: 1;">"YES"</button><button type="button" on:click=move |_| set_confirm_cancel_stay.set(false) style="background: #6c757d; flex: 1;">"No"</button></div></div> }.into_view()
                                     } else { view! { <button type="button" on:click=move |_| { set_confirm_cancel_stay.set(true); set_confirm_checkout.set(false); } style="background: #e74c3c; margin-top: 10px;">"Cancel Stay (Delete)"</button> }.into_view() }}
+                                    
                                     <button type="button" on:click=move |_| set_show_manage_stay_modal.set(None) style="background: #6c757d; margin-top: 10px;">"Close"</button>
                                 </div>
                             </form>
@@ -271,14 +339,14 @@ pub fn DashboardHome() -> impl IntoView {
                     let updated_room = NewRoom { number: rnum, room_type: r_type.get(), status: "Available".to_string(), price: r_price.get().parse::<f64>().unwrap_or(0.0) };
                     spawn_local(async move { wait_for_bridge().await; let _ = update_room_js(rid, serde_wasm_bindgen::to_value(&updated_room).unwrap()).await; set_show_edit_room_modal.set(None); load_data(); });
                 };
-                let rnum_val = r_num.clone();
+                let rnum_view = r_num.clone();
                 view! {
                     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
                         <div class="card" style="width: 100%; max-width: 400px; padding: 2rem;">
                             <h3>"Edit Room Settings"</h3>
                             <form on:submit=handle_room_update>
                                 <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
-                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Room Number"</label><input type="text" value=rnum_val disabled style="background: #eee;" /></div>
+                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Room Number"</label><input type="text" value=rnum_view disabled style="background: #eee;" /></div>
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Category"</label><select on:change=move |ev| set_r_type.set(event_target_value(&ev)) prop:value=r_type><option value="Delux">"Delux"</option><option value="AC">"AC"</option><option value="non-AC">"non-AC"</option></select></div>
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Base Price"</label><input type="number" on:input=move |ev| set_r_price.set(event_target_value(&ev)) prop:value=r_price /></div>
                                 </div>
@@ -308,7 +376,7 @@ pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: Children) 
                 <A href="rooms" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active">"Rooms"</A>
                 <A href="customers" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active">"Customers"</A>
                 <A href="bookings" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active">"Bookings"</A>
-                <div style="margin-top: auto; padding: 1rem; border-top: 1px solid #ddd; font-size: 0.85rem;">
+                <div style="margin-top: auto; padding-rem: 1rem; border-top: 1px solid #ddd; font-size: 0.85rem;">
                     <p style="color: #7f8c8d; overflow: hidden; text-overflow: ellipsis; margin-bottom: 8px; padding-left: 1rem;">{user.email}</p>
                     <button on:click=handle_logout style="background-color: #e74c3c; width: calc(100% - 2rem); margin: 0 1rem; border-radius: 6px;">"Logout"</button>
                 </div>
