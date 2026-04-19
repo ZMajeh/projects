@@ -181,13 +181,21 @@
                 return rooms;
             };
 
+            const cleanData = (obj) => {
+                const newObj = {};
+                Object.keys(obj).forEach(key => {
+                    if (obj[key] !== undefined) newObj[key] = obj[key];
+                });
+                return newObj;
+            };
+
             window.addRoom = async (room) => {
-                const docRef = await addDoc(collection(db, "rooms"), { ...room, createdAt: serverTimestamp() });
+                const docRef = await addDoc(collection(db, "rooms"), { ...cleanData(room), createdAt: serverTimestamp() });
                 return docRef.id;
             };
 
             window.updateRoom = async (id, room) => {
-                await updateDoc(doc(db, "rooms", id), { ...room, updatedAt: serverTimestamp() });
+                await updateDoc(doc(db, "rooms", id), { ...cleanData(room), updatedAt: serverTimestamp() });
                 return true;
             };
 
@@ -217,7 +225,7 @@
                 try {
                     // 1. Save Booking
                     const docRef = await addDoc(collection(db, "bookings"), { 
-                        ...booking, 
+                        ...cleanData(booking), 
                         createdAt: serverTimestamp() 
                     });
                     console.log("Firestore SAVE Booking Success, ID:", docRef.id);
@@ -236,7 +244,7 @@
 
             window.updateBooking = async (id, booking) => {
                 const docRef = doc(db, "bookings", id);
-                await updateDoc(docRef, { ...booking, updatedAt: serverTimestamp() });
+                await updateDoc(docRef, { ...cleanData(booking), updatedAt: serverTimestamp() });
                 return true;
             };
 
@@ -291,7 +299,7 @@
                 console.log("Firestore SAVE: ", customer);
                 try {
                     const docRef = await addDoc(collection(db, "customers"), { 
-                        ...customer, 
+                        ...cleanData(customer), 
                         createdAt: serverTimestamp() 
                     });
                     return docRef.id;
@@ -305,7 +313,7 @@
                 console.log(`Firestore UPDATE (ID: ${id}):`, customer);
                 try {
                     const docRef = doc(db, "customers", id);
-                    await updateDoc(docRef, { ...customer, updatedAt: serverTimestamp() });
+                    await updateDoc(docRef, { ...cleanData(customer), updatedAt: serverTimestamp() });
                     return true;
                 } catch (e) {
                     console.error("Firestore UPDATE Error:", e);

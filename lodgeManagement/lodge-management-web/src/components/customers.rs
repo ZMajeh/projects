@@ -8,7 +8,7 @@ use crate::utils::{wait_for_bridge, calculate_age};
 pub fn CustomerForm(
     editing_id: Memo<Option<String>>,
     on_success: Callback<()>,
-    initial_data: Option<Customer>,
+    #[prop(optional)] initial_data: Option<Customer>,
 ) -> impl IntoView {
     let (name, set_name) = create_signal(initial_data.as_ref().map(|c| c.full_name.clone()).unwrap_or_default());
     let (phone, set_phone) = create_signal(initial_data.as_ref().map(|c| c.phone.clone()).unwrap_or_default());
@@ -96,7 +96,7 @@ pub fn CustomerForm(
                 <div style="display: flex; flex-direction: column;"><label>"Phone"</label><input type="tel" on:input=move |ev| set_phone.set(event_target_value(&ev)) prop:value=phone required /></div>
                 <div style="display: flex; flex-direction: column;"><label>"Age"</label><input type="number" on:input=move |ev| set_age.set(event_target_value(&ev)) prop:value=age required /></div>
                 <div style="display: flex; flex-direction: column;"><label>"Gender"</label><select on:change=move |ev| set_gender.set(event_target_value(&ev)) prop:value=gender><option value="Male">"Male"</option><option value="Female">"Female"</option><option value="Other">"Other"</option></select></div>
-                <div style="display: flex; flex-direction: column; grid-column: 1 / -1;"><label>"Aadhaar"</label><div style="display: flex; gap: 5px;"><input type="text" maxlength="12" on:input=move |ev| { set_aadhaar.set(event_target_value(&ev)); set_is_verified.set(false); } prop:value=aadhaar required /><button type="button" on:click=move |_| { wait_for_bridge(); spawn_local(async move { let _ = manual_verify_aadhaar(aadhaar.get_untracked()).await; set_show_manual_verify.set(true); }); } disabled=ocr_loading>"Verify"</button></div></div>
+                <div style="display: flex; flex-direction: column; grid-column: 1 / -1;"><label>"Aadhaar"</label><div style="display: flex; gap: 5px;"><input type="text" maxlength="12" on:input=move |ev| { set_aadhaar.set(event_target_value(&ev)); set_is_verified.set(false); } prop:value=aadhaar required /><button type="button" on:click=move |_| { let val = aadhaar.get_untracked(); spawn_local(async move { wait_for_bridge().await; let _ = manual_verify_aadhaar(val).await; set_show_manual_verify.set(true); }); } disabled=ocr_loading>"Verify"</button></div></div>
             </div>
             <div class="grid-form" style="margin-top: 20px;">
                 <div style="text-align: center; border: 1px dashed #ccc; padding: 10px;"><p>"Photo"</p>{move || photo.get().map(|d| view! { <img src=d style="width: 100%; max-height: 80px;" /> })}<div style="display: flex; flex-direction: column; gap: 5px; margin-top: 5px;"><button type="button" on:click=move |_| start_capture("photo") style="font-size: 0.7rem; padding: 5px;">"Camera"</button><input type="file" accept="image/*" on:change=move |ev| on_file_upload(ev, "photo") style="font-size: 0.6rem;" /></div></div>
@@ -165,11 +165,13 @@ pub fn Customers() -> impl IntoView {
                 let e_id = editing_id.get();
                 let e_data = editing_data.get();
                 view! {
-                    <CustomerForm 
-                        editing_id=create_memo(move |_| e_id.clone()) 
-                        initial_data=e_data
-                        on_success=Callback::new(move |_| { set_editing_id.set(None); set_editing_data.set(None); load_customers(search_query.get_untracked()); }) 
-                    />
+                    <div id=e_id.clone().unwrap_or_else(|| "new-form".to_string())>
+                        <CustomerForm 
+                            editing_id=create_memo(move |_| e_id.clone()) 
+                            initial_data=e_data
+                            on_success=Callback::new(move |_| { set_editing_id.set(None); set_editing_data.set(None); load_customers(search_query.get_untracked()); }) 
+                        />
+                    </div>
                 }
             }}
 
