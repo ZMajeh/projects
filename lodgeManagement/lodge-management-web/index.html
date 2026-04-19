@@ -263,15 +263,39 @@
 
             // --- MANUAL VERIFY BRIDGE ---
             window.manualVerifyAadhaar = async (aadhaarNumber) => {
-                // Open window FIRST to avoid popup blocker (must be immediate after user gesture)
-                const win = window.open("https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en", "_blank");
-                if (!win) {
-                    alert("Popup blocked! Please allow popups for this site to verify Aadhaar.");
-                    return false;
+                console.log("Attempting to copy:", aadhaarNumber);
+                
+                // 1. Copy to clipboard (Try modern API)
+                let copied = false;
+                try {
+                    await navigator.clipboard.writeText(aadhaarNumber);
+                    copied = true;
+                } catch (e) {
+                    // 2. Fallback for focus/permission issues
+                    const textArea = document.createElement("textarea");
+                    textArea.value = aadhaarNumber;
+                    textArea.style.position = "fixed";
+                    textArea.style.left = "-9999px";
+                    textArea.style.top = "0";
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    try {
+                        copied = document.execCommand('copy');
+                    } catch (err) {
+                        console.error('Fallback copy failed', err);
+                    }
+                    document.body.removeChild(textArea);
                 }
 
-                // Copy to clipboard in background
-                try { await navigator.clipboard.writeText(aadhaarNumber); } catch (e) {}
+                if (copied) console.log("Successfully copied to clipboard.");
+
+                // 3. Open window (Must be immediate to avoid blocker)
+                const win = window.open("https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en", "_blank");
+                if (!win) {
+                    alert("Popup blocked! Please allow popups to verify Aadhaar.");
+                    return false;
+                }
                 return true;
             };
 
