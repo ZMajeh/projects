@@ -234,6 +234,39 @@
                     throw e;
                 }
             };
+
+            // Camera API Bridge
+            let stream = null;
+            window.startCamera = async (videoElementId) => {
+                const video = document.getElementById(videoElementId);
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: "environment" }, // Prefer back camera for ID
+                        audio: false 
+                    });
+                    video.srcObject = stream;
+                    video.play();
+                } catch (err) {
+                    console.error("Camera Error:", err);
+                    throw err;
+                }
+            };
+
+            window.takeSnapshot = (videoElementId) => {
+                const video = document.getElementById(videoElementId);
+                const canvas = document.createElement("canvas");
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(video, 0, 0);
+                return canvas.toDataURL("image/jpeg", 0.7); // Returns Base64
+            };
+
+            window.stopCamera = () => {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+            };
         </script>
     </body>
 </html>
