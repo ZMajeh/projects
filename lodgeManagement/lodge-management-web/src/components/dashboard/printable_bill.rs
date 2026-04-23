@@ -164,6 +164,8 @@ pub fn PrintableBill(booking: Booking, customer: Option<Customer>, on_close: Cal
                         margin: 0 !important; 
                         padding: 0 !important; 
                         background: white !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
                     }
                     .no-print, .sidebar, .mobile-header, .sidebar-overlay { display: none !important; }
                     .app-layout, .content, .container, .card { 
