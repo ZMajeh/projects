@@ -31,28 +31,40 @@ The project follows a hybrid architecture where the UI and business logic are in
 
 ## Building and Running
 
-### Prerequisites
+### Commands
+
+The project includes a `run.sh` script to simplify common tasks.
+
+- **Setup Dependencies:**
+  Installs Rust, Trunk, and other necessary tools.
+  ```bash
+  ./run.sh setup
+  ```
+
+- **Development Server:**
+  Starts the Trunk development server with hot-reloading.
+  ```bash
+  ./run.sh serve
+  ```
+
+- **Build for Production:**
+  Compiles the Rust code to WebAssembly and bundles assets.
+  ```bash
+  ./run.sh
+  ```
+
+- **Deployment:**
+  Deploys the production build to Firebase Hosting.
+  ```bash
+  cd lodge-management-web
+  firebase deploy
+  ```
+
+### Manual Prerequisites (if not using setup)
 
 - [Rust](https://www.rust-lang.org/) (stable)
 - `wasm32-unknown-unknown` target: `rustup target add wasm32-unknown-unknown`
 - [Trunk](https://trunkrs.dev/): `cargo install --locked trunk`
-
-### Commands
-
-- **Development Server:**
-  ```bash
-  cd lodge-management-web
-  trunk serve
-  ```
-- **Build for Production:**
-  ```bash
-  cd lodge-management-web
-  trunk build --release
-  ```
-- **Deployment:**
-  ```bash
-  firebase deploy
-  ```
 
 ## Development Conventions
 

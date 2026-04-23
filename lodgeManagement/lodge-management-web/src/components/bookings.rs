@@ -1,5 +1,5 @@
 use leptos::*;
-use crate::models::{Booking, NewBooking, Payment};
+use crate::models::Booking;
 use crate::api::{get_bookings_js, delete_booking_js};
 use crate::utils::wait_for_bridge;
 

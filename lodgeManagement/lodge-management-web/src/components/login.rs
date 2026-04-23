@@ -1,4 +1,5 @@
 use leptos::*;
+use leptos_router::use_navigate;
 use crate::models::User;
 use crate::api::login_user;
 use crate::utils::{save_user, wait_for_bridge};
@@ -9,6 +10,7 @@ pub fn Login(on_login: Callback<User>) -> impl IntoView {
     let (password, set_password) = create_signal("".to_string());
     let (error, set_error) = create_signal(None::<String>);
     let (loading, set_loading) = create_signal(false);
+    let navigate = use_navigate();
 
     let on_submit = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
@@ -16,6 +18,7 @@ pub fn Login(on_login: Callback<User>) -> impl IntoView {
         set_error.set(None);
         let email_val = email.get();
         let pass_val = password.get();
+        let navigate = navigate.clone();
         spawn_local(async move {
             wait_for_bridge().await;
             match login_user(email_val, pass_val).await {
@@ -23,6 +26,7 @@ pub fn Login(on_login: Callback<User>) -> impl IntoView {
                     if let Ok(user) = serde_wasm_bindgen::from_value::<User>(user_js) {
                         save_user(&user);
                         on_login.call(user);
+                        navigate("/", Default::default());
                     }
                 }
                 Err(_) => { set_error.set(Some("Login failed. Check credentials.".to_string())); }

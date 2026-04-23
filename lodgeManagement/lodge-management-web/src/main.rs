@@ -22,7 +22,13 @@ fn App() -> impl IntoView {
         <Router>
             <Routes>
                 // Public Route
-                <Route path="/login" view=move || view! { <Login on_login=on_login /> } />
+                <Route path="/login" view=move || {
+                    if user.get().is_some() {
+                        view! { <Redirect path="/"/> }.into_view()
+                    } else {
+                        view! { <Login on_login=on_login /> }.into_view()
+                    }
+                } />
 
                 // Protected Routes inside DashboardLayout
                 <Route 
