@@ -16,7 +16,7 @@ pub fn Rooms() -> impl IntoView {
     let (rooms, set_rooms) = create_signal(Vec::<Room>::new());
     let (loading, set_loading) = create_signal(true);
     let (number, set_number) = create_signal("".to_string());
-    let (room_type, set_room_type) = create_signal("Delux".to_string());
+    let (room_type, set_room_type) = create_signal("Deluxe".to_string());
     let (price, set_price) = create_signal("".to_string());
     let (editing_id, set_editing_id) = create_signal(None::<String>);
     let (confirm_delete_id, set_confirm_delete_id) = create_signal(None::<String>);
@@ -84,7 +84,7 @@ pub fn Rooms() -> impl IntoView {
             </div>
             <form on:submit=on_add_room class="grid-form" style="margin-bottom: 20px;">
                 <div style="display: flex; flex-direction: column;"><label>"Number"</label><input type="text" on:input=move |ev| set_number.set(event_target_value(&ev)) prop:value=number required /></div>
-                <div style="display: flex; flex-direction: column;"><label>"Type"</label><select on:change=move |ev| set_room_type.set(event_target_value(&ev)) prop:value=room_type><option value="Delux">"Delux"</option><option value="AC">"AC"</option><option value="non-AC">"non-AC"</option></select></div>
+                <div style="display: flex; flex-direction: column;"><label>"Type"</label><select on:change=move |ev| set_room_type.set(event_target_value(&ev)) prop:value=room_type><option value="Deluxe">"Deluxe"</option><option value="AC">"AC"</option><option value="non-AC">"non-AC"</option></select></div>
                 <div style="display: flex; flex-direction: column;"><label>"Price (per day)"</label><input type="number" on:input=move |ev| set_price.set(event_target_value(&ev)) prop:value=price required /></div>
                 <button type="submit" style="grid-column: 1 / -1;">{move || if editing_id.get().is_some() { "Update Room" } else { "Add Room" }}</button>
             </form>
