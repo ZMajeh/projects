@@ -157,11 +157,47 @@ pub fn PrintableBill(booking: Booking, customer: Option<Customer>, on_close: Cal
 
             <style>
                 "@media print {
-                    @page { margin: 0.5cm; size: A4; }
-                    body { background: white !important; margin: 0; padding: 0; }
-                    .no-print { display: none !important; }
-                    .bill-overlay { position: static !important; padding: 0 !important; width: 100% !important; height: auto !important; background: white !important; }
-                    .printable-area { border: none !important; box-shadow: none !important; width: 100% !important; height: auto !important; padding: 1cm !important; margin: 0 auto !important; border-radius: 0 !important; }
+                    @page { margin: 0; size: A4; }
+                    html, body { 
+                        height: auto !important; 
+                        overflow: visible !important; 
+                        margin: 0 !important; 
+                        padding: 0 !important; 
+                        background: white !important;
+                    }
+                    .no-print, .sidebar, .mobile-header, .sidebar-overlay { display: none !important; }
+                    .app-layout, .content, .container, .card { 
+                        display: block !important; 
+                        height: auto !important; 
+                        overflow: visible !important; 
+                        padding: 0 !important; 
+                        margin: 0 !important; 
+                        border: none !important; 
+                        box-shadow: none !important;
+                        background: transparent !important;
+                    }
+                    .bill-overlay { 
+                        position: absolute !important; 
+                        top: 0 !important; 
+                        left: 0 !important; 
+                        width: 100% !important; 
+                        height: auto !important; 
+                        background: white !important; 
+                        padding: 0 !important; 
+                        margin: 0 !important; 
+                        z-index: 100000 !important;
+                        overflow: visible !important;
+                    }
+                    .printable-area { 
+                        border: none !important; 
+                        box-shadow: none !important; 
+                        width: 21cm !important; 
+                        height: auto !important;
+                        min-height: 29.7cm !important; 
+                        padding: 1cm 1.5cm !important; 
+                        margin: 0 auto !important; 
+                        border-radius: 0 !important; 
+                    }
                 }"
             </style>
         </div>

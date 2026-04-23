@@ -78,7 +78,8 @@ pub fn DashboardHome() -> impl IntoView {
                 view! { <PrintableBill booking=b customer=c on_close=on_close /> }
             })}
 
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 2rem;">
+            <div class=move || if show_bill_modal.get().is_some() { "no-print" } else { "" }>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 2rem;">
                 <h2 style="color: var(--primary); font-size: 1.8rem; font-weight: 800;">"Anand Lodge Occupancy"</h2>
                 <div style="display: flex; gap: 20px; align-items: center; width: 100%; justify-content: center; flex-wrap: wrap;">
                     <div style="display: flex; align-items: center; gap: 15px; background: #fff; padding: 10px 20px; border-radius: 50px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
@@ -283,6 +284,7 @@ pub fn DashboardHome() -> impl IntoView {
                 let r_num_v = room.number.clone();
                 view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;"><div class="card" style="width: 100%; max-width: 400px; padding: 2rem;"><h3>"Edit Room Settings"</h3><form on:submit=handle_room_update><div style="display: flex; flex-direction: column; gap: 15px; text-align: left;"><div><label style="font-size: 0.8rem; font-weight: bold;">"Room Number"</label><input type="text" value=r_num_v disabled style="background: #eee;" /></div><div><label style="font-size: 0.8rem; font-weight: bold;">"Category"</label><select on:change=move |ev| set_r_type.set(event_target_value(&ev)) prop:value=r_type><option value="Delux">"Delux"</option><option value="AC">"AC"</option><option value="non-AC">"non-AC"</option></select></div><div><label style="font-size: 0.8rem; font-weight: bold;">"Base Price"</label><input type="number" on:input=move |ev| set_r_price.set(event_target_value(&ev)) prop:value=r_price /></div></div><div style="display: flex; gap: 10px; margin-top: 25px;"><button type="submit" disabled=saving style="flex: 1; background: #3498db;">"Save"</button><button type="button" on:click=move |_| set_show_edit_room_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button></div></form></div></div> }
             })}
+            </div>
         </div>
     }
 }
