@@ -25,9 +25,9 @@ pub fn PrintableBill(booking: Booking, customer: Option<Customer>, on_close: Cal
                             <h1 style="margin: 0; font-size: 2.4rem; color: #2c3e50; text-transform: uppercase; letter-spacing: 3px; font-weight: 900; line-height: 1;">"ANAND LODGE"</h1>
                             <h3 style="margin: 5px 0 0 0; font-size: 0.9rem; color: #7f8c8d; letter-spacing: 5px; text-transform: uppercase; font-weight: 400;">"LODGE & STAY"</h3>
                             <div style="margin-top: 15px; font-size: 0.8rem; color: #34495e; line-height: 1.5;">
-                                <p style="margin: 0; display: flex; align-items: center;"><span style="width: 15px; margin-right: 8px;">"📍"</span> "Main Road, Near Railway Station"</p>
-                                <p style="margin: 0; display: flex; align-items: center;"><span style="width: 15px; margin-right: 8px;">"📞"</span> "Phone: +91 98XXX XXXXX"</p>
-                                <p style="margin: 0; display: flex; align-items: center;"><span style="width: 15px; margin-right: 8px;">"✉️"</span> "Email: contact@anandlodge.com"</p>
+                                <p style="margin: 0; display: flex; align-items: center;"><span style="width: 15px; margin-right: 8px;">"📍"</span> "Front of bus-stand, Gangakhed"</p>
+                                <p style="margin: 0; display: flex; align-items: center;"><span style="width: 15px; margin-right: 8px;">"📞"</span> "Phone: +91 70660 58468"</p>
+                                <p style="margin: 0; display: flex; align-items: center;"><span style="width: 15px; margin-right: 8px;">"✉️"</span> "Email: vijaymundhe90@gmail.com"</p>
                             </div>
                         </div>
                         <div style="width: 260px; margin-left: 20px;">
