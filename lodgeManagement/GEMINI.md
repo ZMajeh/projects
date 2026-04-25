@@ -12,63 +12,89 @@ A web-based lodge management application built with Rust, Leptos, and Firebase.
 
 ### Core Features
 
-- **Room Management:** Track availability and status (Available, Occupied, etc.).
+- **Room Management:** Track availability and status (Available, Occupied, Maintenance).
 - **Customer Management:** Maintain customer records with Aadhaar verification.
 - **Booking Management:** Handle check-ins, check-outs, and payments.
 - **OCR Integration:** Extract Aadhaar details from images using Tesseract.js.
 - **Camera Integration:** Capture customer photos directly from the browser.
+- **Printable Bills:** Generate professional bills for customers.
+
+## Project Structure
+
+```text
+.
+├── GEMINI.md               # Project documentation
+├── run.sh                  # Main runner script
+├── requirements.sh         # Environment setup script
+└── lodge-management-web/   # Main application directory
+    ├── Cargo.toml          # Rust dependencies
+    ├── index.html          # App shell & JS Bridge
+    └── src/
+        ├── main.rs         # Entry point & Routing
+        ├── api.rs          # JS Bridge (wasm-bindgen)
+        ├── models.rs       # Shared data structures
+        ├── utils.rs        # Helpers (validation, state)
+        └── components/     # UI Components
+            ├── dashboard/  # Layout, Home, Bills
+            ├── login.rs    # Auth UI
+            ├── rooms.rs    # Room management
+            ├── customers.rs # Customer records & OCR
+            └── bookings.rs  # Booking management
+```
 
 ## Architecture
 
-The project follows a hybrid architecture where the UI and business logic are in Rust, while the external service integrations (Firebase, Camera, OCR) are handled via a JavaScript bridge.
+The project follows a hybrid architecture where the UI and business logic are in Rust (Leptos), while external service integrations (Firebase, Camera, OCR) are handled via a JavaScript bridge.
 
-- `src/main.rs`: Application entry point, routing, and high-level state management.
-- `src/api.rs`: `wasm-bindgen` declarations for the JavaScript bridge functions defined in `index.html`.
-- `src/models.rs`: Shared data structures (User, Room, Customer, Booking).
-- `src/components/`: Modular UI components built with Leptos.
-- `src/utils.rs`: Helper functions for validation, age calculation, and local storage.
-- `index.html`: Contains the application shell, CSS styles, and the "JS Bridge" (Firebase SDK initialization and interop functions).
+### Core Files
+
+- `src/main.rs`: High-level application state (Auth) and routing.
+- `src/api.rs`: `wasm-bindgen` declarations for interop with JavaScript functions.
+- `src/models.rs`: Defines `User`, `Room`, `Customer`, and `Booking` structs with Serde.
+- `index.html`: Contains the CSS, Firebase SDK initialization, and the "JS Bridge" (window-scoped functions for Firestore, Camera, and OCR).
+
+### JS Bridge (Interoperability)
+
+New external features should be added as `window.functionName` in `index.html` and then declared in `src/api.rs`.
+
+- **Auth:** `loginUser`, `signOutUser`
+- **Firestore:** CRUD for `rooms`, `customers`, and `bookings`.
+- **Media:** `startCamera`, `takeSnapshot`, `stopCamera`.
+- **OCR:** `extractAadhaar` (using Tesseract.js).
+- **Utility:** `manualVerifyAadhaar` (clipboard + external link).
 
 ## Building and Running
 
 ### Commands
 
-The project includes a `run.sh` script to simplify common tasks.
+Use the `run.sh` script from the project root.
 
-- **Setup Dependencies:**
-  Installs Rust, Trunk, and other necessary tools.
+- **Setup:** Installs Rust, `wasm32` target, Trunk, and Firebase Tools.
   ```bash
   ./run.sh setup
   ```
 
-- **Development Server:**
-  Starts the Trunk development server with hot-reloading.
+- **Development:** Starts hot-reloading server at `http://localhost:8080`.
   ```bash
   ./run.sh serve
   ```
 
-- **Build for Production:**
-  Compiles the Rust code to WebAssembly and bundles assets.
+- **Build:** Production-ready WebAssembly bundle in `lodge-management-web/dist`.
   ```bash
-  ./run.sh
+  ./run.sh build
   ```
 
 - **Deployment:**
-  Deploys the production build to Firebase Hosting.
   ```bash
   cd lodge-management-web
   firebase deploy
   ```
 
-### Manual Prerequisites (if not using setup)
-
-- [Rust](https://www.rust-lang.org/) (stable)
-- `wasm32-unknown-unknown` target: `rustup target add wasm32-unknown-unknown`
-- [Trunk](https://trunkrs.dev/): `cargo install --locked trunk`
-
 ## Development Conventions
 
-- **State Management:** Use Leptos signals (`create_signal`) for local component state and global state where appropriate.
-- **Interoperability:** New Firebase or external JS features should be added to the `<script>` tag in `index.html` and then declared in `src/api.rs`.
-- **Styling:** Vanilla CSS is used within `index.html`. For component-specific styles, prefer adding them to the global stylesheet or using inline styles if necessary.
-- **Naming:** Follow Rust naming conventions for backend logic and camelCase for JavaScript bridge functions as they appear in Firestore.
+- **State:** Use Leptos signals (`create_signal`) for local state. Prefer passing signals/callbacks to children.
+- **Errors:** Handle JS Bridge failures using the `Result<JsValue, JsValue>` return type in `api.rs`.
+- **Styling:** Vanilla CSS in `index.html`. Follow the existing color palette (defined in `:root`).
+- **Naming:**
+  - Rust: `snake_case` (functions/variables), `PascalCase` (structs/components).
+  - Firestore/JS: `camelCase` for fields and bridge functions.
