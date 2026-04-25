@@ -7,6 +7,7 @@ use crate::components::rooms::fetch_rooms;
 use crate::components::bookings::fetch_bookings;
 use crate::components::customers::{fetch_customers, CustomerForm};
 use super::printable_bill::PrintableBill;
+use super::booking_details::BookingDetails;
 
 fn get_active_booking_helper(bookings: &[Booking], date_str: &str, room_id: &str) -> Option<Booking> {
     bookings.iter().find(|b| {
@@ -29,6 +30,7 @@ pub fn DashboardHome() -> impl IntoView {
     let (show_edit_room_modal, set_show_edit_room_modal) = create_signal(None::<Room>);
     let (show_manage_stay_modal, set_show_manage_stay_modal) = create_signal(None::<Booking>);
     let (show_bill_modal, set_show_bill_modal) = create_signal(None::<(Booking, Option<Customer>)>);
+    let (show_booking_details_modal, set_show_booking_details_modal) = create_signal(None::<(Booking, Vec<Customer>)>);
     let (show_add_guest_modal, set_show_add_guest_modal) = create_signal(false);
     let (confirm_cancel_stay, set_confirm_cancel_stay) = create_signal(false);
     let (confirm_checkout, set_confirm_checkout) = create_signal(false);
@@ -78,7 +80,12 @@ pub fn DashboardHome() -> impl IntoView {
                 view! { <PrintableBill booking=b customer=c on_close=on_close /> }
             })}
 
-            <div class=move || if show_bill_modal.get().is_some() { "no-print" } else { "" }>
+            {move || show_booking_details_modal.get().map(|(b, cs)| {
+                let on_close = Callback::new(move |_| set_show_booking_details_modal.set(None));
+                view! { <BookingDetails booking=b customers=cs on_close=on_close /> }
+            })}
+
+            <div class=move || if show_bill_modal.get().is_some() || show_booking_details_modal.get().is_some() { "no-print" } else { "" }>
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 2rem;">
                 <h2 style="color: var(--primary); font-size: 1.8rem; font-weight: 800;">"Anand Lodge Occupancy"</h2>
                 <div style="display: flex; gap: 20px; align-items: center; width: 100%; justify-content: center; flex-wrap: wrap;">
@@ -165,7 +172,31 @@ pub fn DashboardHome() -> impl IntoView {
                                                 <td style="color: #27ae60; font-weight: bold;">"₹" {paid}</td>
                                                 <td style=format!("color: {}; font-weight: bold;", if balance > 0.0 { "#e67e22" } else { "#27ae60" })>"₹" {balance}</td>
                                                 <td><small><strong>"Mob: "</strong> {c_data.as_ref().map(|x| x.phone.clone()).unwrap_or_default()}</small></td>
-                                                <td><button on:click=move |_| set_show_bill_modal.set(Some((b_data.clone(), c_data.clone()))) style="padding: 5px 12px; font-size: 0.75rem; background: #8e44ad;">"Bill"</button></td>
+                                                <td>
+                                                    <div style="display: flex; gap: 5px;">
+                                                        {
+                                                            let b_bill = b_data.clone();
+                                                            let c_bill = c_data.clone();
+                                                            view! { <button on:click=move |_| set_show_bill_modal.set(Some((b_bill.clone(), c_bill.clone()))) style="padding: 5px 12px; font-size: 0.75rem; background: #8e44ad;">"Bill"</button> }
+                                                        }
+                                                        <button on:click={
+                                                            let b_cloned = b_data.clone();
+                                                            move |_| {
+                                                                let mut all_cs = Vec::new();
+                                                                let all_custs = customers.get_untracked();
+                                                                if let Some(p) = all_custs.iter().find(|c| c.id.as_deref() == Some(&b_cloned.customer_id)) {
+                                                                    all_cs.push(p.clone());
+                                                                }
+                                                                for g in &b_cloned.extra_guests {
+                                                                    if let Some(ec) = all_custs.iter().find(|c| c.id.as_deref() == Some(&g.id)) {
+                                                                        all_cs.push(ec.clone());
+                                                                    }
+                                                                }
+                                                                set_show_booking_details_modal.set(Some((b_cloned.clone(), all_cs)));
+                                                            }
+                                                        } style="padding: 5px 12px; font-size: 0.75rem; background: #2c3e50;">"Details"</button>
+                                                    </div>
+                                                </td>
                                             </tr>
                                         }
                                     }/>

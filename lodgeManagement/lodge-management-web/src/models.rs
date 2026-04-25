@@ -38,6 +38,7 @@ pub struct Customer {
     pub gender: Option<String>,
     pub photo_data: Option<String>,
     pub id_card_data: Option<String>,
+    pub id_card_back_data: Option<String>,
     #[serde(default)]
     pub verified: bool,
 }
@@ -53,6 +54,7 @@ pub struct NewCustomer {
     pub gender: Option<String>,
     pub photo_data: Option<String>,
     pub id_card_data: Option<String>,
+    pub id_card_back_data: Option<String>,
     #[serde(default)]
     pub verified: bool,
 }
