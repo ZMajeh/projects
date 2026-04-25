@@ -162,51 +162,60 @@ pub fn BookingDetails(
 
             <style>
                 "@media print {
-                    /* Hide everything */
-                    body * { visibility: hidden; }
-                    
-                    /* Show ONLY the bill overlay and its children */
-                    .bill-overlay, .bill-overlay * { visibility: visible; }
-                    
-                    /* Reset container constraints for print */
-                    .bill-overlay {
-                        position: absolute !important;
-                        top: 0 !important;
-                        left: 0 !important;
-                        width: 100% !important;
-                        height: auto !important;
+                    @page { margin: 0; size: A4; }
+                    html, body { 
+                        height: auto !important; 
+                        overflow: visible !important; 
+                        margin: 0 !important; 
+                        padding: 0 !important; 
                         background: white !important;
-                        padding: 0 !important;
-                        margin: 0 !important;
-                        display: block !important;
-                        overflow: visible !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
                     }
 
-                    /* Important: Force parents to not clip content */
-                    html, body, .app-layout, .content, main, .card {
-                        height: auto !important;
-                        overflow: visible !important;
-                        display: block !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        border: none !important;
+                    /* Hide everything except our overlay */
+                    body * { visibility: hidden; }
+                    .bill-overlay, .bill-overlay * { visibility: visible; }
+                    .no-print, .sidebar, .mobile-header, .sidebar-overlay { display: none !important; }
+
+                    .app-layout, .content, .container, .card, main { 
+                        display: block !important; 
+                        height: auto !important; 
+                        overflow: visible !important; 
+                        padding: 0 !important; 
+                        margin: 0 !important; 
+                        border: none !important; 
                         box-shadow: none !important;
                         background: transparent !important;
+                        visibility: visible !important;
                     }
 
-                    @page { margin: 1cm; size: A4; }
-                    .no-print { display: none !important; }
-                    .printable-area { 
-                        box-shadow: none !important; 
-                        border: none !important; 
+                    .bill-overlay { 
+                        position: absolute !important; 
+                        top: 0 !important; 
+                        left: 0 !important; 
                         width: 100% !important; 
+                        height: auto !important; 
+                        background: white !important; 
+                        padding: 0 !important; 
                         margin: 0 !important; 
-                        padding: 0 !important;
+                        z-index: 100000 !important;
+                        overflow: visible !important;
+                    }
+
+                    .printable-area { 
+                        border: none !important; 
+                        box-shadow: none !important; 
+                        width: 21cm !important; 
+                        height: auto !important;
+                        min-height: 29.7cm !important; 
+                        padding: 1cm 1.5cm !important; 
+                        margin: 0 auto !important; 
+                        border-radius: 0 !important; 
                         display: block !important;
                     }
                     .watermark { display: none !important; }
                 }"
-            </style>
-        </div>
+            </style>        </div>
     }
 }

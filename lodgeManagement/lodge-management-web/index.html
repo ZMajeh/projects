@@ -145,6 +145,12 @@
     <body>
         <div id="main"></div>
 
+        <script>
+            // Define stubs immediately to prevent ReferenceError during Wasm initialization.
+            // These will be overwritten or supplemented by the module script below.
+            window.isDriveAuthorized = () => !!localStorage.getItem('google_drive_token');
+        </script>
+
         <script type="module">
             import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
             import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, where, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -170,7 +176,8 @@
             const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
             let tokenClient;
-            let accessToken = sessionStorage.getItem('google_drive_token');
+            // Use localStorage so the session persists across browser restarts
+            let accessToken = localStorage.getItem('google_drive_token');
 
             // Initialize GAPI and GIS
             const initGoogleDrive = () => {
@@ -188,11 +195,16 @@
                             throw (response);
                         }
                         accessToken = response.access_token;
-                        sessionStorage.setItem('google_drive_token', accessToken);
+                        localStorage.setItem('google_drive_token', accessToken);
                         console.log("Drive: Authorized successfully.");
                         if (window.onDriveAuthSuccess) window.onDriveAuthSuccess();
                     },
                 });
+            };
+
+            // Define these on window immediately so Wasm doesn't crash if it calls them early
+            window.isDriveAuthorized = () => {
+                return accessToken !== null && accessToken !== undefined;
             };
 
             // Call init on load
@@ -206,10 +218,6 @@
                     // If we have a token but user clicked authorize, they might want a fresh one
                     tokenClient.requestAccessToken({ prompt: 'consent' });
                 });
-            };
-
-            window.isDriveAuthorized = () => {
-                return accessToken !== null;
             };
 
             window.getDriveThumbnail = async (fileId) => {
@@ -246,7 +254,7 @@
             window.signOutUser = async () => {
                 await signOut(auth);
                 accessToken = null;
-                sessionStorage.removeItem('google_drive_token');
+                localStorage.removeItem('google_drive_token');
                 return true;
             };
 
