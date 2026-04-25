@@ -126,7 +126,7 @@ void fz_free_argv(int argc, char **argv);
 
 #ifdef __ANDROID__
 #include <android/log.h>
-#define LOG_TAG "libmupdf"
+#define LOG_TAG "libmajehpdfviewer"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 #else
@@ -360,9 +360,6 @@ static inline float my_atan2f(float o, float a)
 	return r;
 }
 
-#define sinf(x) my_sinf(x)
-#define cosf(x) my_sinf(((float)(M_PI/2.0f)) + (x))
-#define atan2f(x,y) my_atan2f((x),(y))
 #endif
 
 int fz_strcasecmp(const char *a, const char *b);

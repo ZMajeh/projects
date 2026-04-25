@@ -129,7 +129,7 @@ static void showmessage(pdfapp_t *app, int timeout, char *msg)
 
 void winerror(pdfapp_t *app, char *msg)
 {
-	fprintf(stderr, "mupdf: error: %s\n", msg);
+	fprintf(stderr, "majehpdfviewer: error: %s\n", msg);
 	cleanup(app);
 	exit(1);
 }
@@ -139,7 +139,7 @@ void winwarn(pdfapp_t *app, char *msg)
 	char buf[1024];
 	snprintf(buf, sizeof buf, "warning: %s", msg);
 	showmessage(app, 10, buf);
-	fprintf(stderr, "mupdf: %s\n", buf);
+	fprintf(stderr, "majehpdfviewer: %s\n", buf);
 }
 
 void winalert(pdfapp_t *app, pdf_alert_event *alert)
@@ -277,8 +277,8 @@ static void winopen(void)
 	classhint = XAllocClassHint();
 	if (classhint)
 	{
-		classhint->res_name = "mupdf";
-		classhint->res_class = "MuPDF";
+		classhint->res_name = "majehpdfviewer";
+		classhint->res_class = "Majeh's PDF Viewer";
 		XSetClassHint(xdpy, xwin, classhint);
 		XFree(classhint);
 	}

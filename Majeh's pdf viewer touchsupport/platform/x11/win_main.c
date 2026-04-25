@@ -51,7 +51,7 @@ static wchar_t wbuf[PATH_MAX];
 static char filename[PATH_MAX];
 
 /*
- * Create registry keys to associate MuPDF with PDF and XPS files.
+ * Create registry keys to associate Majeh's PDF Viewer with PDF and XPS files.
  */
 
 #define OPEN_KEY(parent, name, ptr) \
@@ -63,7 +63,7 @@ static char filename[PATH_MAX];
 void install_app(char *argv0)
 {
 	char buf[512];
-	HKEY software, classes, mupdf, dotpdf, dotxps;
+	HKEY software, classes, majehviewer, dotpdf, dotxps;
 	HKEY shell, open, command, supported_types;
 	HKEY pdf_progids, xps_progids;
 
@@ -73,9 +73,9 @@ void install_app(char *argv0)
 	OPEN_KEY(dotpdf, "OpenWithProgids", pdf_progids);
 	OPEN_KEY(classes, ".xps", dotxps);
 	OPEN_KEY(dotxps, "OpenWithProgids", xps_progids);
-	OPEN_KEY(classes, "Majeh's PDF Viewer", mupdf);
-	OPEN_KEY(mupdf, "SupportedTypes", supported_types);
-	OPEN_KEY(mupdf, "shell", shell);
+	OPEN_KEY(classes, "Majeh's PDF Viewer", majehviewer);
+	OPEN_KEY(majehviewer, "SupportedTypes", supported_types);
+	OPEN_KEY(majehviewer, "shell", shell);
 	OPEN_KEY(shell, "open", open);
 	OPEN_KEY(open, "command", command);
 
@@ -90,7 +90,7 @@ void install_app(char *argv0)
 
 	RegCloseKey(dotxps);
 	RegCloseKey(dotpdf);
-	RegCloseKey(mupdf);
+	RegCloseKey(majehviewer);
 	RegCloseKey(classes);
 	RegCloseKey(software);
 }

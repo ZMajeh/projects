@@ -27,7 +27,7 @@ if ($Debug) {
     gcc -Iinclude -Igenerated -Wall -pipe -g -DDEBUG -o build/$Config/majehs-viewer.exe platform/x11/win_main.c platform/x11/pdfapp.c build/$Config/win_res.obj build/$Config/libmajehpdfviewer.a build/$Config/libfreetype.a build/$Config/libjbig2dec.a build/$Config/libjpeg.a build/$Config/libopenjpeg.a build/$Config/libz.a build/$Config/libmujs.a -lgdi32 -lcomdlg32 -lcomctl32 -lwinspool -lm -mwindows
 } else {
     # Added -mwindows to suppress terminal
-    gcc -Iinclude -Igenerated -Wall -pipe -O3 -DNDEBUG -o build/$Config/majehs-viewer.exe platform/x11/win_main.c platform/x11/pdfapp.c build/$Config/win_res.obj build/$Config/libmajehpdfviewer.a build/$Config/libfreetype.a build/$Config/libjbig2dec.a build/$Config/libjpeg.a build/$Config/libopenjpeg.a build/$Config/libz.a build/$Config/libmujs.a -lgdi32 -lcomdlg32 -lcomctl32 -lwinspool -lm -mwindows
+    gcc -Iinclude -Igenerated -Wall -pipe -O1 -DNDEBUG -o build/$Config/majehs-viewer.exe platform/x11/win_main.c platform/x11/pdfapp.c build/$Config/win_res.obj build/$Config/libmajehpdfviewer.a build/$Config/libfreetype.a build/$Config/libjbig2dec.a build/$Config/libjpeg.a build/$Config/libopenjpeg.a build/$Config/libz.a build/$Config/libmujs.a -lgdi32 -lcomdlg32 -lcomctl32 -lwinspool -lm -mwindows
     Write-Host "--- Stripping symbols for smaller binary ---"
     strip build/release/majehs-viewer.exe
 }

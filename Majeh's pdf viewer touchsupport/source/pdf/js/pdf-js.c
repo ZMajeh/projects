@@ -30,7 +30,7 @@ static pdf_jsimp_obj *app_alert(void *jsctx, void *obj, int argc, pdf_jsimp_obj 
 	event.message = "";
 	event.icon_type = PDF_ALERT_ICON_ERROR;
 	event.button_group_type = PDF_ALERT_BUTTON_GROUP_OK;
-	event.title = "MuPDF";
+	event.title = "Majeh's PDF Viewer";
 	event.check_box_message = NULL;
 	event.button_pressed = 0;
 
@@ -756,11 +756,11 @@ static void preload_helpers(pdf_js *js)
 	 */
 #ifdef CLUSTER
 	pdf_jsimp_execute(js->imp,
-"var MuPDFOldDate = Date\n"
-"Date = function() { return new MuPDFOldDate(298252800000); }\n"
+"var MajPDFOldDate = Date\n"
+"Date = function() { return new MajPDFOldDate(298252800000); }\n"
 "Date.now = function() { return 298252800000; }\n"
 "Date.UTC = function() { return 298252800000; }\n"
-"Date.parse = MuPDFOldDate.parse;\n"
+"Date.parse = MajPDFOldDate.parse;\n"
 "Math.random = function() { return 1/4; }\n"
 	);
 #endif

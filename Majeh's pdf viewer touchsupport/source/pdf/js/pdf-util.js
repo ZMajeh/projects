@@ -1,4 +1,4 @@
-var MuPDF = {
+var MajPDF = {
 	monthName: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
 	shortMonthName: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
 	monthPattern: /Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/,
@@ -69,23 +69,23 @@ util.printd = function(fmt, d)
 	{
 		switch(tokens[i])
 		{
-			case 'mmmm': res += MuPDF.monthName[d.getMonth()]; break;
-			case 'mmm': res += MuPDF.monthName[d.getMonth()].substring(0,3); break;
-			case 'mm': res += MuPDF.padZeros(d.getMonth()+1, 2); break;
+			case 'mmmm': res += MajPDF.monthName[d.getMonth()]; break;
+			case 'mmm': res += MajPDF.monthName[d.getMonth()].substring(0,3); break;
+			case 'mm': res += MajPDF.padZeros(d.getMonth()+1, 2); break;
 			case 'm': res += d.getMonth()+1; break;
-			case 'dddd': res += MuPDF.dayName[d.getDay()]; break;
-			case 'ddd': res += MuPDF.dayName[d.getDay()].substring(0,3); break;
-			case 'dd': res += MuPDF.padZeros(d.getDate(), 2); break;
+			case 'dddd': res += MajPDF.dayName[d.getDay()]; break;
+			case 'ddd': res += MajPDF.dayName[d.getDay()].substring(0,3); break;
+			case 'dd': res += MajPDF.padZeros(d.getDate(), 2); break;
 			case 'd': res += d.getDate(); break;
 			case 'yyyy': res += d.getFullYear(); break;
 			case 'yy': res += d.getFullYear()%100; break;
-			case 'HH': res += MuPDF.padZeros(d.getHours(), 2); break;
+			case 'HH': res += MajPDF.padZeros(d.getHours(), 2); break;
 			case 'H': res += d.getHours(); break;
-			case 'hh': res += MuPDF.padZeros((d.getHours()+11)%12+1, 2); break;
+			case 'hh': res += MajPDF.padZeros((d.getHours()+11)%12+1, 2); break;
 			case 'h': res += (d.getHours()+11)%12+1; break;
-			case 'MM': res += MuPDF.padZeros(d.getMinutes(), 2); break;
+			case 'MM': res += MajPDF.padZeros(d.getMinutes(), 2); break;
 			case 'M': res += d.getMinutes(); break;
-			case 'ss': res += MuPDF.padZeros(d.getSeconds(), 2); break;
+			case 'ss': res += MajPDF.padZeros(d.getSeconds(), 2); break;
 			case 's': res += d.getSeconds(); break;
 			case 'tt': res += d.getHours() < 12 ? 'am' : 'pm'; break;
 			case 't': res += d.getHours() < 12 ? 'a' : 'p'; break;
@@ -117,14 +117,14 @@ util.printx = function(fmt, val)
 			case 'X':
 				m = val.match(/\w/);
 				if (!m) return res;
-				res += MuPDF.convertCase(m[0],cs);
+				res += MajPDF.convertCase(m[0],cs);
 				val = val.replace(/^\W*\w/,'');
 				break;
 
 			case 'A':
 				m = val.match(/[A-Za-z]/);
 				if (!m) return res;
-				res += MuPDF.convertCase(m[0],cs);
+				res += MajPDF.convertCase(m[0],cs);
 				val = val.replace(/^[^A-Za-z]*[A-Za-z]/,'');
 				break;
 
@@ -142,7 +142,7 @@ util.printx = function(fmt, val)
 
 			case '?':
 				if (!val) return res;
-				res += MuPDF.convertCase(val.charAt(0),cs);
+				res += MajPDF.convertCase(val.charAt(0),cs);
 				val = val.substring(1);
 				break;
 
@@ -153,7 +153,7 @@ util.printx = function(fmt, val)
 				break;
 
 			default:
-				res += MuPDF.convertCase(fmt.charAt(i),cs);
+				res += MajPDF.convertCase(fmt.charAt(i),cs);
 				break;
 		}
 
@@ -367,9 +367,9 @@ function AFParseDateOrder(fmt)
 
 function AFMatchMonth(d)
 {
-	var m = d.match(MuPDF.monthPattern);
+	var m = d.match(MajPDF.monthPattern);
 
-	return m ? MuPDF.shortMonthName.indexOf(m[0]) : null;
+	return m ? MajPDF.shortMonthName.indexOf(m[0]) : null;
 }
 
 function AFParseTime(str, d)
@@ -558,7 +558,7 @@ function AFSpecial_KeystrokeEx(fmt)
 					event.rc = false;
 					break;
 				}
-				res += MuPDF.convertCase(m[0],cs);
+				res += MajPDF.convertCase(m[0],cs);
 				val = val.substring(1);
 				break;
 
@@ -569,7 +569,7 @@ function AFSpecial_KeystrokeEx(fmt)
 					event.rc = false;
 					break;
 				}
-				res += MuPDF.convertCase(m[0],cs);
+				res += MajPDF.convertCase(m[0],cs);
 				val = val.substring(1);
 				break;
 
@@ -595,7 +595,7 @@ function AFSpecial_KeystrokeEx(fmt)
 					event.rc = false;
 					break;
 				}
-				res += MuPDF.convertCase(val.charAt(0),cs);
+				res += MajPDF.convertCase(val.charAt(0),cs);
 				val = val.substring(1);
 				break;
 
