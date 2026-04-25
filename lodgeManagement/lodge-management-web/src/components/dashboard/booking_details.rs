@@ -71,24 +71,48 @@ pub fn BookingDetails(
                                         // Guest Photo
                                         <div style="width: 120px; text-align: center;">
                                             <div style="width: 120px; height: 140px; border: 2px solid #eee; border-radius: 4px; overflow: hidden; background: #f9f9f9; display: flex; align-items: center; justify-content: center;">
-                                                {if let Some(img) = c.photo_data.clone() {
-                                                    view! { <img src=img style="width: 100%; height: 100%; object-fit: cover;" /> }.into_view()
+                                                {if let Some(img) = c.photo_url.clone() {
+                                                    if img.contains("drive.google.com") {
+                                                        let id = img.split("/d/").nth(1).and_then(|s| s.split('/').next()).and_then(|s| s.split('?').next()).unwrap_or("").to_string();
+                                                        let url_res = create_resource(move || id.clone(), |fid| async move {
+                                                            crate::api::get_drive_thumbnail(fid).await.ok().and_then(|v| v.as_string())
+                                                        });
+                                                        view! { 
+                                                            <Suspense fallback=move || view! { <p style="font-size: 0.6rem;">"Loading..."</p> }>
+                                                                {move || url_res.get().flatten().map(|u| view! { <img src=u style="width: 100%; height: 100%; object-fit: cover;" /> })}
+                                                            </Suspense>
+                                                        }.into_view()
+                                                    } else {
+                                                        view! { <img src=img style="width: 100%; height: 100%; object-fit: cover;" /> }.into_view()
+                                                    }
                                                 } else {
                                                     view! { <span style="font-size: 0.6rem; color: #ccc;">"NO PHOTO"</span> }.into_view()
                                                 }}
                                             </div>
                                             <p style="margin: 5px 0 0 0; font-size: 0.6rem; font-weight: 700; color: #7f8c8d; text-transform: uppercase;">"Guest Photo"</p>
                                         </div>
-                                    </div>
-                                    
-                                    // ID Documents
-                                    <div style="background: #fcfcfc; border-top: 1px solid #eee; padding: 15px;">
+                                        </div>
+
+                                        // ID Documents
+                                        <div style="background: #fcfcfc; border-top: 1px solid #eee; padding: 15px;">
                                         <p style="margin: 0 0 10px 0; font-size: 0.7rem; font-weight: 700; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px;">"Identity Documents (Aadhaar Card)"</p>
                                         <div style="display: flex; gap: 15px;">
                                             <div style="flex: 1; text-align: center;">
                                                 <div style="height: 180px; border: 1px solid #eee; border-radius: 4px; overflow: hidden; background: #fff; display: flex; align-items: center; justify-content: center;">
-                                                    {if let Some(img) = c.id_card_data.clone() {
-                                                        view! { <img src=img style="max-width: 100%; max-height: 100%; object-fit: contain;" /> }.into_view()
+                                                    {if let Some(img) = c.id_card_url.clone() {
+                                                        if img.contains("drive.google.com") {
+                                                            let id = img.split("/d/").nth(1).and_then(|s| s.split('/').next()).and_then(|s| s.split('?').next()).unwrap_or("").to_string();
+                                                            let url_res = create_resource(move || id.clone(), |fid| async move {
+                                                                crate::api::get_drive_thumbnail(fid).await.ok().and_then(|v| v.as_string())
+                                                            });
+                                                            view! { 
+                                                                <Suspense fallback=move || view! { <p style="font-size: 0.6rem;">"Loading..."</p> }>
+                                                                    {move || url_res.get().flatten().map(|u| view! { <img src=u style="max-width: 100%; max-height: 100%; object-fit: contain;" /> })}
+                                                                </Suspense>
+                                                            }.into_view()
+                                                        } else {
+                                                            view! { <img src=img style="max-width: 100%; max-height: 100%; object-fit: contain;" /> }.into_view()
+                                                        }
                                                     } else {
                                                         view! { <span style="font-size: 0.6rem; color: #ccc;">"ID FRONT NOT SCANNED"</span> }.into_view()
                                                     }}
@@ -97,17 +121,27 @@ pub fn BookingDetails(
                                             </div>
                                             <div style="flex: 1; text-align: center;">
                                                 <div style="height: 180px; border: 1px solid #eee; border-radius: 4px; overflow: hidden; background: #fff; display: flex; align-items: center; justify-content: center;">
-                                                    {if let Some(img) = c.id_card_back_data.clone() {
-                                                        view! { <img src=img style="max-width: 100%; max-height: 100%; object-fit: contain;" /> }.into_view()
+                                                    {if let Some(img) = c.id_card_back_url.clone() {
+                                                        if img.contains("drive.google.com") {
+                                                            let id = img.split("/d/").nth(1).and_then(|s| s.split('/').next()).and_then(|s| s.split('?').next()).unwrap_or("").to_string();
+                                                            let url_res = create_resource(move || id.clone(), |fid| async move {
+                                                                crate::api::get_drive_thumbnail(fid).await.ok().and_then(|v| v.as_string())
+                                                            });
+                                                            view! { 
+                                                                <Suspense fallback=move || view! { <p style="font-size: 0.6rem;">"Loading..."</p> }>
+                                                                    {move || url_res.get().flatten().map(|u| view! { <img src=u style="max-width: 100%; max-height: 100%; object-fit: contain;" /> })}
+                                                                </Suspense>
+                                                            }.into_view()
+                                                        } else {
+                                                            view! { <img src=img style="max-width: 100%; max-height: 100%; object-fit: contain;" /> }.into_view()
+                                                        }
                                                     } else {
                                                         view! { <span style="font-size: 0.6rem; color: #ccc;">"ID BACK NOT SCANNED"</span> }.into_view()
                                                     }}
                                                 </div>
                                                 <p style="margin: 5px 0 0 0; font-size: 0.6rem; color: #95a5a6;">"Back Side"</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                            </div>                                        </div>
+                                        </div>                                </div>
                             }
                         } />
                     </div>

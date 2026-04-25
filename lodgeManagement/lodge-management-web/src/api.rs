@@ -61,4 +61,19 @@ extern "C" {
     
     #[wasm_bindgen(catch, js_name = manualVerifyAadhaar)]
     pub async fn manual_verify_aadhaar(num: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = uploadImageToDrive)]
+    pub async fn upload_image_to_drive(base64: String, filename: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = authorizeGoogleDrive)]
+    pub async fn authorize_google_drive() -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(js_name = isDriveAuthorized)]
+    pub fn is_drive_authorized() -> bool;
+
+    #[wasm_bindgen(catch, js_name = deleteFileFromDrive)]
+    pub async fn delete_file_from_drive(file_id: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = getDriveThumbnail)]
+    pub async fn get_drive_thumbnail(file_id: String) -> Result<JsValue, JsValue>;
 }

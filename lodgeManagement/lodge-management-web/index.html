@@ -135,6 +135,10 @@
             }
         </style>
         
+        <!-- Load Google APIs -->
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+        <script src="https://apis.google.com/js/api.js"></script>
+
         <!-- Load Tesseract as Global -->
         <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     </head>
@@ -160,6 +164,78 @@
             const db = getFirestore(app);
             const auth = getAuth(app);
 
+            // --- GOOGLE DRIVE CLIENT-SIDE CONFIG ---
+            const CLIENT_ID = '539473298830-vh4i5l5rvtbbt16u4oenu9ffvm8ofuba.apps.googleusercontent.com'; 
+            const FOLDER_ID = '1aCEzUmQwvbNg-J0sTyUaaftxjyOO7dQc'; 
+            const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+            let tokenClient;
+            let accessToken = sessionStorage.getItem('google_drive_token');
+
+            // Initialize GAPI and GIS
+            const initGoogleDrive = () => {
+                gapi.load('client', async () => {
+                    await gapi.client.init({
+                        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+                    });
+                });
+
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: (response) => {
+                        if (response.error !== undefined) {
+                            throw (response);
+                        }
+                        accessToken = response.access_token;
+                        sessionStorage.setItem('google_drive_token', accessToken);
+                        console.log("Drive: Authorized successfully.");
+                        if (window.onDriveAuthSuccess) window.onDriveAuthSuccess();
+                    },
+                });
+            };
+
+            // Call init on load
+            window.onload = () => {
+                initGoogleDrive();
+            };
+
+            window.authorizeGoogleDrive = () => {
+                return new Promise((resolve, reject) => {
+                    window.onDriveAuthSuccess = () => resolve(true);
+                    // If we have a token but user clicked authorize, they might want a fresh one
+                    tokenClient.requestAccessToken({ prompt: 'consent' });
+                });
+            };
+
+            window.isDriveAuthorized = () => {
+                return accessToken !== null;
+            };
+
+            window.getDriveThumbnail = async (fileId) => {
+                if (!accessToken) return null;
+                try {
+                    // Fetch the actual file content directly from the Drive API
+                    // This endpoint is CORS-friendly and uses our Bearer token
+                    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                        headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
+                    });
+                    
+                    if (!response.ok) {
+                        const err = await response.json();
+                        console.error("Drive API Media Error:", err);
+                        return null;
+                    }
+
+                    // Convert the binary data to a local Object URL (faster than Base64)
+                    const blob = await response.blob();
+                    return URL.createObjectURL(blob);
+                } catch (e) {
+                    console.error("Drive: Secure image download failed", e);
+                    return null;
+                }
+            };
+
             // --- AUTH BRIDGE ---
             window.loginUser = async (email, password) => {
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -169,7 +245,81 @@
 
             window.signOutUser = async () => {
                 await signOut(auth);
+                accessToken = null;
+                sessionStorage.removeItem('google_drive_token');
                 return true;
+            };
+
+            // --- DRIVE BRIDGE ---
+            window.uploadImageToDrive = async (base64, filename) => {
+                if (!accessToken) {
+                    throw new Error("Drive: Not authorized. Please sign in with Google.");
+                }
+
+                console.log(`Drive: Starting upload for ${filename}...`);
+                
+                try {
+                    const boundary = '-------314159265358979323846';
+                    const delimiter = "\r\n--" + boundary + "\r\n";
+                    const close_delim = "\r\n--" + boundary + "--";
+
+                    const contentType = 'image/jpeg';
+                    const metadata = {
+                        'name': filename,
+                        'mimeType': contentType,
+                        'parents': [FOLDER_ID]
+                    };
+
+                    const base64Data = base64.split(";base64,").pop();
+                    
+                    const multipartRequestBody =
+                        delimiter +
+                        'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+                        JSON.stringify(metadata) +
+                        delimiter +
+                        'Content-Type: ' + contentType + '\r\n' +
+                        'Content-Transfer-Encoding: base64\r\n\r\n' +
+                        base64Data +
+                        close_delim;
+
+                    const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+                        method: 'POST',
+                        headers: new Headers({
+                            'Authorization': 'Bearer ' + accessToken,
+                            'Content-Type': 'multipart/related; boundary=' + boundary
+                        }),
+                        body: multipartRequestBody
+                    });
+                    
+                    const result = await response.json();
+                    if (result.error) {
+                        console.error("Drive API Error:", result.error);
+                        throw new Error(result.error.message || "Drive upload failed");
+                    }
+                    
+                    console.log("Drive: Upload Success. ID:", result.id);
+                    // Use webViewLink but fallback to a generated direct link if needed
+                    return result.webViewLink || `https://drive.google.com/file/d/${result.id}/view`;
+                } catch (e) {
+                    console.error("Drive Upload Exception:", e);
+                    throw e;
+                }
+            };
+
+            window.deleteFileFromDrive = async (fileId) => {
+                if (!accessToken) return;
+                console.log(`Drive: Deleting file ${fileId}...`);
+                try {
+                    await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+                        method: 'DELETE',
+                        headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
+                    });
+                    console.log("Drive: Delete Success.");
+                    return true;
+                } catch (e) {
+                    console.error("Drive Delete Error:", e);
+                    return false;
+                }
             };
 
             // --- DATABASE BRIDGE ---

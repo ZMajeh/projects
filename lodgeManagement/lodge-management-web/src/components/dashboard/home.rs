@@ -234,7 +234,45 @@ pub fn DashboardHome() -> impl IntoView {
                         if guests.is_empty() { set_saving.set(false); return; }
                         let primary = &guests[0]; let extras = guests[1..].to_vec(); let date = selected_date.get_untracked();
                         let new_booking = NewBooking { room_id: r_cloned.id.clone().unwrap_or_default(), customer_id: primary.id.clone(), customer_name: primary.name.clone(), extra_guests: extras, room_number: r_cloned.number.clone(), check_in_date: date.clone(), check_out_date: check_out.get(), in_time: None, out_time: None, status: "Checked-In".to_string(), total_amount: final_price.get().parse::<f64>().unwrap_or(0.0), payments: vec![Payment { amount: paid_now.get().parse::<f64>().unwrap_or(0.0), date: date }] };
-                        spawn_local(async move { wait_for_bridge().await; let _ = add_booking_js(serde_wasm_bindgen::to_value(&new_booking).unwrap()).await; set_show_book_modal.set(None); load_data(); });
+                        spawn_local(async move { 
+                            wait_for_bridge().await; 
+                            if let Ok(id_js) = add_booking_js(serde_wasm_bindgen::to_value(&new_booking).unwrap()).await {
+                                if let Some(new_id) = id_js.as_string() {
+                                    // Prepare data for the details view
+                                    let mut full_booking = Booking {
+                                        id: Some(new_id),
+                                        room_id: new_booking.room_id,
+                                        customer_id: new_booking.customer_id,
+                                        customer_name: new_booking.customer_name,
+                                        extra_guests: new_booking.extra_guests,
+                                        room_number: new_booking.room_number,
+                                        check_in_date: new_booking.check_in_date,
+                                        check_out_date: new_booking.check_out_date,
+                                        in_time: None,
+                                        out_time: None,
+                                        status: new_booking.status,
+                                        total_amount: new_booking.total_amount,
+                                        payments: new_booking.payments,
+                                    };
+                                    
+                                    // Fetch all customers to find matches for primary + extras
+                                    let all_custs = fetch_customers("".to_string()).await;
+                                    let mut display_cs = Vec::new();
+                                    if let Some(p) = all_custs.iter().find(|c| c.id.as_deref() == Some(&full_booking.customer_id)) {
+                                        display_cs.push(p.clone());
+                                    }
+                                    for eg in &full_booking.extra_guests {
+                                        if let Some(ec) = all_custs.iter().find(|c| c.id.as_deref() == Some(&eg.id)) {
+                                            display_cs.push(ec.clone());
+                                        }
+                                    }
+                                    
+                                    set_show_booking_details_modal.set(Some((full_booking, display_cs)));
+                                }
+                            }
+                            set_show_book_modal.set(None); 
+                            load_data(); 
+                        });
                     }
                 };
                 let r_num_view = r_cloned.number.clone();

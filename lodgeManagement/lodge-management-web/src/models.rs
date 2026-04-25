@@ -36,9 +36,9 @@ pub struct Customer {
     pub aadhaar: String,
     pub age: Option<String>,
     pub gender: Option<String>,
-    pub photo_data: Option<String>,
-    pub id_card_data: Option<String>,
-    pub id_card_back_data: Option<String>,
+    pub photo_url: Option<String>,
+    pub id_card_url: Option<String>,
+    pub id_card_back_url: Option<String>,
     #[serde(default)]
     pub verified: bool,
 }
@@ -52,9 +52,9 @@ pub struct NewCustomer {
     pub aadhaar: String,
     pub age: Option<String>,
     pub gender: Option<String>,
-    pub photo_data: Option<String>,
-    pub id_card_data: Option<String>,
-    pub id_card_back_data: Option<String>,
+    pub photo_url: Option<String>,
+    pub id_card_url: Option<String>,
+    pub id_card_back_url: Option<String>,
     #[serde(default)]
     pub verified: bool,
 }
