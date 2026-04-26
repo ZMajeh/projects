@@ -41,6 +41,8 @@ pub struct Customer {
     pub id_card_back_url: Option<String>,
     #[serde(default)]
     pub verified: bool,
+    #[serde(default)]
+    pub search_keywords: String,
 }
 
 #[derive(Serialize)]
@@ -57,6 +59,7 @@ pub struct NewCustomer {
     pub id_card_back_url: Option<String>,
     #[serde(default)]
     pub verified: bool,
+    pub search_keywords: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

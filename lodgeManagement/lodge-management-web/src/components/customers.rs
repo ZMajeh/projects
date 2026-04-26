@@ -165,11 +165,16 @@ pub fn CustomerForm(
 
             set_upload_status.set("Saving record...".to_string());
 
+            // Comprehensive keywords for scalable prefix search
+            // Format: "name phone aadhaar"
+            let search_keywords = format!("{} {} {}", name_val.to_lowercase(), phone_val, aadhaar_val);
+
             let cust_data = NewCustomer { 
                 full_name: name_val, phone: phone_val, email: "".to_string(), aadhaar: aadhaar_val, 
                 age: age_val, gender: gender_val, photo_url, 
                 id_card_url: id_url, id_card_back_url: id_back_url,
-                verified: verified_val
+                verified: verified_val,
+                search_keywords
             };
 
             let js_val = serde_wasm_bindgen::to_value(&cust_data).unwrap();
@@ -333,11 +338,11 @@ pub fn Customers() -> impl IntoView {
                 }
             }}
 
-            <div style="margin: 2rem 0;"><input type="text" placeholder="Search..." on:input=move |ev| set_search_query.set(event_target_value(&ev)) /></div>
+            <div style="margin: 2rem 0;"><input type="text" placeholder="Search by name, phone or Aadhaar..." on:input=move |ev| set_search_query.set(event_target_value(&ev)) /></div>
             <h3>"Guest Directory"</h3>
             {move || if loading.get() { view! { <p>"Loading..."</p> }.into_view() } else { view! { 
                 <table>
-                    <thead><tr><th>"Name"</th><th>"Aadhaar"</th><th>"Status"</th><th>"Actions"</th></tr></thead>
+                    <thead><tr><th>"Name"</th><th>"Phone"</th><th>"Age"</th><th>"Aadhaar"</th><th>"Status"</th><th>"Actions"</th></tr></thead>
                     <tbody>
                         <For each=move || customers.get() key=|c| c.id.clone().unwrap_or_default() children=move |c| { 
                             let c_cloned = c.clone(); 
@@ -347,6 +352,8 @@ pub fn Customers() -> impl IntoView {
                             view! { 
                                 <tr>
                                     <td><strong>{c.full_name.clone()}</strong></td>
+                                    <td>{c.phone.clone()}</td>
+                                    <td>{c.age.clone().unwrap_or_else(|| "-".to_string())}</td>
                                     <td>{c.aadhaar.clone()}</td>
                                     <td>{if c.verified { "✅" } else { "⚠️" }}</td>
                                     <td>

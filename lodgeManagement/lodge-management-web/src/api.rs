@@ -68,6 +68,9 @@ extern "C" {
     #[wasm_bindgen(catch, js_name = authorizeGoogleDrive)]
     pub async fn authorize_google_drive() -> Result<JsValue, JsValue>;
 
+    #[wasm_bindgen(catch, js_name = validateDriveSession)]
+    pub async fn validate_drive_session() -> Result<JsValue, JsValue>;
+
     #[wasm_bindgen(js_name = isDriveAuthorized)]
     pub fn is_drive_authorized() -> bool;
 

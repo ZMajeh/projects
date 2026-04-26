@@ -217,7 +217,21 @@ pub fn DashboardHome() -> impl IntoView {
                 let (check_out, set_check_out) = create_signal("".to_string());
                 let (guest_search, set_guest_search) = create_signal("".to_string());
                 let (saving, set_saving) = create_signal(false);
-                let filtered = move || { let q = guest_search.get().to_lowercase(); customers.get().into_iter().filter(|c| c.full_name.to_lowercase().contains(&q) || c.aadhaar.contains(&q)).collect::<Vec<_>>() };
+                let (search_loading, set_search_loading) = create_signal(false);
+
+                // Debounced search for scalability
+                create_effect(move |_| {
+                    let q = guest_search.get();
+                    spawn_local(async move {
+                        gloo_timers::future::TimeoutFuture::new(500).await;
+                        if q == guest_search.get_untracked() {
+                            set_search_loading.set(true);
+                            set_customers.set(fetch_customers(q).await);
+                            set_search_loading.set(false);
+                        }
+                    });
+                });
+
                 let add_extra = move |_| {
                     let cid = sel_cust.get();
                     if cid.is_empty() { return; }
@@ -285,13 +299,14 @@ pub fn DashboardHome() -> impl IntoView {
                                     <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Room"</label><input type="text" value=r_num_view disabled style="background: #eee;" /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Check-in"</label><input type="text" value=selected_date.get() disabled style="background: #eee;" /></div></div>
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Select Guest(s)"</label>
                                         <div style="display: flex; gap: 5px; margin-bottom: 5px;">
-                                            <input type="text" placeholder="Search..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="flex: 1;" />
+                                            <input type="text" placeholder="Search name, phone, aadhaar or age..." on:input=move |ev| set_guest_search.set(event_target_value(&ev)) style="flex: 1;" />
                                             <button type="button" on:click=add_extra style="padding: 0 15px; background: #27ae60; font-weight: bold;">"+"</button>
                                             <button type="button" on:click=move |_| set_show_add_guest_modal.set(true) style="padding: 0 15px; background: #3498db; font-weight: bold;" title="Register New Guest">"New"</button>
                                         </div>
+                                        {move || if search_loading.get() { view! { <div style="font-size: 0.7rem; color: var(--primary); margin-bottom: 5px;">"Searching database..."</div> }.into_view() } else { view! {}.into_view() }}
                                         <select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) prop:value=sel_cust>
                                             <option value="">"Choose guest from search..."</option>
-                                            {move || filtered().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); view! { <option value=cid>{c.full_name.clone()} " (" {c.phone.clone()} ")" </option> } }).collect_view()}
+                                            {move || customers.get().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); view! { <option value=cid>{c.full_name.clone()} " (" {c.phone.clone()} ")" </option> } }).collect_view()}
                                         </select><div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">{move || extra_selected.get().into_iter().enumerate().map(|(idx, g)| { let g_id_val = g.id.clone(); let g_name_val = g.name.clone(); view! { <span style="background: #3498db; color: white; padding: 2px 10px; border-radius: 15px; font-size: 0.8rem;">{if idx==0 { "(P) " } else { "" }} {g_name_val} <button type="button" on:click=move |_| set_extra_selected.update(|v| v.retain(|x| x.id != g_id_val)) style="background:none; padding:0; margin-left:5px; font-weight:bold; color:white;">"×"</button></span> } }).collect_view()}</div></div>
                                     <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Total Price"</label><input type="number" on:input=move |ev| set_final_price.set(event_target_value(&ev)) prop:value=final_price required /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Paying Now"</label><input type="number" on:input=move |ev| set_paid_now.set(event_target_value(&ev)) prop:value=paid_now required /></div></div>
                                     <div><label style="font-size: 0.8rem; font-weight: bold;">"Estimated Check-out"</label><input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) required /></div>

@@ -2,12 +2,23 @@ use leptos::*;
 use leptos_router::*;
 use crate::models::User;
 use crate::utils::{clear_user, wait_for_bridge};
-use crate::api::{sign_out_user, authorize_google_drive, is_drive_authorized};
+use crate::api::{sign_out_user, authorize_google_drive, is_drive_authorized, validate_drive_session};
 
 #[component]
 pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: Children) -> impl IntoView {
     let (menu_open, set_menu_open) = create_signal(false);
     let (drive_auth, set_drive_auth) = create_signal(is_drive_authorized());
+
+    // Validate drive session on mount
+    create_effect(move |_| {
+        spawn_local(async move {
+            wait_for_bridge().await;
+            if is_drive_authorized() {
+                let _ = validate_drive_session().await;
+                set_drive_auth.set(is_drive_authorized());
+            }
+        });
+    });
 
     let handle_logout = move |_| {
         clear_user();

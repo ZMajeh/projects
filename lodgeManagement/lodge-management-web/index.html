@@ -185,6 +185,16 @@
                     await gapi.client.init({
                         discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
                     });
+
+                    // If we have a token, validate it immediately
+                    if (accessToken) {
+                        const isValid = await window.validateDriveSession();
+                        if (isValid) {
+                            console.log("Drive: Existing session is valid.");
+                        } else {
+                            console.log("Drive: Existing session was invalid/expired.");
+                        }
+                    }
                 });
 
                 tokenClient = google.accounts.oauth2.initTokenClient({
@@ -205,6 +215,26 @@
             // Define these on window immediately so Wasm doesn't crash if it calls them early
             window.isDriveAuthorized = () => {
                 return accessToken !== null && accessToken !== undefined;
+            };
+
+            window.validateDriveSession = async () => {
+                if (!accessToken) return false;
+                try {
+                    // Use tokeninfo endpoint to check if token is still valid
+                    const response = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${accessToken}`);
+                    if (!response.ok) {
+                        console.warn("Drive: Session expired or invalid.");
+                        accessToken = null;
+                        localStorage.removeItem('google_drive_token');
+                        return false;
+                    }
+                    return true;
+                } catch (e) {
+                    console.error("Drive: Session validation failed", e);
+                    // On network error, we don't necessarily want to clear the token, 
+                    // but for safety in "isDriveAuthorized" context, we might just return false
+                    return false; 
+                }
             };
 
             // Call init on load
@@ -229,6 +259,12 @@
                         headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
                     });
                     
+                    if (response.status === 401) {
+                        accessToken = null;
+                        localStorage.removeItem('google_drive_token');
+                        return null;
+                    }
+
                     if (!response.ok) {
                         const err = await response.json();
                         console.error("Drive API Media Error:", err);
@@ -298,6 +334,12 @@
                         }),
                         body: multipartRequestBody
                     });
+
+                    if (response.status === 401) {
+                        accessToken = null;
+                        localStorage.removeItem('google_drive_token');
+                        throw new Error("Drive session expired. Please sign in again.");
+                    }
                     
                     const result = await response.json();
                     if (result.error) {
@@ -318,10 +360,17 @@
                 if (!accessToken) return;
                 console.log(`Drive: Deleting file ${fileId}...`);
                 try {
-                    await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+                    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
                         method: 'DELETE',
                         headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
                     });
+
+                    if (response.status === 401) {
+                        accessToken = null;
+                        localStorage.removeItem('google_drive_token');
+                        return false;
+                    }
+
                     console.log("Drive: Delete Success.");
                     return true;
                 } catch (e) {
@@ -435,26 +484,61 @@
             };
 
             window.getCustomers = async (searchTerm = "") => {
-                console.log(`Database: Searching for "${searchTerm}" (Limit 20)...`);
+                const s = searchTerm;
+                const sl = searchTerm.toLowerCase();
+                console.log(`Database: Scalable multi-field search for "${s}"...`);
                 try {
-                    let q;
-                    if (searchTerm) {
-                        // Server-side prefix search (Standard Firestore pattern)
-                        q = query(
-                            collection(db, "customers"), 
-                            where("full_name", ">=", searchTerm),
-                            where("full_name", "<=", searchTerm + "\uf8ff"),
-                            limit(20)
-                        );
-                    } else {
-                        // Simple query to avoid index/field requirement issues
-                        q = query(collection(db, "customers"), limit(20));
+                    if (!s) {
+                        const q = query(collection(db, "customers"), orderBy("createdAt", "desc"), limit(20));
+                        const querySnapshot = await getDocs(q);
+                        const customers = [];
+                        querySnapshot.forEach((doc) => { customers.push({ id: doc.id, ...doc.data() }); });
+                        return customers;
                     }
-                    
-                    const querySnapshot = await getDocs(q);
-                    const customers = [];
-                    querySnapshot.forEach((doc) => { customers.push({ id: doc.id, ...doc.data() }); });
-                    console.log(`Database: Found ${customers.length} matches.`);
+
+                    // Parallel indexed queries for high performance at scale
+                    const qName = query(
+                        collection(db, "customers"), 
+                        where("searchKeywords", ">=", sl),
+                        where("searchKeywords", "<=", sl + "\uf8ff"),
+                        limit(20)
+                    );
+                    const qPhone = query(
+                        collection(db, "customers"), 
+                        where("phone", ">=", s),
+                        where("phone", "<=", s + "\uf8ff"),
+                        limit(20)
+                    );
+                    const qAadhaar = query(
+                        collection(db, "customers"), 
+                        where("aadhaar", ">=", s),
+                        where("aadhaar", "<=", s + "\uf8ff"),
+                        limit(20)
+                    );
+                    const qAge = query(
+                        collection(db, "customers"), 
+                        where("age", ">=", s),
+                        where("age", "<=", s + "\uf8ff"),
+                        limit(20)
+                    );
+
+                    const [snapName, snapPhone, snapAadhaar, snapAge] = await Promise.all([
+                        getDocs(qName),
+                        getDocs(qPhone),
+                        getDocs(qAadhaar),
+                        getDocs(qAge)
+                    ]);
+
+                    // Merge results and remove duplicates
+                    const resultsMap = new Map();
+                    [snapName, snapPhone, snapAadhaar, snapAge].forEach(snap => {
+                        snap.forEach(doc => {
+                            resultsMap.set(doc.id, { id: doc.id, ...doc.data() });
+                        });
+                    });
+
+                    const customers = Array.from(resultsMap.values()).slice(0, 20);
+                    console.log(`Database: Found ${customers.length} unique matches.`);
                     return customers;
                 } catch (e) {
                     console.error("Database Search Error (Customers):", e);
