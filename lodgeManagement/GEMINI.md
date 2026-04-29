@@ -65,6 +65,28 @@ New external features should be added as `window.functionName` in `index.html` a
 
 ## Building and Running
 
+### User Onboarding (Mandatory)
+
+To add a new staff member, you MUST complete these three steps in order:
+
+1.  **Share Google Drive Folder:**
+    *   Open [Google Drive](https://drive.google.com/).
+    *   Right-click the Lodge Photos folder (`1aCEzUmQwvbNg-J0sTyUaaftxjyOO7dQc`).
+    *   Click **Share** and add the staff member's email as a "Viewer" or "Editor".
+
+2.  **Whitelist in Firestore:**
+    *   Go to the [Firebase Console > Firestore](https://console.firebase.google.com/project/lodge-management-a4cc9/firestore).
+    *   In the `allowed_users` collection, create a new document.
+    *   **Document ID:** The staff member's exact Gmail address.
+    *   **Fields:** Add `role: "staff"`.
+
+3.  **Add as Test User (Google Cloud):**
+    *   Go to the [Google Cloud Console > OAuth Consent Screen](https://console.cloud.google.com/apis/credentials/consent).
+    *   Under "Test users", click **Add Users**.
+    *   Enter the staff member's Gmail address and click **Save**.
+
+---
+
 ### Commands
 
 Use the `run.sh` script from the project root.

@@ -153,7 +153,7 @@
 
         <script type="module">
             import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-            import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, where, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+            import { getFirestore, collection, addDoc, getDocs, getDoc, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, where, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
             import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithCredential, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
             const firebaseConfig = {
@@ -276,20 +276,40 @@
             window.loginUser = async () => {
                 console.log("Auth: Using Google Drive for session identity...");
                 try {
-                    // 1. Authorize Drive
-                    await window.authorizeGoogleDrive();
+                    // 1. Authorize Drive and Identity
+                    const provider = new GoogleAuthProvider();
+                    provider.addScope('https://www.googleapis.com/auth/drive');
+                    provider.setCustomParameters({ prompt: 'select_account' });
+
+                    console.log("Auth: Opening Google Login window...");
+                    const result = await signInWithPopup(auth, provider);
+                    const credential = GoogleAuthProvider.credentialFromResult(result);
                     
-                    // 2. Fetch User Identity
-                    const identityResponse = await fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
-                        headers: { 'Authorization': `Bearer ${accessToken}` }
-                    });
+                    accessToken = credential.accessToken;
+                    localStorage.setItem('google_drive_token', accessToken);
                     
-                    if (!identityResponse.ok) {
-                        throw new Error("Failed to fetch user profile from Drive API");
+                    const user = result.user;
+                    console.log("Auth: Firebase signed in:", user.email);
+
+                    // 2. CRITICAL: Verify Whitelist in Firestore
+                    console.log("Auth: Verifying whitelist permission...");
+                    try {
+                        const userDoc = await getDoc(doc(db, "allowed_users", user.email));
+                        if (!userDoc.exists()) {
+                            console.error("Auth: User not in allowed_users collection.");
+                            await signOut(auth);
+                            accessToken = null;
+                            localStorage.removeItem('google_drive_token');
+                            throw new Error("Unauthorized: Your email is not in the allowed users list. Please contact the administrator.");
+                        }
+                    } catch (e) {
+                        console.error("Auth: Whitelist check failed", e);
+                        await signOut(auth);
+                        accessToken = null;
+                        localStorage.removeItem('google_drive_token');
+                        if (e.message.includes("Unauthorized")) throw e;
+                        throw new Error("Access Denied: You do not have permission to access this system.");
                     }
-                    
-                    const data = await identityResponse.json();
-                    const user = data.user;
 
                     // 3. Verify access to the specific Lodge Drive Folder
                     console.log("Auth: Verifying access to Lodge Drive Folder...");
@@ -299,16 +319,17 @@
 
                     if (!folderResponse.ok) {
                         console.error("Auth: Access Denied to Lodge Drive Folder.");
+                        await signOut(auth);
                         accessToken = null;
                         localStorage.removeItem('google_drive_token');
                         throw new Error("Unauthorized: You do not have permission to access the Lodge Drive folder.");
                     }
                     
-                    console.log("Auth: Drive identity and folder access verified:", user.emailAddress);
+                    console.log("Auth: Login fully verified.");
                     
                     return { 
-                        email: user.emailAddress, 
-                        uid: user.permissionId 
+                        email: user.email, 
+                        uid: user.uid
                     };
                 } catch (error) {
                     console.error("Auth: Login failed", error);
