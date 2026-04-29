@@ -119,17 +119,29 @@ pub fn DashboardHome() -> impl IntoView {
                                 }>
                                     <strong style="font-size: 1.3rem; display: block; margin-bottom: 5px;">"Room " {r_cloned.number.clone()}</strong>
                                     <span style="font-size: 0.8rem; color: #7f8c8d; background: #f8f9fa; padding: 2px 8px; border-radius: 10px;">{r_cloned.room_type.clone()} " • ₹" {r_cloned.price}</span>
-                                    <div style={
-                                        let rid = rid_fixed.clone();
-                                        move || {
-                                            let b_opt = get_active_booking_helper(&bookings.get(), &selected_date.get(), &rid);
-                                            let color = if let Some(b) = b_opt {
-                                                let p: f64 = b.payments.iter().map(|pay| pay.amount).sum();
-                                                if b.total_amount > p { "#f39c12" } else { "#e74c3c" }
-                                            } else { "#27ae60" };
-                                            format!("margin: 15px 0; font-size: 0.8rem; font-weight: bold; color: {};", color)
+                                    <div 
+                                        on:click={
+                                            let rid = rid_fixed.clone();
+                                            move |_| {
+                                                if let Some(b) = get_active_booking_helper(&bookings.get(), &selected_date.get(), &rid) {
+                                                    set_confirm_checkout.set(true);
+                                                    set_show_manage_stay_modal.set(Some(b));
+                                                }
+                                            }
                                         }
-                                    }>
+                                        style={
+                                            let rid = rid_fixed.clone();
+                                            move || {
+                                                let b_opt = get_active_booking_helper(&bookings.get(), &selected_date.get(), &rid);
+                                                let is_occupied = b_opt.is_some();
+                                                let color = if let Some(b) = b_opt {
+                                                    let p: f64 = b.payments.iter().map(|pay| pay.amount).sum();
+                                                    if b.total_amount > p { "#f39c12" } else { "#e74c3c" }
+                                                } else { "#27ae60" };
+                                                format!("margin: 15px 0; font-size: 0.8rem; font-weight: bold; color: {}; cursor: {};", color, if is_occupied { "pointer" } else { "default" })
+                                            }
+                                        }
+                                    >
                                         {let rid = rid_fixed.clone(); move || {
                                             if let Some(b) = get_active_booking_helper(&bookings.get(), &selected_date.get(), &rid) {
                                                 let p: f64 = b.payments.iter().map(|pay| pay.amount).sum();
@@ -168,7 +180,21 @@ pub fn DashboardHome() -> impl IntoView {
                                                     {b_data.extra_guests.iter().map(|g| view! { <div style="font-size: 0.8rem; color: #666;">"+ " {g.name.clone()}</div> }).collect_view()}
                                                 </td>
                                                 <td>"Room " {b_data.room_number.clone()}</td>
-                                                <td><span style=format!("padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: {}; color: white;", if status == "Checked-In" { "#27ae60" } else { "#95a5a6" })>{status.to_uppercase()}</span></td>
+                                                <td><span 
+                                                    on:click={
+                                                        let b_click = b_data.clone();
+                                                        move |_| {
+                                                            if b_click.status == "Checked-In" {
+                                                                set_confirm_checkout.set(true);
+                                                                set_show_manage_stay_modal.set(Some(b_click.clone()));
+                                                            }
+                                                        }
+                                                    }
+                                                    style=format!("padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: {}; color: white; cursor: {};", 
+                                                        if status == "Checked-In" { "#27ae60" } else { "#95a5a6" },
+                                                        if status == "Checked-In" { "pointer" } else { "default" }
+                                                    )
+                                                >{status.to_uppercase()}</span></td>
                                                 <td style="color: #27ae60; font-weight: bold;">"₹" {paid}</td>
                                                 <td style=format!("color: {}; font-weight: bold;", if balance > 0.0 { "#e67e22" } else { "#27ae60" })>"₹" {balance}</td>
                                                 <td><small><strong>"Mob: "</strong> {c_data.as_ref().map(|x| x.phone.clone()).unwrap_or_default()}</small></td>
@@ -346,7 +372,33 @@ pub fn DashboardHome() -> impl IntoView {
                     if b_data_co.total_amount > paid_so_far { final_payments.push(Payment { amount: b_data_co.total_amount - paid_so_far, date: today.clone() }); }
                     let co_booking = NewBooking { room_id: b_data_co.room_id.clone(), customer_id: b_data_co.customer_id.clone(), customer_name: b_data_co.customer_name.clone(), extra_guests: b_data_co.extra_guests.clone(), room_number: b_data_co.room_number.clone(), check_in_date: b_data_co.check_in_date.clone(), check_out_date: today, in_time: b_data_co.in_time.clone(), out_time: None, status: "Checked-Out".to_string(), total_amount: b_data_co.total_amount, payments: final_payments };
                     let bid = b_id_co_val.clone(); let rid = b_data_co.room_id.clone();
-                    spawn_local(async move { wait_for_bridge().await; let _ = update_booking_js(bid, serde_wasm_bindgen::to_value(&co_booking).unwrap()).await; let _ = update_room_js(rid, JsValue::from_str("Available")).await; set_show_manage_stay_modal.set(None); load_data(); });
+                    let b_for_bill = Booking {
+                        id: Some(bid.clone()),
+                        room_id: co_booking.room_id.clone(),
+                        customer_id: co_booking.customer_id.clone(),
+                        customer_name: co_booking.customer_name.clone(),
+                        extra_guests: co_booking.extra_guests.clone(),
+                        room_number: co_booking.room_number.clone(),
+                        check_in_date: co_booking.check_in_date.clone(),
+                        check_out_date: co_booking.check_out_date.clone(),
+                        in_time: co_booking.in_time.clone(),
+                        out_time: co_booking.out_time.clone(),
+                        status: co_booking.status.clone(),
+                        total_amount: co_booking.total_amount,
+                        payments: co_booking.payments.clone(),
+                    };
+                    spawn_local(async move { 
+                        wait_for_bridge().await; 
+                        let _ = update_booking_js(bid, serde_wasm_bindgen::to_value(&co_booking).unwrap()).await; 
+                        let _ = update_room_js(rid, JsValue::from_str("Available")).await; 
+                        
+                        let all_custs = customers.get_untracked();
+                        let primary_cust = all_custs.into_iter().find(|c| c.id.as_deref() == Some(&b_for_bill.customer_id));
+                        
+                        set_show_manage_stay_modal.set(None); 
+                        load_data(); 
+                        set_show_bill_modal.set(Some((b_for_bill, primary_cust)));
+                    });
                 };
                 let b_id_del = b_data_orig.id.clone().unwrap_or_default(); let b_rid_del = b_data_orig.room_id.clone();
                 let b_data_v = b_data_orig.clone();
