@@ -81,7 +81,7 @@ To add a new staff member, you MUST complete these three steps in order:
     *   **Fields:** Add `role: "staff"`.
 
 3.  **Add as Test User (Google Cloud):**
-    *   Go to the [Google Cloud Console > OAuth Consent Screen](https://console.cloud.google.com/apis/credentials/consent).
+    *   Go to the [Google Cloud Console > OAuth Audience](https://console.cloud.google.com/auth/audience?project=lodge-management-a4cc9).
     *   Under "Test users", click **Add Users**.
     *   Enter the staff member's Gmail address and click **Save**.
 

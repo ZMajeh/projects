@@ -11,6 +11,7 @@ use crate::components::dashboard::{DashboardLayout, DashboardHome};
 use crate::components::rooms::Rooms;
 use crate::components::customers::Customers;
 use crate::components::bookings::Bookings;
+use crate::components::manage_users::ManageUsers;
 
 #[component]
 fn App() -> impl IntoView {
@@ -45,6 +46,17 @@ fn App() -> impl IntoView {
                     <Route path="rooms" view=Rooms />
                     <Route path="customers" view=Customers />
                     <Route path="bookings" view=Bookings />
+                    <Route path="users" view=move || {
+                        if let Some(u) = user.get() {
+                            if u.role == "Admin" {
+                                view! { <ManageUsers /> }.into_view()
+                            } else {
+                                view! { <Redirect path="/"/> }.into_view()
+                            }
+                        } else {
+                            view! { <Redirect path="/login"/> }.into_view()
+                        }
+                    } />
                 </Route>
             </Routes>
         </Router>

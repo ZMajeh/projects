@@ -153,7 +153,7 @@
 
         <script type="module">
             import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-            import { getFirestore, collection, addDoc, getDocs, getDoc, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, where, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+            import { getFirestore, collection, addDoc, getDocs, getDoc, setDoc, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, where, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
             import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithCredential, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
             const firebaseConfig = {
@@ -293,8 +293,9 @@
 
                     // 2. CRITICAL: Verify Whitelist in Firestore
                     console.log("Auth: Verifying whitelist permission...");
+                    let userDoc;
                     try {
-                        const userDoc = await getDoc(doc(db, "allowed_users", user.email));
+                        userDoc = await getDoc(doc(db, "allowed_users", user.email));
                         if (!userDoc.exists()) {
                             console.error("Auth: User not in allowed_users collection.");
                             await signOut(auth);
@@ -326,10 +327,12 @@
                     }
                     
                     console.log("Auth: Login fully verified.");
+                    const userData = userDoc.data();
                     
                     return { 
                         email: user.email, 
-                        uid: user.uid
+                        uid: user.uid,
+                        role: userData.role || "staff"
                     };
                 } catch (error) {
                     console.error("Auth: Login failed", error);
@@ -341,6 +344,30 @@
                 await signOut(auth);
                 accessToken = null;
                 localStorage.removeItem('google_drive_token');
+                return true;
+            };
+
+            // --- USER MANAGEMENT BRIDGE ---
+            window.getWhitelistedUsers = async () => {
+                const q = query(collection(db, "allowed_users"), orderBy("__name__"));
+                const querySnapshot = await getDocs(q);
+                const users = [];
+                querySnapshot.forEach((doc) => {
+                    users.push({ email: doc.id, ...doc.data() });
+                });
+                return users;
+            };
+
+            window.addUserToWhitelist = async (email, role) => {
+                await setDoc(doc(db, "allowed_users", email.trim()), {
+                    role: role,
+                    addedAt: serverTimestamp()
+                });
+                return true;
+            };
+
+            window.deleteUserFromWhitelist = async (email) => {
+                await deleteDoc(doc(db, "allowed_users", email));
                 return true;
             };
 

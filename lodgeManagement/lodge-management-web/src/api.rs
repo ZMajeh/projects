@@ -44,6 +44,15 @@ extern "C" {
     #[wasm_bindgen(catch, js_name = deleteBooking)]
     pub async fn delete_booking_js(id: String, roomId: String) -> Result<JsValue, JsValue>;
     
+    #[wasm_bindgen(catch, js_name = getWhitelistedUsers)]
+    pub async fn get_whitelisted_users() -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = addUserToWhitelist)]
+    pub async fn add_user_to_whitelist(email: String, role: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = deleteUserFromWhitelist)]
+    pub async fn delete_user_from_whitelist(email: String) -> Result<JsValue, JsValue>;
+
     #[wasm_bindgen(catch, js_name = startCamera)]
     pub async fn start_camera(id: String) -> Result<JsValue, JsValue>;
     

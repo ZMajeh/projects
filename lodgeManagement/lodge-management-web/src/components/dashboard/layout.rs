@@ -53,6 +53,12 @@ pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: Children) 
                 <A href="customers" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active">"Customers"</A>
                 <A href="bookings" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active">"Bookings"</A>
                 
+                {if user.role == "Admin" {
+                    view! { <A href="users" on:click=move |_| set_menu_open.set(false) class="nav-link" active_class="active">"Staff Management"</A> }.into_view()
+                } else {
+                    view! {}.into_view()
+                }}
+                
                 <div style="margin-top: auto; padding: 1rem; border-top: 1px solid #ddd; font-size: 0.85rem;">
                     {move || if !drive_auth.get() {
                         view! {
