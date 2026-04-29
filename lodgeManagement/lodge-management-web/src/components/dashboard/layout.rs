@@ -20,12 +20,14 @@ pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: Children) 
         });
     });
 
+    let navigate = use_navigate();
     let handle_logout = move |_| {
         clear_user();
+        on_logout.call(());
+        navigate("/login", Default::default());
         spawn_local(async move {
             wait_for_bridge().await;
             let _ = sign_out_user().await;
-            on_logout.call(());
         });
     };
 

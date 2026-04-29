@@ -3,7 +3,7 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(catch, js_name = loginUser)]
-    pub async fn login_user(email: String, pass: String) -> Result<JsValue, JsValue>;
+    pub async fn login_user() -> Result<JsValue, JsValue>;
     
     #[wasm_bindgen(catch, js_name = signOutUser)]
     pub async fn sign_out_user() -> Result<JsValue, JsValue>;
