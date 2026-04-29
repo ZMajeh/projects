@@ -145,6 +145,26 @@
     <body>
         <div id="main"></div>
 
+        <!-- Cropper Modal -->
+        <div id="cropper-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 5000; flex-direction: column; align-items: center; justify-content: center; padding: 10px;">
+            <div style="background: white; padding: 15px; border-radius: 8px; width: 95%; max-width: 600px; display: flex; flex-direction: column; height: 90vh; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3 style="margin: 0;">ID Perspective Crop</h3>
+                    <p style="font-size: 0.8rem; color: #666; margin: 0;">Drag the 4 corners to match the ID card</p>
+                </div>
+                
+                <div id="cropper-container" style="flex: 1; overflow: hidden; background: #222; position: relative; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: crosshair; touch-action: none;">
+                    <img id="cropper-image" style="max-width: 100%; max-height: 100%; display: block; user-select: none; pointer-events: none;">
+                    <canvas id="cropper-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
+                </div>
+
+                <div style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button id="cropper-cancel" style="flex: 1; background: #e74c3c; padding: 12px;">Cancel</button>
+                    <button id="cropper-confirm" style="flex: 1; background: #27ae60; padding: 12px; font-weight: bold;">Unwarp & Save</button>
+                </div>
+            </div>
+        </div>
+
         <script>
             // Define stubs immediately to prevent ReferenceError during Wasm initialization.
             // These will be overwritten or supplemented by the module script below.
@@ -759,6 +779,202 @@
                     return false;
                 }
                 return true;
+            };
+
+            // --- QUADRILATERAL CROPPER BRIDGE ---
+            window.openCropper = (imageDataUrl) => {
+                return new Promise((resolve) => {
+                    const modal = document.getElementById('cropper-modal');
+                    const img = document.getElementById('cropper-image');
+                    const container = document.getElementById('cropper-container');
+                    const canvas = document.getElementById('cropper-canvas');
+                    const ctx = canvas.getContext('2d');
+                    const cancelBtn = document.getElementById('cropper-cancel');
+                    const confirmBtn = document.getElementById('cropper-confirm');
+
+                    let points = [];
+                    let activePoint = -1;
+                    const handleRadius = 15;
+
+                    const initPoints = () => {
+                        const rect = img.getBoundingClientRect();
+                        const cRect = container.getBoundingClientRect();
+                        
+                        // Scale to canvas coordinates
+                        canvas.width = cRect.width;
+                        canvas.height = cRect.height;
+
+                        const x = (cRect.width - rect.width) / 2;
+                        const y = (cRect.height - rect.height) / 2;
+                        const w = rect.width;
+                        const h = rect.height;
+
+                        // Initial quadrilateral (slightly inset from image edges)
+                        const margin = 20;
+                        points = [
+                            { x: x + margin, y: y + margin }, // Top Left
+                            { x: x + w - margin, y: y + margin }, // Top Right
+                            { x: x + w - margin, y: y + h - margin }, // Bottom Right
+                            { x: x + margin, y: y + h - margin } // Bottom Left
+                        ];
+                        draw();
+                    };
+
+                    const draw = () => {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        
+                        // Draw lines
+                        ctx.beginPath();
+                        ctx.moveTo(points[0].x, points[0].y);
+                        for (let i = 1; i < 4; i++) ctx.lineTo(points[i].x, points[i].y);
+                        ctx.closePath();
+                        ctx.strokeStyle = '#27ae60';
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                        ctx.fillStyle = 'rgba(39, 174, 96, 0.2)';
+                        ctx.fill();
+
+                        // Draw points
+                        points.forEach((p, i) => {
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, handleRadius, 0, Math.PI * 2);
+                            ctx.fillStyle = activePoint === i ? '#fff' : '#27ae60';
+                            ctx.fill();
+                            ctx.strokeStyle = '#000';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                        });
+                    };
+
+                    const getMousePos = (e) => {
+                        const rect = canvas.getBoundingClientRect();
+                        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                        return {
+                            x: clientX - rect.left,
+                            y: clientY - rect.top
+                        };
+                    };
+
+                    container.onmousedown = container.ontouchstart = (e) => {
+                        const pos = getMousePos(e);
+                        activePoint = points.findIndex(p => {
+                            const dx = p.x - pos.x;
+                            const dy = p.y - pos.y;
+                            return Math.sqrt(dx*dx + dy*dy) < handleRadius * 2;
+                        });
+                        if (activePoint !== -1) e.preventDefault();
+                    };
+
+                    window.onmousemove = window.ontouchmove = (e) => {
+                        if (activePoint === -1) return;
+                        const pos = getMousePos(e);
+                        points[activePoint].x = Math.max(0, Math.min(canvas.width, pos.x));
+                        points[activePoint].y = Math.max(0, Math.min(canvas.height, pos.y));
+                        draw();
+                    };
+
+                    window.onmouseup = window.ontouchend = () => {
+                        activePoint = -1;
+                    };
+
+                    img.onload = () => {
+                        modal.style.display = 'flex';
+                        initPoints();
+                    };
+                    img.src = imageDataUrl;
+
+                    const cleanup = () => {
+                        modal.style.display = 'none';
+                        window.onmousemove = window.ontouchmove = null;
+                        window.onmouseup = window.ontouchend = null;
+                    };
+
+                    cancelBtn.onclick = () => {
+                        cleanup();
+                        resolve(null);
+                    };
+
+                    confirmBtn.onclick = () => {
+                        // Perspective Unwarp Logic
+                        const sourceCanvas = document.createElement('canvas');
+                        const sCtx = sourceCanvas.getContext('2d');
+                        const tempImg = new Image();
+                        tempImg.onload = () => {
+                            sourceCanvas.width = tempImg.naturalWidth;
+                            sourceCanvas.height = tempImg.naturalHeight;
+                            sCtx.drawImage(tempImg, 0, 0);
+
+                            const imgRect = img.getBoundingClientRect();
+                            const cRect = container.getBoundingClientRect();
+                            const offsetX = (cRect.width - imgRect.width) / 2;
+                            const offsetY = (cRect.height - imgRect.height) / 2;
+
+                            // Map points to natural image coordinates
+                            const srcPoints = points.map(p => ({
+                                x: (p.x - offsetX) * (tempImg.naturalWidth / imgRect.width),
+                                y: (p.y - offsetY) * (tempImg.naturalHeight / imgRect.height)
+                            }));
+
+                            // Perform Warp
+                            const outW = 1000; // Standard ID width
+                            const outH = 630;  // Standard ID height (ratio 1.58)
+                            const resultCanvas = document.createElement('canvas');
+                            resultCanvas.width = outW;
+                            resultCanvas.height = outH;
+                            const rCtx = resultCanvas.getContext('2d');
+
+                            // Simplified Perspective Warp (Bilinear mapping)
+                            unwarp(tempImg, srcPoints, resultCanvas);
+                            
+                            cleanup();
+                            resolve(resultCanvas.toDataURL('image/jpeg', 0.85));
+                        };
+                        tempImg.src = imageDataUrl;
+                    };
+
+                    // Math for Perspective Warping
+                    function unwarp(img, pts, canvas) {
+                        const ctx = canvas.getContext('2d');
+                        const w = canvas.width;
+                        const h = canvas.height;
+                        
+                        // For each pixel in output, find pixel in input
+                        const imgData = ctx.createImageData(w, h);
+                        
+                        // Get input image data
+                        const inCanvas = document.createElement('canvas');
+                        inCanvas.width = img.naturalWidth;
+                        inCanvas.height = img.naturalHeight;
+                        const inCtx = inCanvas.getContext('2d');
+                        inCtx.drawImage(img, 0, 0);
+                        const inData = inCtx.getImageData(0, 0, inCanvas.width, inCanvas.height).data;
+
+                        for (let y = 0; y < h; y++) {
+                            for (let x = 0; x < w; x++) {
+                                const u = x / w;
+                                const v = y / h;
+
+                                // Bilinear interpolation of the 4 points
+                                const px = (1-u)*(1-v)*pts[0].x + u*(1-v)*pts[1].x + u*v*pts[2].x + (1-u)*v*pts[3].x;
+                                const py = (1-u)*(1-v)*pts[0].y + u*(1-v)*pts[1].y + u*v*pts[2].y + (1-u)*v*pts[3].y;
+
+                                const ix = Math.floor(px);
+                                const iy = Math.floor(py);
+
+                                if (ix >= 0 && ix < inCanvas.width && iy >= 0 && iy < inCanvas.height) {
+                                    const outIdx = (y * w + x) * 4;
+                                    const inIdx = (iy * inCanvas.width + ix) * 4;
+                                    imgData.data[outIdx] = inData[inIdx];
+                                    imgData.data[outIdx+1] = inData[inIdx+1];
+                                    imgData.data[outIdx+2] = inData[inIdx+2];
+                                    imgData.data[outIdx+3] = inData[inIdx+3];
+                                }
+                            }
+                        }
+                        ctx.putImageData(imgData, 0, 0);
+                    }
+                });
             };
 
             // Signal that everything is ready

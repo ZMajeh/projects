@@ -1,7 +1,7 @@
 use leptos::*;
 use wasm_bindgen::prelude::*;
 use crate::models::{Customer, NewCustomer};
-use crate::api::{get_customers_js, add_customer_js, update_customer_js, delete_customer_js, start_camera, take_snapshot, stop_camera, extract_aadhaar_js, read_file_as_data_url, manual_verify_aadhaar};
+use crate::api::{get_customers_js, add_customer_js, update_customer_js, delete_customer_js, start_camera, take_snapshot, stop_camera, extract_aadhaar_js, read_file_as_data_url, manual_verify_aadhaar, open_cropper};
 use crate::utils::{wait_for_bridge, calculate_age};
 
 #[component]
@@ -66,9 +66,14 @@ pub fn CustomerForm(
                     wait_for_bridge().await;
                     if let Ok(data_js) = read_file_as_data_url(file).await {
                         if let Some(data) = data_js.as_string() {
-                            if target == "photo" { set_photo.set(Some(data)); } 
-                            else if target == "id" { set_id_card.set(Some(data.clone())); process_id_ocr(data); }
-                            else if target == "id_back" { set_id_card_back.set(Some(data)); }
+                            // Open Cropper
+                            if let Ok(cropped_js) = open_cropper(data).await {
+                                if let Some(cropped_data) = cropped_js.as_string() {
+                                    if target == "photo" { set_photo.set(Some(cropped_data)); } 
+                                    else if target == "id" { set_id_card.set(Some(cropped_data.clone())); process_id_ocr(cropped_data); }
+                                    else if target == "id_back" { set_id_card_back.set(Some(cropped_data)); }
+                                }
+                            }
                         }
                     }
                 });
@@ -247,7 +252,7 @@ pub fn CustomerForm(
             </button>
             
             {move || if show_manual_verify.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 4000;"><div class="card" style="max-width: 300px; text-align: center; padding: 1.5rem;"><h3>"Verified?"</h3><div style="display: flex; gap: 10px; margin-top: 20px;"><button type="button" on:click=move |_| { set_is_verified.set(true); set_show_manual_verify.set(false); } style="background: green; flex: 1;">"YES"</button><button type="button" on:click=move |_| set_show_manual_verify.set(false) style="background: red; flex: 1;">"NO"</button></div></div></div> }.into_view() } else { view! {}.into_view() }}
-            {move || if camera_active.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 4000; padding: 1rem;"><video id="cam-preview-modal" style="width: 100%; max-width: 400px; border: 2px solid white;"></video><div style="margin-top: 20px; display: flex; gap: 10px;"><button type="button" on:click=move |_| { spawn_local(async move { wait_for_bridge().await; if let Ok(data_js) = take_snapshot("cam-preview-modal".to_string()).await { if let Some(data) = data_js.as_string() { if capture_target.get() == "photo" { set_photo.set(Some(data)); } else if capture_target.get() == "id" { set_id_card.set(Some(data.clone())); process_id_ocr(data); } else if capture_target.get() == "id_back" { set_id_card_back.set(Some(data)); } } } let _ = stop_camera().await; set_camera_active.set(false); }); } style="background: green;">"CAPTURE"</button><button type="button" on:click=move |_| { spawn_local(async move { let _ = stop_camera().await; set_camera_active.set(false); }); } style="background: red;">"CLOSE"</button></div></div> }.into_view() } else { view! {}.into_view() }}
+            {move || if camera_active.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 4000; padding: 1rem;"><video id="cam-preview-modal" style="width: 100%; max-width: 400px; border: 2px solid white;"></video><div style="margin-top: 20px; display: flex; gap: 10px;"><button type="button" on:click=move |_| { spawn_local(async move { wait_for_bridge().await; if let Ok(data_js) = take_snapshot("cam-preview-modal".to_string()).await { if let Some(data) = data_js.as_string() { let _ = stop_camera().await; set_camera_active.set(false); if let Ok(cropped_js) = open_cropper(data).await { if let Some(cropped_data) = cropped_js.as_string() { if capture_target.get() == "photo" { set_photo.set(Some(cropped_data)); } else if capture_target.get() == "id" { set_id_card.set(Some(cropped_data.clone())); process_id_ocr(cropped_data); } else if capture_target.get() == "id_back" { set_id_card_back.set(Some(cropped_data)); } } } } else { let _ = stop_camera().await; set_camera_active.set(false); } } else { let _ = stop_camera().await; set_camera_active.set(false); } }); } style="background: green;">"CAPTURE"</button><button type="button" on:click=move |_| { spawn_local(async move { let _ = stop_camera().await; set_camera_active.set(false); }); } style="background: red;">"CLOSE"</button></div></div> }.into_view() } else { view! {}.into_view() }}
         </form>
     }
 }

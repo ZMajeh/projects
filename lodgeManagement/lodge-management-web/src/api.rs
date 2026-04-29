@@ -71,6 +71,9 @@ extern "C" {
     #[wasm_bindgen(catch, js_name = manualVerifyAadhaar)]
     pub async fn manual_verify_aadhaar(num: String) -> Result<JsValue, JsValue>;
 
+    #[wasm_bindgen(catch, js_name = openCropper)]
+    pub async fn open_cropper(base64: String) -> Result<JsValue, JsValue>;
+
     #[wasm_bindgen(catch, js_name = uploadImageToDrive)]
     pub async fn upload_image_to_drive(base64: String, filename: String) -> Result<JsValue, JsValue>;
 
