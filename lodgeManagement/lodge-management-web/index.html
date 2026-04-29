@@ -349,13 +349,22 @@
 
             // --- USER MANAGEMENT BRIDGE ---
             window.getWhitelistedUsers = async () => {
-                const q = query(collection(db, "allowed_users"), orderBy("__name__"));
-                const querySnapshot = await getDocs(q);
-                const users = [];
-                querySnapshot.forEach((doc) => {
-                    users.push({ email: doc.id, ...doc.data() });
-                });
-                return users;
+                console.log("Database: Fetching whitelisted users...");
+                try {
+                    const q = query(collection(db, "allowed_users"), orderBy("__name__"));
+                    const querySnapshot = await getDocs(q);
+                    const users = [];
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        console.log("Database: Found user:", doc.id, data);
+                        users.push({ email: doc.id, role: data.role || "Staff" });
+                    });
+                    console.log("Database: Total whitelisted users found:", users.length);
+                    return users;
+                } catch (e) {
+                    console.error("Database Error (Whitelist):", e);
+                    throw e;
+                }
             };
 
             window.addUserToWhitelist = async (email, role) => {

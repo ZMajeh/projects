@@ -20,9 +20,22 @@ pub fn ManageUsers() -> impl IntoView {
     let fetch_users = move || {
         spawn_local(async move {
             wait_for_bridge().await;
-            if let Ok(js_val) = get_whitelisted_users().await {
-                if let Ok(users_vec) = serde_wasm_bindgen::from_value::<Vec<WhitelistedUser>>(js_val) {
-                    set_users.set(users_vec);
+            logging::log!("Staff Management: Fetching users...");
+            match get_whitelisted_users().await {
+                Ok(js_val) => {
+                    logging::log!("Staff Management: Received JS value, attempting to deserialize...");
+                    match serde_wasm_bindgen::from_value::<Vec<WhitelistedUser>>(js_val) {
+                        Ok(users_vec) => {
+                            logging::log!("Staff Management: Successfully fetched {} users.", users_vec.len());
+                            set_users.set(users_vec);
+                        }
+                        Err(e) => {
+                            logging::error!("Staff Management: Deserialization failed: {:?}", e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    logging::error!("Staff Management: JS Bridge error: {:?}", e);
                 }
             }
         });
@@ -132,23 +145,30 @@ pub fn ManageUsers() -> impl IntoView {
                             key=|u| u.email.clone()
                             children=move |u| {
                                 let email = u.email.clone();
+                                let role = u.role.clone();
                                 view! {
                                     <tr>
                                         <td>{u.email}</td>
                                         <td>
                                             <span style=format!("padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; background: {}; color: white;", 
-                                                if u.role == "Admin" { "#9b59b6" } else { "#3498db" })
+                                                if role == "Admin" { "#9b59b6" } else { "#3498db" })
                                             >
-                                                {u.role}
+                                                {role.clone()}
                                             </span>
                                         </td>
                                         <td>
-                                            <button 
-                                                on:click=move |_| handle_delete(email.clone())
-                                                style="background: #e74c3c; padding: 5px 10px; font-size: 0.8rem;"
-                                            >
-                                                "Remove"
-                                            </button>
+                                            {if role != "Admin" {
+                                                view! {
+                                                    <button 
+                                                        on:click=move |_| handle_delete(email.clone())
+                                                        style="background: #e74c3c; padding: 5px 10px; font-size: 0.8rem;"
+                                                    >
+                                                        "Remove"
+                                                    </button>
+                                                }.into_view()
+                                            } else {
+                                                view! { <span style="color: #95a5a6; font-style: italic; font-size: 0.8rem;">"Protected"</span> }.into_view()
+                                            }}
                                         </td>
                                     </tr>
                                 }
