@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <title>Lodge Management System</title>
         <link rel="rust" data-trunk href="Cargo.toml"/>
+        <link rel="copy-file" data-trunk href="sw.js"/>
         <style>
             :root {
                 --primary: #007bff;
@@ -133,6 +134,11 @@
                 width: 100%;
                 box-sizing: border-box;
             }
+            @keyframes pulse {
+                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(230, 126, 34, 0.7); }
+                70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(230, 126, 34, 0); }
+                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(230, 126, 34, 0); }
+            }
         </style>
         
         <!-- Load Google APIs -->
@@ -173,8 +179,9 @@
 
         <script type="module">
             import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-            import { getFirestore, collection, addDoc, getDocs, getDoc, setDoc, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, where, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-            import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithCredential, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+            import { getFirestore, collection, addDoc, getDocs, getDoc, setDoc, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, where, limit, startAfter, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+            import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithCredential, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+            import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
             const firebaseConfig = {
                 apiKey: "AIzaSyB_UNAaB6Enl87Yiw3zQONsjqITtYKKP_Y",
@@ -189,6 +196,118 @@
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
             const auth = getAuth(app);
+            const storage = getStorage(app);
+
+            // Enable Firestore Offline Persistence
+            try {
+                enableIndexedDbPersistence(db).catch((err) => {
+                    if (err.code == 'failed-precondition') {
+                        console.warn("Firestore Persistence: Multiple tabs open, persistence can only be enabled in one tab at a time.");
+                    } else if (err.code == 'unimplemented') {
+                        console.warn("Firestore Persistence: The current browser does not support all of the features required to enable persistence.");
+                    }
+                });
+            } catch (e) {
+                console.error("Firestore Persistence Error:", e);
+            }
+
+            // Register Service Worker
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js').then(registration => {
+                        console.log('SW registered: ', registration);
+                    }).catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+                });
+            }
+
+            // --- INDEXED DB LOCAL STORAGE ---
+            const DB_NAME = 'LodgeLocalDB';
+            const DB_VERSION = 1;
+            let localDb;
+
+            const initLocalDB = () => {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+                    request.onerror = (event) => reject("IndexedDB error: " + event.target.errorCode);
+                    request.onsuccess = (event) => {
+                        localDb = event.target.result;
+                        resolve(localDb);
+                    };
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains('rooms')) db.createObjectStore('rooms', { keyPath: 'id' });
+                        if (!db.objectStoreNames.contains('customers')) db.createObjectStore('customers', { keyPath: 'id' });
+                        if (!db.objectStoreNames.contains('bookings')) db.createObjectStore('bookings', { keyPath: 'id' });
+                        if (!db.objectStoreNames.contains('syncQueue')) db.createObjectStore('syncQueue', { autoIncrement: true });
+                    };
+                });
+            };
+
+            initLocalDB().then(() => console.log("IndexedDB Initialized"));
+
+            const saveToLocal = (storeName, data) => {
+                if (!localDb) return;
+                const transaction = localDb.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                store.put(data);
+            };
+
+            const getFromLocal = (storeName) => {
+                return new Promise((resolve, reject) => {
+                    if (!localDb) return resolve([]);
+                    const transaction = localDb.transaction([storeName], 'readonly');
+                    const store = transaction.objectStore(storeName);
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            };
+
+            const removeFromLocal = (storeName, id) => {
+                if (!localDb) return;
+                const transaction = localDb.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                store.delete(id);
+            };
+
+            // --- SYNC SYSTEM ---
+            window.isOnline = () => navigator.onLine;
+
+            const addToSyncQueue = (action, collection, id, data) => {
+                saveToLocal('syncQueue', { action, collection, id, data, timestamp: Date.now() });
+            };
+
+            window.addEventListener('online', () => {
+                console.log("System Online: Triggering Sync...");
+                processSyncQueue();
+            });
+
+            const processSyncQueue = async () => {
+                if (!navigator.onLine || !localDb) return;
+                const transaction = localDb.transaction(['syncQueue'], 'readwrite');
+                const store = transaction.objectStore('syncQueue');
+                const request = store.getAll();
+
+                request.onsuccess = async () => {
+                    const items = request.result;
+                    for (const item of items) {
+                        try {
+                            if (item.action === 'add' || item.action === 'update') {
+                                await setDoc(doc(db, item.collection, item.id), { ...item.data, updatedAt: serverTimestamp() });
+                            } else if (item.action === 'delete') {
+                                await deleteDoc(doc(db, item.collection, item.id));
+                            }
+                            // Remove from queue after success
+                            const delTx = localDb.transaction(['syncQueue'], 'readwrite');
+                            delTx.objectStore('syncQueue').delete(item.id_auto || item.timestamp); // Need a better way to target queue items
+                        } catch (e) {
+                            console.error("Sync Error for item:", item, e);
+                        }
+                    }
+                };
+            };
 
             // --- GOOGLE DRIVE CLIENT-SIDE CONFIG ---
             const CLIENT_ID = '539473298830-vh4i5l5rvtbbt16u4oenu9ffvm8ofuba.apps.googleusercontent.com'; 
@@ -400,6 +519,30 @@
                 return true;
             };
 
+            // --- FIREBASE STORAGE BRIDGE ---
+            window.uploadImageToStorage = async (base64, path) => {
+                try {
+                    const storageRef = ref(storage, path);
+                    const result = await uploadString(storageRef, base64, 'data_url');
+                    console.log("Storage: Upload Success:", result.ref.fullPath);
+                    return await getDownloadURL(result.ref);
+                } catch (e) {
+                    console.error("Storage Upload Error:", e);
+                    throw e;
+                }
+            };
+
+            window.deleteFileFromStorage = async (path) => {
+                try {
+                    const storageRef = ref(storage, path);
+                    await deleteObject(storageRef);
+                    return true;
+                } catch (e) {
+                    console.error("Storage Delete Error:", e);
+                    return false;
+                }
+            };
+
             // --- DRIVE BRIDGE ---
             window.uploadImageToDrive = async (base64, filename) => {
                 if (!accessToken) {
@@ -487,11 +630,20 @@
 
             // --- DATABASE BRIDGE ---
             window.getRooms = async () => {
-                const q = query(collection(db, "rooms"), orderBy("number"));
-                const querySnapshot = await getDocs(q);
-                const rooms = [];
-                querySnapshot.forEach((doc) => { rooms.push({ id: doc.id, ...doc.data() }); });
-                return rooms;
+                try {
+                    const q = query(collection(db, "rooms"), orderBy("number"));
+                    const querySnapshot = await getDocs(q);
+                    const rooms = [];
+                    querySnapshot.forEach((doc) => { 
+                        const data = { id: doc.id, ...doc.data() };
+                        rooms.push(data); 
+                        saveToLocal('rooms', data);
+                    });
+                    return rooms;
+                } catch (e) {
+                    console.warn("Using offline rooms cache");
+                    return await getFromLocal('rooms');
+                }
             };
 
             const cleanData = (obj) => {
@@ -503,58 +655,95 @@
             };
 
             window.addRoom = async (room) => {
-                const docRef = await addDoc(collection(db, "rooms"), { ...cleanData(room), createdAt: serverTimestamp() });
-                return docRef.id;
+                const id = "local_" + Date.now();
+                const roomData = { ...cleanData(room), id: id, createdAt: new Date().toISOString() };
+                saveToLocal('rooms', roomData);
+
+                try {
+                    const docRef = await addDoc(collection(db, "rooms"), { ...cleanData(room), createdAt: serverTimestamp() });
+                    removeFromLocal('rooms', id); // Remove temp local
+                    const finalData = { ...roomData, id: docRef.id };
+                    saveToLocal('rooms', finalData);
+                    return docRef.id;
+                } catch (e) {
+                    addToSyncQueue('add', 'rooms', id, room);
+                    return id;
+                }
             };
 
             window.updateRoom = async (id, room) => {
-                await updateDoc(doc(db, "rooms", id), { ...cleanData(room), updatedAt: serverTimestamp() });
-                return true;
+                const roomData = { ...cleanData(room), id: id, updatedAt: new Date().toISOString() };
+                saveToLocal('rooms', roomData);
+                try {
+                    await updateDoc(doc(db, "rooms", id), { ...cleanData(room), updatedAt: serverTimestamp() });
+                    return true;
+                } catch (e) {
+                    addToSyncQueue('update', 'rooms', id, room);
+                    return true;
+                }
             };
 
             window.deleteRoom = async (id) => {
-                await deleteDoc(doc(db, "rooms", id));
-                return true;
+                removeFromLocal('rooms', id);
+                try {
+                    await deleteDoc(doc(db, "rooms", id));
+                    return true;
+                } catch (e) {
+                    addToSyncQueue('delete', 'rooms', id, null);
+                    return true;
+                }
             };
 
             // --- BOOKING BRIDGE ---
             window.getBookings = async () => {
-                console.log("Database: Fetching recent stays...");
                 try {
-                    const q = query(collection(db, "bookings"), orderBy("checkInDate", "desc"), limit(20));
+                    const q = query(collection(db, "bookings"), orderBy("checkInDate", "desc"), limit(50));
                     const querySnapshot = await getDocs(q);
                     const bookings = [];
-                    querySnapshot.forEach((doc) => { bookings.push({ id: doc.id, ...doc.data() }); });
-                    console.log(`Database: Successfully fetched ${bookings.length} stays.`);
+                    querySnapshot.forEach((doc) => { 
+                        const data = { id: doc.id, ...doc.data() };
+                        bookings.push(data);
+                        saveToLocal('bookings', data);
+                    });
                     return bookings;
                 } catch (e) {
-                    console.error("Database Error (Bookings):", e);
-                    throw e;
+                    console.warn("Using offline bookings cache");
+                    return await getFromLocal('bookings');
                 }
             };
 
             window.addBooking = async (booking) => {
-                console.log("Firestore SAVE Booking: ", booking);
+                const id = "local_book_" + Date.now();
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const bookingData = { ...cleanData(booking), id, inTime: timeStr, createdAt: now.toISOString() };
+                
+                saveToLocal('bookings', bookingData);
+                // Update local room status
+                getFromLocal('rooms').then(rooms => {
+                    const room = rooms.find(r => r.id === booking.roomId);
+                    if (room) {
+                        room.status = "Occupied";
+                        saveToLocal('rooms', room);
+                    }
+                });
+
                 try {
-                    const now = new Date();
-                    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    // 1. Save Booking
                     const docRef = await addDoc(collection(db, "bookings"), { 
                         ...cleanData(booking), 
                         inTime: timeStr,
                         createdAt: serverTimestamp() 
                     });
-                    console.log("Firestore SAVE Booking Success, ID:", docRef.id);
+                    removeFromLocal('bookings', id);
+                    saveToLocal('bookings', { ...bookingData, id: docRef.id });
                     
-                    // 2. Mark Room as Occupied
                     const roomRef = doc(db, "rooms", booking.roomId);
                     await updateDoc(roomRef, { status: "Occupied" });
-                    console.log("Firestore Room Status Updated to Occupied");
                     
                     return docRef.id;
                 } catch (e) {
-                    console.error("Firestore SAVE Booking Error:", e);
-                    throw e;
+                    addToSyncQueue('add', 'bookings', id, booking);
+                    return id;
                 }
             };
 
@@ -592,94 +781,81 @@
             window.getCustomers = async (searchTerm = "") => {
                 const s = searchTerm;
                 const sl = searchTerm.toLowerCase();
-                console.log(`Database: Scalable multi-field search for "${s}"...`);
                 try {
                     if (!s) {
-                        const q = query(collection(db, "customers"), orderBy("createdAt", "desc"), limit(20));
+                        const q = query(collection(db, "customers"), orderBy("createdAt", "desc"), limit(50));
                         const querySnapshot = await getDocs(q);
                         const customers = [];
-                        querySnapshot.forEach((doc) => { customers.push({ id: doc.id, ...doc.data() }); });
+                        querySnapshot.forEach((doc) => { 
+                            const data = { id: doc.id, ...doc.data() };
+                            customers.push(data);
+                            saveToLocal('customers', data);
+                        });
                         return customers;
                     }
 
-                    // Parallel indexed queries for high performance at scale
-                    const qName = query(
-                        collection(db, "customers"), 
-                        where("searchKeywords", ">=", sl),
-                        where("searchKeywords", "<=", sl + "\uf8ff"),
-                        limit(20)
-                    );
-                    const qPhone = query(
-                        collection(db, "customers"), 
-                        where("phone", ">=", s),
-                        where("phone", "<=", s + "\uf8ff"),
-                        limit(20)
-                    );
-                    const qAadhaar = query(
-                        collection(db, "customers"), 
-                        where("aadhaar", ">=", s),
-                        where("aadhaar", "<=", s + "\uf8ff"),
-                        limit(20)
-                    );
-                    const qAge = query(
-                        collection(db, "customers"), 
-                        where("age", ">=", s),
-                        where("age", "<=", s + "\uf8ff"),
-                        limit(20)
-                    );
-
-                    const [snapName, snapPhone, snapAadhaar, snapAge] = await Promise.all([
-                        getDocs(qName),
-                        getDocs(qPhone),
-                        getDocs(qAadhaar),
-                        getDocs(qAge)
-                    ]);
-
-                    // Merge results and remove duplicates
+                    // Parallel indexed queries for online search
+                    const qName = query(collection(db, "customers"), where("searchKeywords", ">=", sl), where("searchKeywords", "<=", sl + "\uf8ff"), limit(20));
+                    const qPhone = query(collection(db, "customers"), where("phone", ">=", s), where("phone", "<=", s + "\uf8ff"), limit(20));
+                    
+                    const [snapName, snapPhone] = await Promise.all([getDocs(qName), getDocs(qPhone)]);
                     const resultsMap = new Map();
-                    [snapName, snapPhone, snapAadhaar, snapAge].forEach(snap => {
-                        snap.forEach(doc => {
-                            resultsMap.set(doc.id, { id: doc.id, ...doc.data() });
-                        });
-                    });
-
-                    const customers = Array.from(resultsMap.values()).slice(0, 20);
-                    console.log(`Database: Found ${customers.length} unique matches.`);
+                    [snapName, snapPhone].forEach(snap => snap.forEach(doc => resultsMap.set(doc.id, { id: doc.id, ...doc.data() })));
+                    
+                    const customers = Array.from(resultsMap.values());
+                    customers.forEach(c => saveToLocal('customers', c));
                     return customers;
                 } catch (e) {
-                    console.error("Database Search Error (Customers):", e);
-                    throw e;
+                    console.warn("Using offline customers cache");
+                    const all = await getFromLocal('customers');
+                    if (!s) return all.slice(0, 50);
+                    return all.filter(c => 
+                        (c.name && c.name.toLowerCase().includes(sl)) || 
+                        (c.phone && c.phone.includes(s)) ||
+                        (c.aadhaar && c.aadhaar.includes(s))
+                    ).slice(0, 20);
                 }
             };
 
             window.addCustomer = async (customer) => {
-                console.log("Firestore SAVE: ", customer);
+                const id = "local_cust_" + Date.now();
+                const customerData = { ...cleanData(customer), id, createdAt: new Date().toISOString() };
+                saveToLocal('customers', customerData);
+
                 try {
                     const docRef = await addDoc(collection(db, "customers"), { 
                         ...cleanData(customer), 
                         createdAt: serverTimestamp() 
                     });
+                    removeFromLocal('customers', id);
+                    saveToLocal('customers', { ...customerData, id: docRef.id });
                     return docRef.id;
                 } catch (e) {
-                    console.error("Firestore SAVE Error:", e);
-                    throw e;
+                    addToSyncQueue('add', 'customers', id, customer);
+                    return id;
                 }
             };
 
             window.updateCustomer = async (id, customer) => {
-                console.log(`Firestore UPDATE (ID: ${id}):`, customer);
+                const customerData = { ...cleanData(customer), id, updatedAt: new Date().toISOString() };
+                saveToLocal('customers', customerData);
                 try {
-                    const docRef = doc(db, "customers", id);
-                    await updateDoc(docRef, { ...cleanData(customer), updatedAt: serverTimestamp() });
+                    await updateDoc(doc(db, "customers", id), { ...cleanData(customer), updatedAt: serverTimestamp() });
                     return true;
                 } catch (e) {
-                    console.error("Firestore UPDATE Error:", e);
-                    throw e;
+                    addToSyncQueue('update', 'customers', id, customer);
+                    return true;
                 }
             };
             window.deleteCustomer = async (id) => {
-                await deleteDoc(doc(db, "customers", id));
-                return true;
+                removeFromLocal('customers', id);
+                try {
+                    await deleteDoc(doc(db, "customers", id));
+                    return true;
+                } catch (e) {
+                    addToSyncQueue('delete', 'customers', id, null);
+                    return true;
+                }
             };
             // --- CAMERA BRIDGE ---
             let stream = null;

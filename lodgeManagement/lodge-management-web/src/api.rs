@@ -91,4 +91,13 @@ extern "C" {
 
     #[wasm_bindgen(catch, js_name = getDriveThumbnail)]
     pub async fn get_drive_thumbnail(file_id: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = uploadImageToStorage)]
+    pub async fn upload_image_to_storage(base64: String, path: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = deleteFileFromStorage)]
+    pub async fn delete_file_from_storage(path: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(js_name = isOnline)]
+    pub fn is_online() -> bool;
 }

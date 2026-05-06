@@ -124,23 +124,34 @@ pub fn CustomerForm(
                 aadhaar_val
             );
 
-            let get_id = |url: &Option<String>| {
+            let get_storage_path = |url: &Option<String>| {
                 url.as_ref().and_then(|u| {
-                    if u.contains("drive.google.com") {
+                    if u.contains("firebasestorage.googleapis.com") {
+                        // Extract path between /o/ and ?
+                        u.split("/o/").nth(1).and_then(|s| s.split('?').next()).map(|s| s.replace("%2F", "/"))
+                    } else if u.contains("drive.google.com") {
                         u.split("/d/").nth(1).and_then(|s| s.split('/').next()).and_then(|s| s.split('?').next()).map(|s| s.to_string())
                     } else { None }
                 })
+            };
+
+            let is_drive = |url: &Option<String>| {
+                url.as_ref().map(|u| u.contains("drive.google.com")).unwrap_or(false)
             };
 
             let photo_url = if let Some(d) = photo_val {
                 if d.starts_with("data:") {
                     current_upload += 1;
                     set_upload_status.set(format!("Uploading Photo ({}/{})", current_upload, total_uploads));
-                    if let Some(old_id) = get_id(&initial_data_cloned.as_ref().and_then(|c| c.photo_url.clone())) {
-                        let _ = crate::api::delete_file_from_drive(old_id).await;
+                    if let Some(old_path) = get_storage_path(&initial_data_cloned.as_ref().and_then(|c| c.photo_url.clone())) {
+                        if is_drive(&initial_data_cloned.as_ref().and_then(|c| c.photo_url.clone())) {
+                            let _ = crate::api::delete_file_from_drive(old_path).await;
+                        } else {
+                            let _ = crate::api::delete_file_from_storage(old_path).await;
+                        }
                     }
-                    let filename = format!("PHOTO_{}.jpg", search_slug);
-                    crate::api::upload_image_to_drive(d, filename).await.ok().and_then(|v| v.as_string())
+                    let path = format!("customers/{}/photo.jpg", aadhaar_val);
+                    crate::api::upload_image_to_storage(d, path).await.ok().and_then(|v| v.as_string())
                 } else { Some(d) }
             } else { None };
 
@@ -148,11 +159,15 @@ pub fn CustomerForm(
                 if d.starts_with("data:") {
                     current_upload += 1;
                     set_upload_status.set(format!("Uploading ID Front ({}/{})", current_upload, total_uploads));
-                    if let Some(old_id) = get_id(&initial_data_cloned.as_ref().and_then(|c| c.id_card_url.clone())) {
-                        let _ = crate::api::delete_file_from_drive(old_id).await;
+                    if let Some(old_path) = get_storage_path(&initial_data_cloned.as_ref().and_then(|c| c.id_card_url.clone())) {
+                        if is_drive(&initial_data_cloned.as_ref().and_then(|c| c.id_card_url.clone())) {
+                            let _ = crate::api::delete_file_from_drive(old_path).await;
+                        } else {
+                            let _ = crate::api::delete_file_from_storage(old_path).await;
+                        }
                     }
-                    let filename = format!("ID_FRONT_{}.jpg", search_slug);
-                    crate::api::upload_image_to_drive(d, filename).await.ok().and_then(|v| v.as_string())
+                    let path = format!("customers/{}/id_front.jpg", aadhaar_val);
+                    crate::api::upload_image_to_storage(d, path).await.ok().and_then(|v| v.as_string())
                 } else { Some(d) }
             } else { None };
 
@@ -160,11 +175,15 @@ pub fn CustomerForm(
                 if d.starts_with("data:") {
                     current_upload += 1;
                     set_upload_status.set(format!("Uploading ID Back ({}/{})", current_upload, total_uploads));
-                    if let Some(old_id) = get_id(&initial_data_cloned.as_ref().and_then(|c| c.id_card_back_url.clone())) {
-                        let _ = crate::api::delete_file_from_drive(old_id).await;
+                    if let Some(old_path) = get_storage_path(&initial_data_cloned.as_ref().and_then(|c| c.id_card_back_url.clone())) {
+                        if is_drive(&initial_data_cloned.as_ref().and_then(|c| c.id_card_back_url.clone())) {
+                            let _ = crate::api::delete_file_from_drive(old_path).await;
+                        } else {
+                            let _ = crate::api::delete_file_from_storage(old_path).await;
+                        }
                     }
-                    let filename = format!("ID_BACK_{}.jpg", search_slug);
-                    crate::api::upload_image_to_drive(d, filename).await.ok().and_then(|v| v.as_string())
+                    let path = format!("customers/{}/id_back.jpg", aadhaar_val);
+                    crate::api::upload_image_to_storage(d, path).await.ok().and_then(|v| v.as_string())
                 } else { Some(d) }
             } else { None };
 
@@ -301,19 +320,32 @@ pub fn Customers() -> impl IntoView {
         spawn_local(async move {
             wait_for_bridge().await;
 
-            // Helper to extract File ID from Drive URL
-            let get_id = |url: &Option<String>| {
+            // Helper to extract path/ID
+            let get_storage_path = |url: &Option<String>| {
                 url.as_ref().and_then(|u| {
-                    if u.contains("drive.google.com") {
+                    if u.contains("firebasestorage.googleapis.com") {
+                        u.split("/o/").nth(1).and_then(|s| s.split('?').next()).map(|s| s.replace("%2F", "/"))
+                    } else if u.contains("drive.google.com") {
                         u.split("/d/").nth(1).and_then(|s| s.split('/').next()).and_then(|s| s.split('?').next()).map(|s| s.to_string())
                     } else { None }
                 })
             };
 
-            // Delete associated files from Drive
-            if let Some(fid) = get_id(&c.photo_url) { let _ = crate::api::delete_file_from_drive(fid).await; }
-            if let Some(fid) = get_id(&c.id_card_url) { let _ = crate::api::delete_file_from_drive(fid).await; }
-            if let Some(fid) = get_id(&c.id_card_back_url) { let _ = crate::api::delete_file_from_drive(fid).await; }
+            let is_drive = |url: &Option<String>| {
+                url.as_ref().map(|u| u.contains("drive.google.com")).unwrap_or(false)
+            };
+
+            // Delete associated files
+            let urls = vec![c.photo_url.clone(), c.id_card_url.clone(), c.id_card_back_url.clone()];
+            for url_opt in urls {
+                if let Some(path) = get_storage_path(&url_opt) {
+                    if is_drive(&url_opt) {
+                        let _ = crate::api::delete_file_from_drive(path).await;
+                    } else {
+                        let _ = crate::api::delete_file_from_storage(path).await;
+                    }
+                }
+            }
 
             // Delete from Firestore
             let _ = delete_customer_js(id).await;

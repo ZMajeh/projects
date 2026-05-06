@@ -8,6 +8,25 @@ use crate::api::{sign_out_user, authorize_google_drive, is_drive_authorized, val
 pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: Children) -> impl IntoView {
     let (menu_open, set_menu_open) = create_signal(false);
     let (drive_auth, set_drive_auth) = create_signal(is_drive_authorized());
+    let (online, set_online) = create_signal(crate::api::is_online());
+
+    // Listen for online/offline events
+    create_effect(move |_| {
+        use wasm_bindgen::prelude::*;
+        let window = web_sys::window().unwrap();
+        
+        let on_online = move |_: web_sys::Event| set_online.set(true);
+        let on_offline = move |_: web_sys::Event| set_online.set(false);
+        
+        let online_cb = Closure::wrap(Box::new(on_online) as Box<dyn FnMut(web_sys::Event)>);
+        let offline_cb = Closure::wrap(Box::new(on_offline) as Box<dyn FnMut(web_sys::Event)>);
+        
+        window.add_event_listener_with_callback("online", online_cb.as_ref().unchecked_ref()).unwrap();
+        window.add_event_listener_with_callback("offline", offline_cb.as_ref().unchecked_ref()).unwrap();
+        
+        online_cb.forget();
+        offline_cb.forget();
+    });
 
     // Validate drive session on mount
     create_effect(move |_| {
@@ -60,6 +79,17 @@ pub fn DashboardLayout(user: User, on_logout: Callback<()>, children: Children) 
                 }}
                 
                 <div style="margin-top: auto; padding: 1rem; border-top: 1px solid #ddd; font-size: 0.85rem;">
+                    <div style="padding: 0 1rem 0.5rem 1rem; display: flex; align-items: center; gap: 8px;">
+                        {move || if online.get() {
+                            view! { <span style="width: 10px; height: 10px; background: #27ae60; border-radius: 50%; display: inline-block;"></span> }.into_view()
+                        } else {
+                            view! { <span style="width: 10px; height: 10px; background: #e67e22; border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite;"></span> }.into_view()
+                        }}
+                        <span style=move || format!("font-weight: bold; color: {};", if online.get() { "#27ae60" } else { "#e67e22" })>
+                            {move || if online.get() { "Online" } else { "Offline Mode" }}
+                        </span>
+                    </div>
+
                     {move || if !drive_auth.get() {
                         view! {
                             <div style="padding: 0 1rem 1rem 1rem;">
