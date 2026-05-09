@@ -104,6 +104,11 @@ void winwarn(pdfapp_t *app, char *msg)
 	MessageBoxA(hwndframe, msg, "Majeh's PDF Viewer: Warning", MB_ICONWARNING);
 }
 
+int winquery(pdfapp_t *app, char *msg)
+{
+	return MessageBoxA(hwndframe, msg, "Majeh's PDF Viewer", MB_YESNO | MB_ICONQUESTION) == IDYES;
+}
+
 void winerror(pdfapp_t *app, char *msg)
 {
 	MessageBoxA(hwndframe, msg, "Majeh's PDF Viewer: Error", MB_ICONERROR);
@@ -192,7 +197,7 @@ int winfilename(wchar_t *buf, int len)
 	ofn.nMaxFile = len;
 	ofn.lpstrInitialDir = NULL;
 	ofn.lpstrTitle = L"Majeh's PDF Viewer: Open PDF file";
-	ofn.lpstrFilter = L"Documents (*.pdf;*.xps;*.cbz;*.zip;*.png;*.jpg;*.tif)\0*.zip;*.cbz;*.xps;*.pdf;*.jpe;*.jpg;*.jpeg;*.jfif;*.tif;*.tiff\0PDF Files (*.pdf)\0*.pdf\0XPS Files (*.xps)\0*.xps\0CBZ Files (*.cbz;*.zip)\0*.zip;*.cbz\0Image Files (*.png;*.jpe;*.tif)\0*.png;*.jpg;*.jpe;*.jpeg;*.jfif;*.tif;*.tiff\0All Files\0*\0\0";
+	ofn.lpstrFilter = L"Documents (*.pdf;*.xps;*.cbz;*.zip;*.png;*.jpg;*.tif;*.txt;*.reg)\0*.zip;*.cbz;*.xps;*.pdf;*.jpe;*.jpg;*.jpeg;*.jfif;*.tif;*.tiff;*.txt;*.reg\0PDF Files (*.pdf)\0*.pdf\0XPS Files (*.xps)\0*.xps\0CBZ Files (*.cbz;*.zip)\0*.zip;*.cbz\0Text Files (*.txt;*.reg)\0*.txt;*.reg\0Image Files (*.png;*.jpe;*.tif)\0*.png;*.jpg;*.jpe;*.jpeg;*.jfif;*.tif;*.tiff\0All Files\0*\0\0";
 	ofn.Flags = OFN_FILEMUSTEXIST|OFN_HIDEREADONLY;
 	return GetOpenFileNameW(&ofn);
 }
@@ -210,7 +215,7 @@ int wingetsavepath(pdfapp_t *app, char *buf, int len)
 	ofn.nMaxFile = PATH_MAX;
 	ofn.lpstrInitialDir = NULL;
 	ofn.lpstrTitle = L"Majeh's PDF Viewer: Save PDF file";
-	ofn.lpstrFilter = L"Documents (*.pdf;*.xps;*.cbz;*.zip;*.png;*.jpg;*.tif)\0*.zip;*.cbz;*.xps;*.pdf;*.jpe;*.jpg;*.jpeg;*.jfif;*.tif;*.tiff\0PDF Files (*.pdf)\0*.pdf\0XPS Files (*.xps)\0*.xps\0CBZ Files (*.cbz;*.zip)\0*.zip;*.cbz\0Image Files (*.png;*.jpe;*.tif)\0*.png;*.jpg;*.jpe;*.jpeg;*.jfif;*.tif;*.tiff\0All Files\0*\0\0";
+	ofn.lpstrFilter = L"Documents (*.pdf;*.xps;*.cbz;*.zip;*.png;*.jpg;*.tif;*.txt;*.reg)\0*.zip;*.cbz;*.xps;*.pdf;*.jpe;*.jpg;*.jpeg;*.jfif;*.tif;*.tiff;*.txt;*.reg\0PDF Files (*.pdf)\0*.pdf\0XPS Files (*.xps)\0*.xps\0CBZ Files (*.cbz;*.zip)\0*.zip;*.cbz\0Text Files (*.txt;*.reg)\0*.txt;*.reg\0Image Files (*.png;*.jpe;*.tif)\0*.png;*.jpg;*.jpe;*.jpeg;*.jfif;*.tif;*.tiff\0All Files\0*\0\0";
 	ofn.Flags = OFN_HIDEREADONLY;
 	if (GetSaveFileName(&ofn))
 	{
@@ -626,11 +631,10 @@ void winopen()
 	NULL, // window caption
 	WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
 	CW_USEDEFAULT, CW_USEDEFAULT, // initial position
-	300, // initial x size
-	300, // initial y size
+	CW_USEDEFAULT, CW_USEDEFAULT, // initial x size
 	0, // parent window handle
 	0, // window menu handle
-	0, // program instance handle
+	GetModuleHandle(NULL), // program instance handle
 	0); // creation parameters
 	if (!hwndframe)
 		winerror(&gapp, "cannot create frame");
@@ -654,26 +658,26 @@ void winopen()
 	AppendMenuW(menu, MF_STRING, ID_DOCINFO, L"Document Properties...");
 
 	SetCursor(arrowcurs);
-}
+	}
 
-static void
-do_close(pdfapp_t *app)
-{
+	static void
+	do_close(pdfapp_t *app)
+	{
 	pdfapp_close(app);
 	free(dibinf);
-}
+	}
 
-void winclose(pdfapp_t *app)
-{
+	void winclose(pdfapp_t *app)
+	{
 	if (pdfapp_preclose(app))
 	{
 		do_close(app);
 		exit(0);
 	}
-}
+	}
 
-void wincursor(pdfapp_t *app, int curs)
-{
+	void wincursor(pdfapp_t *app, int curs)
+	{
 	if (curs == ARROW)
 		SetCursor(arrowcurs);
 	if (curs == HAND)
@@ -682,10 +686,10 @@ void wincursor(pdfapp_t *app, int curs)
 		SetCursor(waitcurs);
 	if (curs == CARET)
 		SetCursor(caretcurs);
-}
+	}
 
-void wintitle(pdfapp_t *app, char *title)
-{
+	void wintitle(pdfapp_t *app, char *title)
+	{
 	wchar_t wide[256], *dp;
 	char *sp;
 	int rune;
@@ -700,27 +704,27 @@ void wintitle(pdfapp_t *app, char *title)
 	*dp = 0;
 
 	SetWindowTextW(hwndframe, wide);
-}
+	}
 
-void windrawrect(pdfapp_t *app, int x0, int y0, int x1, int y1)
-{
+	void windrawrect(pdfapp_t *app, int x0, int y0, int x1, int y1)
+	{
 	RECT r;
 	r.left = x0;
 	r.top = y0;
 	r.right = x1;
 	r.bottom = y1;
 	FillRect(hdc, &r, (HBRUSH)GetStockObject(WHITE_BRUSH));
-}
+	}
 
-void windrawstring(pdfapp_t *app, int x, int y, char *s)
-{
+	void windrawstring(pdfapp_t *app, int x, int y, char *s)
+	{
 	HFONT font = (HFONT)GetStockObject(ANSI_FIXED_FONT);
 	SelectObject(hdc, font);
 	TextOutA(hdc, x, y - 12, s, strlen(s));
-}
+	}
 
-void winblitsearch()
-{
+	void winblitsearch()
+	{
 	if (gapp.issearching)
 	{
 		char buf[sizeof(gapp.search) + 50];
@@ -728,10 +732,10 @@ void winblitsearch()
 		windrawrect(&gapp, 0, 0, gapp.winw, 30);
 		windrawstring(&gapp, 10, 20, buf);
 	}
-}
+	}
 
-void winblit()
-{
+	void winblit()
+	{
 	int image_w = fz_pixmap_width(gapp.ctx, gapp.image);
 	int image_h = fz_pixmap_height(gapp.ctx, gapp.image);
 	int image_n = fz_pixmap_components(gapp.ctx, gapp.image);
@@ -809,23 +813,30 @@ void winblit()
 	r.top = y1;
 	r.bottom = y1 + 2;
 	FillRect(hdc, &r, shbrush);
-	r.left = x1;
-	r.right = x1 + 2;
+	r.left = x1; r.right = x1 + 2;
 	r.top = y0 + 2;
 	r.bottom = y1;
 	FillRect(hdc, &r, shbrush);
 
 	winblitsearch();
-}
+	}
 
-void winresize(pdfapp_t *app, int w, int h)
-{
-	ShowWindow(hwndframe, SW_SHOWMAXIMIZED);
+	void winresize(pdfapp_t *app, int w, int h)
+	{
+	WINDOWPLACEMENT wp;
+	wp.length = sizeof(wp);
+	GetWindowPlacement(hwndframe, &wp);
+	if (wp.showCmd == SW_SHOWMAXIMIZED)
+	{
+		wp.showCmd = SW_SHOWNORMAL;
+		SetWindowPlacement(hwndframe, &wp);
+	}
+	ShowWindow(hwndframe, SW_SHOWNORMAL);
 	w += GetSystemMetrics(SM_CXFRAME) * 2;
 	h += GetSystemMetrics(SM_CYFRAME) * 2;
 	h += GetSystemMetrics(SM_CYCAPTION);
 	SetWindowPos(hwndframe, 0, 0, 0, w, h, SWP_NOZORDER | SWP_NOMOVE);
-}
+	}
 
 void winrepaint(pdfapp_t *app)
 {

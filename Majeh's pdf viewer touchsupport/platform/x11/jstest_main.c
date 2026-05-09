@@ -28,6 +28,12 @@ void winwarn(pdfapp_t *app, char *msg)
 	fprintf(stderr, "warning: %s\n", msg);
 }
 
+int winquery(pdfapp_t *app, char *msg)
+{
+	fprintf(stderr, "query: %s\n", msg);
+	return 1;
+}
+
 void winerror(pdfapp_t *app, char *msg)
 {
 	fprintf(stderr, "%s\n", msg);

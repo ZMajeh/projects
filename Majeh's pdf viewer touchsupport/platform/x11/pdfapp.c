@@ -246,7 +246,48 @@ void pdfapp_open_progressive(pdfapp_t *app, char *filename, int reload, int bps)
 #endif
 		if (bps == 0)
 		{
-			app->doc = fz_open_document(ctx, filename);
+			fz_try(ctx)
+			{
+				app->doc = fz_open_document(ctx, filename);
+			}
+			fz_catch(ctx)
+			{
+				app->doc = NULL;
+			}
+
+			if (!app->doc)
+			{
+				fz_stream *stm = fz_open_file(ctx, filename);
+				int size = 0;
+				if (stm)
+				{
+					fz_try(ctx)
+					{
+						fz_seek(stm, 0, 2);
+						size = (int)fz_tell(stm);
+					}
+					fz_always(ctx)
+						fz_close(stm);
+					fz_catch(ctx)
+						size = 0;
+				}
+
+				if (size > 5 * 1024 * 1024)
+				{
+					char msg[1024];
+					char *ext = strrchr(filename, '.');
+					int is_known_txt = (ext && (!fz_strcasecmp(ext, ".txt") || !fz_strcasecmp(ext, ".reg") || !fz_strcasecmp(ext, ".ini") || !fz_strcasecmp(ext, ".log")));
+					if (!is_known_txt)
+					{
+						fz_snprintf(msg, sizeof(msg), "File '%s' is large (%d MB) and of unknown format. Open as text?", filename, size / (1024 * 1024));
+						if (!winquery(app, msg))
+							fz_throw(ctx, FZ_ERROR_GENERIC, "cancelled");
+					}
+				}
+
+				/* fz_open_document failed, but we want to force it as text now */
+				app->doc = txt_document_handler.open(ctx, filename);
+			}
 		}
 		else
 		{

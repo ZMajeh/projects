@@ -2462,7 +2462,7 @@ pdf_recognize(fz_context *doc, const char *magic)
 	if (!strcmp(magic, "pdf") || !strcmp(magic, "application/pdf"))
 		return 100;
 
-	return 1;
+	return 0;
 }
 
 fz_document_handler pdf_no_run_document_handler =

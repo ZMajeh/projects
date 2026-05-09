@@ -20,6 +20,7 @@ enum { ARROW, HAND, WAIT, CARET };
 
 enum { DISCARD, SAVE, CANCEL };
 
+extern int winquery(pdfapp_t*, char *msg);
 extern void winwarn(pdfapp_t*, char *s);
 extern void winerror(pdfapp_t*, char *s);
 extern void wintitle(pdfapp_t*, char *title);
