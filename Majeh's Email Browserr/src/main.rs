@@ -1,32 +1,33 @@
 use leptos::*;
+mod components;
+use components::{mailbox::Mailbox, settings::Settings, about::About, navigation::{BottomNavigation, Tab}};
 
 #[component]
 fn App() -> impl IntoView {
+    let (active_tab, set_active_tab) = create_signal(Tab::Mailbox);
+    let (mailbox_visible, _) = create_signal(true);
+    let (settings_visible, _) = create_signal(true);
+    let (about_visible, _) = create_signal(true);
+
     view! {
-        <div class="sidebar">
-            <h3>"Browserr"</h3>
-            <div class="nav-item">"Inbox"</div>
-            <div class="nav-item">"Sent"</div>
-            <div class="nav-item">"Drafts"</div>
-            <div class="nav-item">"Trash"</div>
-        </div>
-        <div class="thread-list">
-            <div class="email-item">
-                <h4>"Welcome to Browserr"</h4>
-                <p>"Start browsing your emails with speed..."</p>
-            </div>
-            <div class="email-item">
-                <h4>"Rust + Leptos is Fast"</h4>
-                <p>"The power of WASM in your browser."</p>
-            </div>
-        </div>
-        <div class="viewport">
-            <h1>"Hello World"</h1>
-            <p>"Select an email to read its contents here."</p>
-            <hr />
-            <div style="color: #888; font-style: italic;">
-                "This is a placeholder for the email detail view."
-            </div>
+        <div class="app-container">
+            <main>
+                <Show when=move || active_tab.get() == Tab::Mailbox>
+                    <Mailbox />
+                </Show>
+                <Show when=move || active_tab.get() == Tab::Settings>
+                    <Settings />
+                </Show>
+                <Show when=move || active_tab.get() == Tab::About>
+                    <About />
+                </Show>
+            </main>
+            <BottomNavigation
+                active_tab=set_active_tab
+                mailbox_visible=mailbox_visible
+                settings_visible=settings_visible
+                about_visible=about_visible
+            />
         </div>
     }
 }
