@@ -29,6 +29,7 @@ jobs:
 
       - name: Build with Trunk
         run: trunk build --release
+        working-directory: Majeh's Email Browserr
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -37,3 +38,4 @@ jobs:
           firebaseServiceAccount: '${{ secrets.MAJEH_EMAIL_SERVICE_ACCOUNT }}'
           projectId: majehs-email-browserr
           channelId: live
+          entryPoint: Majeh's Email Browserr
