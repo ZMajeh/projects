@@ -36,6 +36,6 @@ jobs:
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.MAJEH_EMAIL_SERVICE_ACCOUNT }}'
-          projectId: majehs-email-browserr
+          projectId: majehsemailviewer
           channelId: live
           entryPoint: Majeh's Email Browserr
