@@ -1,0 +1,10 @@
+/workspaces/projects/Majeh's Email Browserr/target/wasm32-unknown-unknown/debug/deps/js_sys-fdfc8167f7ca508e.d: /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/lib.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/futures/mod.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/futures/queue.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/futures/task/singlethread.rs
+
+/workspaces/projects/Majeh's Email Browserr/target/wasm32-unknown-unknown/debug/deps/libjs_sys-fdfc8167f7ca508e.rlib: /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/lib.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/futures/mod.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/futures/queue.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/futures/task/singlethread.rs
+
+/workspaces/projects/Majeh's Email Browserr/target/wasm32-unknown-unknown/debug/deps/libjs_sys-fdfc8167f7ca508e.rmeta: /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/lib.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/futures/mod.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/futures/queue.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/futures/task/singlethread.rs
+
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/lib.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/futures/mod.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/futures/queue.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.104/src/futures/task/singlethread.rs:
