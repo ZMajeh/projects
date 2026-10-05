@@ -45,7 +45,9 @@ static int justcopied = 0;
 
 static pdfapp_t gapp;
 
+#ifndef PATH_MAX
 #define PATH_MAX (1024)
+#endif
 
 static wchar_t wbuf[PATH_MAX];
 static char filename[PATH_MAX];
@@ -296,7 +298,7 @@ static char **cd_opts;
 static char **cd_vals;
 static int pd_okay = 0;
 
-INT CALLBACK
+INT_PTR CALLBACK
 dlogpassproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch(message)
@@ -323,7 +325,7 @@ dlogpassproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 	return FALSE;
 }
 
-INT CALLBACK
+INT_PTR CALLBACK
 dlogtextproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch(message)
@@ -353,14 +355,14 @@ dlogtextproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 			SetTextColor((HDC)wParam, RGB(255,0,0));
 			SetBkMode((HDC)wParam, TRANSPARENT);
 
-			return (INT)GetStockObject(NULL_BRUSH);
+			return (INT_PTR)GetStockObject(NULL_BRUSH);
 		}
 		break;
 	}
 	return FALSE;
 }
 
-INT CALLBACK
+INT_PTR CALLBACK
 dlogchoiceproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	HWND listbox;
@@ -418,7 +420,7 @@ char *winpassword(pdfapp_t *app, char *filename)
 	if (strrchr(s, '/')) s = strrchr(s, '/') + 1;
 	if (strlen(s) > 32)
 		strcpy(s + 30, "...");
-	sprintf(pd_filename, "The file \"%s\" is encrypted.", s);
+	snprintf(pd_filename, sizeof(pd_filename), "The file \"%.32s\" is encrypted.", s);
 	code = DialogBoxW(NULL, L"IDD_DLOGPASS", hwndframe, dlogpassproc);
 	if (code <= 0)
 		winerror(app, "cannot create password dialog");
@@ -453,7 +455,7 @@ int winchoiceinput(pdfapp_t *app, int nopts, char *opts[], int *nvals, char *val
 	return pd_okay;
 }
 
-INT CALLBACK
+INT_PTR CALLBACK
 dloginfoproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	char buf[256];
@@ -532,7 +534,7 @@ void info()
 		winerror(&gapp, "cannot create info dialog");
 }
 
-INT CALLBACK
+INT_PTR CALLBACK
 dlogaboutproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch(message)
