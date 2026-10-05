@@ -201,7 +201,127 @@ void winalert(pdfapp_t *app, pdf_alert_event *alert)
 
 void winprint(pdfapp_t *app)
 {
-	MessageBoxA(hwndframe, "The MuPDF library supports printing, but this application currently does not", "Print document", MB_ICONWARNING);
+	PRINTDLGA pd;
+	DOCINFOA di;
+	int old_pageno;
+	int p;
+
+	if (!app->doc)
+	{
+		winwarn(app, "No document loaded to print.");
+		return;
+	}
+
+	memset(&pd, 0, sizeof(pd));
+	pd.lStructSize = sizeof(pd);
+	pd.hwndOwner = hwndframe;
+	pd.Flags = PD_RETURNDC | PD_NOPAGENUMS | PD_NOSELECTION;
+
+	if (!PrintDlgA(&pd))
+		return; /* User cancelled */
+
+	memset(&di, 0, sizeof(di));
+	di.cbSize = sizeof(di);
+	di.lpszDocName = "Majeh's PDF Viewer Document";
+
+	if (StartDocA(pd.hDC, &di) <= 0)
+	{
+		DeleteDC(pd.hDC);
+		return;
+	}
+
+	old_pageno = app->pageno;
+
+	for (p = 1; p <= app->pagecount; p++)
+	{
+		int image_w, image_h, image_n;
+		unsigned char *samples;
+		unsigned char *color = NULL;
+		BITMAPINFO *bmi;
+		int pw, ph;
+		int x, y, w, h;
+
+		pdfapp_gotopage(app, p);
+
+		if (!app->image)
+			continue;
+
+		if (StartPage(pd.hDC) <= 0)
+			break;
+
+		image_w = fz_pixmap_width(app->ctx, app->image);
+		image_h = fz_pixmap_height(app->ctx, app->image);
+		image_n = fz_pixmap_components(app->ctx, app->image);
+		samples = fz_pixmap_samples(app->ctx, app->image);
+
+		pw = GetDeviceCaps(pd.hDC, HORZRES);
+		ph = GetDeviceCaps(pd.hDC, VERTRES);
+
+		/* Scale image to fit printer page while maintaining aspect ratio */
+		if (image_w > 0 && image_h > 0)
+		{
+			double scale_x = (double)pw / image_w;
+			double scale_y = (double)ph / image_h;
+			double scale = scale_x < scale_y ? scale_x : scale_y;
+			w = (int)(image_w * scale);
+			h = (int)(image_h * scale);
+			x = (pw - w) / 2;
+			y = (ph - h) / 2;
+		}
+		else
+		{
+			w = pw;
+			h = ph;
+			x = y = 0;
+		}
+
+		bmi = malloc(sizeof(BITMAPINFO) + 12);
+		if (bmi)
+		{
+			bmi->bmiHeader.biSize = sizeof(bmi->bmiHeader);
+			bmi->bmiHeader.biWidth = image_w;
+			bmi->bmiHeader.biHeight = -image_h;
+			bmi->bmiHeader.biPlanes = 1;
+			bmi->bmiHeader.biBitCount = 32;
+			bmi->bmiHeader.biCompression = BI_RGB;
+			bmi->bmiHeader.biSizeImage = image_h * 4;
+			bmi->bmiHeader.biXPelsPerMeter = 2834;
+			bmi->bmiHeader.biYPelsPerMeter = 2834;
+			bmi->bmiHeader.biClrUsed = 0;
+			bmi->bmiHeader.biClrImportant = 0;
+
+			if (image_n == 2)
+			{
+				int i = image_w * image_h;
+				color = malloc(i * 4);
+				if (color)
+				{
+					unsigned char *s = samples;
+					unsigned char *d = color;
+					for (; i > 0; i--)
+					{
+						d[2] = d[1] = d[0] = *s++;
+						d[3] = *s++;
+						d += 4;
+					}
+					StretchDIBits(pd.hDC, x, y, w, h, 0, 0, image_w, image_h, color, bmi, DIB_RGB_COLORS, SRCCOPY);
+					free(color);
+				}
+			}
+			else if (image_n == 4)
+			{
+				StretchDIBits(pd.hDC, x, y, w, h, 0, 0, image_w, image_h, samples, bmi, DIB_RGB_COLORS, SRCCOPY);
+			}
+			free(bmi);
+		}
+
+		EndPage(pd.hDC);
+	}
+
+	pdfapp_gotopage(app, old_pageno);
+
+	EndDoc(pd.hDC);
+	DeleteDC(pd.hDC);
 }
 
 int winsavequery(pdfapp_t *app)
@@ -1183,6 +1303,11 @@ viewproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 	/* Keyboard events */
 
 	case WM_KEYDOWN:
+		if (wParam == 'P' && (GetKeyState(VK_CONTROL) & 0x8000))
+		{
+			winprint(&gapp);
+			return 0;
+		}
 		/* only handle special keys */
 		switch (wParam)
 		{
