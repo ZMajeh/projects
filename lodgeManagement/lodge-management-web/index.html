@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <title>Lodge Management System</title>
         <link rel="rust" data-trunk href="Cargo.toml"/>
+        <link rel="copy-file" data-trunk href="sw.js"/>
         <style>
             :root {
                 --primary: #007bff;
@@ -133,18 +134,54 @@
                 width: 100%;
                 box-sizing: border-box;
             }
+            @keyframes pulse {
+                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(230, 126, 34, 0.7); }
+                70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(230, 126, 34, 0); }
+                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(230, 126, 34, 0); }
+            }
         </style>
         
+        <!-- Load Google APIs -->
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+        <script src="https://apis.google.com/js/api.js"></script>
+
         <!-- Load Tesseract as Global -->
         <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     </head>
     <body>
         <div id="main"></div>
 
+        <!-- Cropper Modal -->
+        <div id="cropper-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 5000; flex-direction: column; align-items: center; justify-content: center; padding: 10px;">
+            <div style="background: white; padding: 15px; border-radius: 8px; width: 95%; max-width: 600px; display: flex; flex-direction: column; height: 90vh; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3 style="margin: 0;">ID Perspective Crop</h3>
+                    <p style="font-size: 0.8rem; color: #666; margin: 0;">Drag the 4 corners to match the ID card</p>
+                </div>
+                
+                <div id="cropper-container" style="flex: 1; overflow: hidden; background: #222; position: relative; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: crosshair; touch-action: none;">
+                    <img id="cropper-image" style="max-width: 100%; max-height: 100%; display: block; user-select: none; pointer-events: none;">
+                    <canvas id="cropper-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
+                </div>
+
+                <div style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button id="cropper-cancel" style="flex: 1; background: #e74c3c; padding: 12px;">Cancel</button>
+                    <button id="cropper-confirm" style="flex: 1; background: #27ae60; padding: 12px; font-weight: bold;">Unwarp & Save</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Define stubs immediately to prevent ReferenceError during Wasm initialization.
+            // These will be overwritten or supplemented by the module script below.
+            window.isDriveAuthorized = () => !!localStorage.getItem('google_drive_token');
+        </script>
+
         <script type="module">
             import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-            import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, where, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-            import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+            import { getFirestore, collection, addDoc, getDocs, getDoc, setDoc, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, where, limit, startAfter, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+            import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithCredential, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+            import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
             const firebaseConfig = {
                 apiKey: "AIzaSyB_UNAaB6Enl87Yiw3zQONsjqITtYKKP_Y",
@@ -159,26 +196,454 @@
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
             const auth = getAuth(app);
+            const storage = getStorage(app);
+
+            // Enable Firestore Offline Persistence
+            try {
+                enableIndexedDbPersistence(db).catch((err) => {
+                    if (err.code == 'failed-precondition') {
+                        console.warn("Firestore Persistence: Multiple tabs open, persistence can only be enabled in one tab at a time.");
+                    } else if (err.code == 'unimplemented') {
+                        console.warn("Firestore Persistence: The current browser does not support all of the features required to enable persistence.");
+                    }
+                });
+            } catch (e) {
+                console.error("Firestore Persistence Error:", e);
+            }
+
+            // Register Service Worker
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js').then(registration => {
+                        console.log('SW registered: ', registration);
+                    }).catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+                });
+            }
+
+            // --- INDEXED DB LOCAL STORAGE ---
+            const DB_NAME = 'LodgeLocalDB';
+            const DB_VERSION = 1;
+            let localDb;
+
+            const initLocalDB = () => {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+                    request.onerror = (event) => reject("IndexedDB error: " + event.target.errorCode);
+                    request.onsuccess = (event) => {
+                        localDb = event.target.result;
+                        resolve(localDb);
+                    };
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains('rooms')) db.createObjectStore('rooms', { keyPath: 'id' });
+                        if (!db.objectStoreNames.contains('customers')) db.createObjectStore('customers', { keyPath: 'id' });
+                        if (!db.objectStoreNames.contains('bookings')) db.createObjectStore('bookings', { keyPath: 'id' });
+                        if (!db.objectStoreNames.contains('syncQueue')) db.createObjectStore('syncQueue', { autoIncrement: true });
+                    };
+                });
+            };
+
+            initLocalDB().then(() => console.log("IndexedDB Initialized"));
+
+            const saveToLocal = (storeName, data) => {
+                if (!localDb) return;
+                const transaction = localDb.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                store.put(data);
+            };
+
+            const getFromLocal = (storeName) => {
+                return new Promise((resolve, reject) => {
+                    if (!localDb) return resolve([]);
+                    const transaction = localDb.transaction([storeName], 'readonly');
+                    const store = transaction.objectStore(storeName);
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            };
+
+            const removeFromLocal = (storeName, id) => {
+                if (!localDb) return;
+                const transaction = localDb.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                store.delete(id);
+            };
+
+            // --- SYNC SYSTEM ---
+            window.isOnline = () => navigator.onLine;
+
+            const addToSyncQueue = (action, collection, id, data) => {
+                saveToLocal('syncQueue', { action, collection, id, data, timestamp: Date.now() });
+            };
+
+            window.addEventListener('online', () => {
+                console.log("System Online: Triggering Sync...");
+                processSyncQueue();
+            });
+
+            const processSyncQueue = async () => {
+                if (!navigator.onLine || !localDb) return;
+                const transaction = localDb.transaction(['syncQueue'], 'readwrite');
+                const store = transaction.objectStore('syncQueue');
+                const request = store.getAll();
+
+                request.onsuccess = async () => {
+                    const items = request.result;
+                    for (const item of items) {
+                        try {
+                            if (item.action === 'add' || item.action === 'update') {
+                                await setDoc(doc(db, item.collection, item.id), { ...item.data, updatedAt: serverTimestamp() });
+                            } else if (item.action === 'delete') {
+                                await deleteDoc(doc(db, item.collection, item.id));
+                            }
+                            // Remove from queue after success
+                            const delTx = localDb.transaction(['syncQueue'], 'readwrite');
+                            delTx.objectStore('syncQueue').delete(item.id_auto || item.timestamp); // Need a better way to target queue items
+                        } catch (e) {
+                            console.error("Sync Error for item:", item, e);
+                        }
+                    }
+                };
+            };
+
+            // --- GOOGLE DRIVE CLIENT-SIDE CONFIG ---
+            const CLIENT_ID = '539473298830-vh4i5l5rvtbbt16u4oenu9ffvm8ofuba.apps.googleusercontent.com'; 
+            const FOLDER_ID = '1aCEzUmQwvbNg-J0sTyUaaftxjyOO7dQc'; 
+            const SCOPES = 'https://www.googleapis.com/auth/drive';
+
+            let tokenClient;
+            // Use localStorage so the session persists across browser restarts
+            let accessToken = localStorage.getItem('google_drive_token');
+
+            // Initialize GAPI and GIS
+            const initGoogleDrive = () => {
+                gapi.load('client', async () => {
+                    await gapi.client.init({
+                        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+                    });
+
+                    // If we have a token, validate it immediately
+                    if (accessToken) {
+                        const isValid = await window.validateDriveSession();
+                        if (isValid) {
+                            console.log("Drive: Existing session is valid.");
+                        } else {
+                            console.log("Drive: Existing session was invalid/expired.");
+                        }
+                    }
+                });
+
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: (response) => {
+                        if (response.error !== undefined) {
+                            throw (response);
+                        }
+                        accessToken = response.access_token;
+                        localStorage.setItem('google_drive_token', accessToken);
+                        console.log("Drive: Authorized successfully.");
+                        if (window.onDriveAuthSuccess) window.onDriveAuthSuccess();
+                    },
+                });
+            };
+
+            // Define these on window immediately so Wasm doesn't crash if it calls them early
+            window.isDriveAuthorized = () => {
+                return accessToken !== null && accessToken !== undefined;
+            };
+
+            window.validateDriveSession = async () => {
+                if (!accessToken) return false;
+                try {
+                    // Use tokeninfo endpoint to check if token is still valid
+                    const response = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${accessToken}`);
+                    if (!response.ok) {
+                        console.warn("Drive: Session expired or invalid.");
+                        accessToken = null;
+                        localStorage.removeItem('google_drive_token');
+                        return false;
+                    }
+                    return true;
+                } catch (e) {
+                    console.error("Drive: Session validation failed", e);
+                    // On network error, we don't necessarily want to clear the token, 
+                    // but for safety in "isDriveAuthorized" context, we might just return false
+                    return false; 
+                }
+            };
+
+            // Call init on load
+            window.onload = () => {
+                initGoogleDrive();
+            };
+
+            window.authorizeGoogleDrive = () => {
+                return new Promise((resolve, reject) => {
+                    window.onDriveAuthSuccess = () => resolve(true);
+                    window.onDriveAuthError = (err) => reject(err);
+                    tokenClient.requestAccessToken({ prompt: 'select_account' });
+                });
+            };
+
+            window.getDriveThumbnail = async (fileId) => {
+                if (!accessToken) return null;
+                try {
+                    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                        headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
+                    });
+                    
+                    if (response.status === 401) {
+                        accessToken = null;
+                        localStorage.removeItem('google_drive_token');
+                        return null;
+                    }
+
+                    if (!response.ok) return null;
+                    const blob = await response.blob();
+                    return URL.createObjectURL(blob);
+                } catch (e) {
+                    console.error("Drive: Secure image download failed", e);
+                    return null;
+                }
+            };
 
             // --- AUTH BRIDGE ---
-            window.loginUser = async (email, password) => {
-                const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-                return { email: user.email, uid: user.uid };
+            window.loginUser = async () => {
+                console.log("Auth: Using Google Drive for session identity...");
+                try {
+                    // 1. Authorize Drive and Identity
+                    const provider = new GoogleAuthProvider();
+                    provider.addScope('https://www.googleapis.com/auth/drive');
+                    provider.setCustomParameters({ prompt: 'select_account' });
+
+                    console.log("Auth: Opening Google Login window...");
+                    const result = await signInWithPopup(auth, provider);
+                    const credential = GoogleAuthProvider.credentialFromResult(result);
+                    
+                    accessToken = credential.accessToken;
+                    localStorage.setItem('google_drive_token', accessToken);
+                    
+                    const user = result.user;
+                    console.log("Auth: Firebase signed in:", user.email);
+
+                    // 2. CRITICAL: Verify Whitelist in Firestore
+                    console.log("Auth: Verifying whitelist permission...");
+                    let userDoc;
+                    try {
+                        userDoc = await getDoc(doc(db, "allowed_users", user.email));
+                        if (!userDoc.exists()) {
+                            console.error("Auth: User not in allowed_users collection.");
+                            await signOut(auth);
+                            accessToken = null;
+                            localStorage.removeItem('google_drive_token');
+                            throw new Error("Unauthorized: Your email is not in the allowed users list. Please contact the administrator.");
+                        }
+                    } catch (e) {
+                        console.error("Auth: Whitelist check failed", e);
+                        await signOut(auth);
+                        accessToken = null;
+                        localStorage.removeItem('google_drive_token');
+                        if (e.message.includes("Unauthorized")) throw e;
+                        throw new Error("Access Denied: You do not have permission to access this system.");
+                    }
+
+                    // 3. Verify access to the specific Lodge Drive Folder
+                    console.log("Auth: Verifying access to Lodge Drive Folder...");
+                    const folderResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${FOLDER_ID}?fields=id`, {
+                        headers: { 'Authorization': `Bearer ${accessToken}` }
+                    });
+
+                    if (!folderResponse.ok) {
+                        console.error("Auth: Access Denied to Lodge Drive Folder.");
+                        await signOut(auth);
+                        accessToken = null;
+                        localStorage.removeItem('google_drive_token');
+                        throw new Error("Unauthorized: You do not have permission to access the Lodge Drive folder.");
+                    }
+                    
+                    console.log("Auth: Login fully verified.");
+                    const userData = userDoc.data();
+                    
+                    return { 
+                        email: user.email, 
+                        uid: user.uid,
+                        role: userData.role || "staff"
+                    };
+                } catch (error) {
+                    console.error("Auth: Login failed", error);
+                    throw error;
+                }
             };
 
             window.signOutUser = async () => {
                 await signOut(auth);
+                accessToken = null;
+                localStorage.removeItem('google_drive_token');
                 return true;
+            };
+
+            // --- USER MANAGEMENT BRIDGE ---
+            window.getWhitelistedUsers = async () => {
+                console.log("Database: Fetching whitelisted users...");
+                try {
+                    const q = query(collection(db, "allowed_users"), orderBy("__name__"));
+                    const querySnapshot = await getDocs(q);
+                    const users = [];
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        console.log("Database: Found user:", doc.id, data);
+                        users.push({ email: doc.id, role: data.role || "Staff" });
+                    });
+                    console.log("Database: Total whitelisted users found:", users.length);
+                    return users;
+                } catch (e) {
+                    console.error("Database Error (Whitelist):", e);
+                    throw e;
+                }
+            };
+
+            window.addUserToWhitelist = async (email, role) => {
+                await setDoc(doc(db, "allowed_users", email.trim()), {
+                    role: role,
+                    addedAt: serverTimestamp()
+                });
+                return true;
+            };
+
+            window.deleteUserFromWhitelist = async (email) => {
+                await deleteDoc(doc(db, "allowed_users", email));
+                return true;
+            };
+
+            // --- FIREBASE STORAGE BRIDGE ---
+            window.uploadImageToStorage = async (base64, path) => {
+                try {
+                    const storageRef = ref(storage, path);
+                    const result = await uploadString(storageRef, base64, 'data_url');
+                    console.log("Storage: Upload Success:", result.ref.fullPath);
+                    return await getDownloadURL(result.ref);
+                } catch (e) {
+                    console.error("Storage Upload Error:", e);
+                    throw e;
+                }
+            };
+
+            window.deleteFileFromStorage = async (path) => {
+                try {
+                    const storageRef = ref(storage, path);
+                    await deleteObject(storageRef);
+                    return true;
+                } catch (e) {
+                    console.error("Storage Delete Error:", e);
+                    return false;
+                }
+            };
+
+            // --- DRIVE BRIDGE ---
+            window.uploadImageToDrive = async (base64, filename) => {
+                if (!accessToken) {
+                    throw new Error("Drive: Not authorized. Please sign in with Google.");
+                }
+
+                console.log(`Drive: Starting upload for ${filename}...`);
+                
+                try {
+                    const boundary = '-------314159265358979323846';
+                    const delimiter = "\r\n--" + boundary + "\r\n";
+                    const close_delim = "\r\n--" + boundary + "--";
+
+                    const contentType = 'image/jpeg';
+                    const metadata = {
+                        'name': filename,
+                        'mimeType': contentType,
+                        'parents': [FOLDER_ID]
+                    };
+
+                    const base64Data = base64.split(";base64,").pop();
+                    
+                    const multipartRequestBody =
+                        delimiter +
+                        'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+                        JSON.stringify(metadata) +
+                        delimiter +
+                        'Content-Type: ' + contentType + '\r\n' +
+                        'Content-Transfer-Encoding: base64\r\n\r\n' +
+                        base64Data +
+                        close_delim;
+
+                    const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+                        method: 'POST',
+                        headers: new Headers({
+                            'Authorization': 'Bearer ' + accessToken,
+                            'Content-Type': 'multipart/related; boundary=' + boundary
+                        }),
+                        body: multipartRequestBody
+                    });
+
+                    if (response.status === 401) {
+                        accessToken = null;
+                        localStorage.removeItem('google_drive_token');
+                        throw new Error("Drive session expired. Please sign in again.");
+                    }
+                    
+                    const result = await response.json();
+                    if (result.error) {
+                        console.error("Drive API Error:", result.error);
+                        throw new Error(result.error.message || "Drive upload failed");
+                    }
+                    
+                    console.log("Drive: Upload Success. ID:", result.id);
+                    // Use webViewLink but fallback to a generated direct link if needed
+                    return result.webViewLink || `https://drive.google.com/file/d/${result.id}/view`;
+                } catch (e) {
+                    console.error("Drive Upload Exception:", e);
+                    throw e;
+                }
+            };
+
+            window.deleteFileFromDrive = async (fileId) => {
+                if (!accessToken) return;
+                console.log(`Drive: Deleting file ${fileId}...`);
+                try {
+                    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+                        method: 'DELETE',
+                        headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
+                    });
+
+                    if (response.status === 401) {
+                        accessToken = null;
+                        localStorage.removeItem('google_drive_token');
+                        return false;
+                    }
+
+                    console.log("Drive: Delete Success.");
+                    return true;
+                } catch (e) {
+                    console.error("Drive Delete Error:", e);
+                    return false;
+                }
             };
 
             // --- DATABASE BRIDGE ---
             window.getRooms = async () => {
-                const q = query(collection(db, "rooms"), orderBy("number"));
-                const querySnapshot = await getDocs(q);
-                const rooms = [];
-                querySnapshot.forEach((doc) => { rooms.push({ id: doc.id, ...doc.data() }); });
-                return rooms;
+                try {
+                    const q = query(collection(db, "rooms"), orderBy("number"));
+                    const querySnapshot = await getDocs(q);
+                    const rooms = [];
+                    querySnapshot.forEach((doc) => { 
+                        const data = { id: doc.id, ...doc.data() };
+                        rooms.push(data); 
+                        saveToLocal('rooms', data);
+                    });
+                    return rooms;
+                } catch (e) {
+                    console.warn("Using offline rooms cache");
+                    return await getFromLocal('rooms');
+                }
             };
 
             const cleanData = (obj) => {
@@ -190,58 +655,95 @@
             };
 
             window.addRoom = async (room) => {
-                const docRef = await addDoc(collection(db, "rooms"), { ...cleanData(room), createdAt: serverTimestamp() });
-                return docRef.id;
+                const id = "local_" + Date.now();
+                const roomData = { ...cleanData(room), id: id, createdAt: new Date().toISOString() };
+                saveToLocal('rooms', roomData);
+
+                try {
+                    const docRef = await addDoc(collection(db, "rooms"), { ...cleanData(room), createdAt: serverTimestamp() });
+                    removeFromLocal('rooms', id); // Remove temp local
+                    const finalData = { ...roomData, id: docRef.id };
+                    saveToLocal('rooms', finalData);
+                    return docRef.id;
+                } catch (e) {
+                    addToSyncQueue('add', 'rooms', id, room);
+                    return id;
+                }
             };
 
             window.updateRoom = async (id, room) => {
-                await updateDoc(doc(db, "rooms", id), { ...cleanData(room), updatedAt: serverTimestamp() });
-                return true;
+                const roomData = { ...cleanData(room), id: id, updatedAt: new Date().toISOString() };
+                saveToLocal('rooms', roomData);
+                try {
+                    await updateDoc(doc(db, "rooms", id), { ...cleanData(room), updatedAt: serverTimestamp() });
+                    return true;
+                } catch (e) {
+                    addToSyncQueue('update', 'rooms', id, room);
+                    return true;
+                }
             };
 
             window.deleteRoom = async (id) => {
-                await deleteDoc(doc(db, "rooms", id));
-                return true;
+                removeFromLocal('rooms', id);
+                try {
+                    await deleteDoc(doc(db, "rooms", id));
+                    return true;
+                } catch (e) {
+                    addToSyncQueue('delete', 'rooms', id, null);
+                    return true;
+                }
             };
 
             // --- BOOKING BRIDGE ---
             window.getBookings = async () => {
-                console.log("Database: Fetching recent stays...");
                 try {
-                    const q = query(collection(db, "bookings"), orderBy("checkInDate", "desc"), limit(20));
+                    const q = query(collection(db, "bookings"), orderBy("checkInDate", "desc"), limit(50));
                     const querySnapshot = await getDocs(q);
                     const bookings = [];
-                    querySnapshot.forEach((doc) => { bookings.push({ id: doc.id, ...doc.data() }); });
-                    console.log(`Database: Successfully fetched ${bookings.length} stays.`);
+                    querySnapshot.forEach((doc) => { 
+                        const data = { id: doc.id, ...doc.data() };
+                        bookings.push(data);
+                        saveToLocal('bookings', data);
+                    });
                     return bookings;
                 } catch (e) {
-                    console.error("Database Error (Bookings):", e);
-                    throw e;
+                    console.warn("Using offline bookings cache");
+                    return await getFromLocal('bookings');
                 }
             };
 
             window.addBooking = async (booking) => {
-                console.log("Firestore SAVE Booking: ", booking);
+                const id = "local_book_" + Date.now();
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const bookingData = { ...cleanData(booking), id, inTime: timeStr, createdAt: now.toISOString() };
+                
+                saveToLocal('bookings', bookingData);
+                // Update local room status
+                getFromLocal('rooms').then(rooms => {
+                    const room = rooms.find(r => r.id === booking.roomId);
+                    if (room) {
+                        room.status = "Occupied";
+                        saveToLocal('rooms', room);
+                    }
+                });
+
                 try {
-                    const now = new Date();
-                    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    // 1. Save Booking
                     const docRef = await addDoc(collection(db, "bookings"), { 
                         ...cleanData(booking), 
                         inTime: timeStr,
                         createdAt: serverTimestamp() 
                     });
-                    console.log("Firestore SAVE Booking Success, ID:", docRef.id);
+                    removeFromLocal('bookings', id);
+                    saveToLocal('bookings', { ...bookingData, id: docRef.id });
                     
-                    // 2. Mark Room as Occupied
                     const roomRef = doc(db, "rooms", booking.roomId);
                     await updateDoc(roomRef, { status: "Occupied" });
-                    console.log("Firestore Room Status Updated to Occupied");
                     
                     return docRef.id;
                 } catch (e) {
-                    console.error("Firestore SAVE Booking Error:", e);
-                    throw e;
+                    addToSyncQueue('add', 'bookings', id, booking);
+                    return id;
                 }
             };
 
@@ -277,61 +779,83 @@
             };
 
             window.getCustomers = async (searchTerm = "") => {
-                console.log(`Database: Searching for "${searchTerm}" (Limit 20)...`);
+                const s = searchTerm;
+                const sl = searchTerm.toLowerCase();
                 try {
-                    let q;
-                    if (searchTerm) {
-                        // Server-side prefix search (Standard Firestore pattern)
-                        q = query(
-                            collection(db, "customers"), 
-                            where("full_name", ">=", searchTerm),
-                            where("full_name", "<=", searchTerm + "\uf8ff"),
-                            limit(20)
-                        );
-                    } else {
-                        // Simple query to avoid index/field requirement issues
-                        q = query(collection(db, "customers"), limit(20));
+                    if (!s) {
+                        const q = query(collection(db, "customers"), orderBy("createdAt", "desc"), limit(50));
+                        const querySnapshot = await getDocs(q);
+                        const customers = [];
+                        querySnapshot.forEach((doc) => { 
+                            const data = { id: doc.id, ...doc.data() };
+                            customers.push(data);
+                            saveToLocal('customers', data);
+                        });
+                        return customers;
                     }
+
+                    // Parallel indexed queries for online search
+                    const qName = query(collection(db, "customers"), where("searchKeywords", ">=", sl), where("searchKeywords", "<=", sl + "\uf8ff"), limit(20));
+                    const qPhone = query(collection(db, "customers"), where("phone", ">=", s), where("phone", "<=", s + "\uf8ff"), limit(20));
                     
-                    const querySnapshot = await getDocs(q);
-                    const customers = [];
-                    querySnapshot.forEach((doc) => { customers.push({ id: doc.id, ...doc.data() }); });
-                    console.log(`Database: Found ${customers.length} matches.`);
+                    const [snapName, snapPhone] = await Promise.all([getDocs(qName), getDocs(qPhone)]);
+                    const resultsMap = new Map();
+                    [snapName, snapPhone].forEach(snap => snap.forEach(doc => resultsMap.set(doc.id, { id: doc.id, ...doc.data() })));
+                    
+                    const customers = Array.from(resultsMap.values());
+                    customers.forEach(c => saveToLocal('customers', c));
                     return customers;
                 } catch (e) {
-                    console.error("Database Search Error (Customers):", e);
-                    throw e;
+                    console.warn("Using offline customers cache");
+                    const all = await getFromLocal('customers');
+                    if (!s) return all.slice(0, 50);
+                    return all.filter(c => 
+                        (c.name && c.name.toLowerCase().includes(sl)) || 
+                        (c.phone && c.phone.includes(s)) ||
+                        (c.aadhaar && c.aadhaar.includes(s))
+                    ).slice(0, 20);
                 }
             };
 
             window.addCustomer = async (customer) => {
-                console.log("Firestore SAVE: ", customer);
+                const id = "local_cust_" + Date.now();
+                const customerData = { ...cleanData(customer), id, createdAt: new Date().toISOString() };
+                saveToLocal('customers', customerData);
+
                 try {
                     const docRef = await addDoc(collection(db, "customers"), { 
                         ...cleanData(customer), 
                         createdAt: serverTimestamp() 
                     });
+                    removeFromLocal('customers', id);
+                    saveToLocal('customers', { ...customerData, id: docRef.id });
                     return docRef.id;
                 } catch (e) {
-                    console.error("Firestore SAVE Error:", e);
-                    throw e;
+                    addToSyncQueue('add', 'customers', id, customer);
+                    return id;
                 }
             };
 
             window.updateCustomer = async (id, customer) => {
-                console.log(`Firestore UPDATE (ID: ${id}):`, customer);
+                const customerData = { ...cleanData(customer), id, updatedAt: new Date().toISOString() };
+                saveToLocal('customers', customerData);
                 try {
-                    const docRef = doc(db, "customers", id);
-                    await updateDoc(docRef, { ...cleanData(customer), updatedAt: serverTimestamp() });
+                    await updateDoc(doc(db, "customers", id), { ...cleanData(customer), updatedAt: serverTimestamp() });
                     return true;
                 } catch (e) {
-                    console.error("Firestore UPDATE Error:", e);
-                    throw e;
+                    addToSyncQueue('update', 'customers', id, customer);
+                    return true;
                 }
             };
             window.deleteCustomer = async (id) => {
-                await deleteDoc(doc(db, "customers", id));
-                return true;
+                removeFromLocal('customers', id);
+                try {
+                    await deleteDoc(doc(db, "customers", id));
+                    return true;
+                } catch (e) {
+                    addToSyncQueue('delete', 'customers', id, null);
+                    return true;
+                }
             };
             // --- CAMERA BRIDGE ---
             let stream = null;
@@ -431,6 +955,202 @@
                     return false;
                 }
                 return true;
+            };
+
+            // --- QUADRILATERAL CROPPER BRIDGE ---
+            window.openCropper = (imageDataUrl) => {
+                return new Promise((resolve) => {
+                    const modal = document.getElementById('cropper-modal');
+                    const img = document.getElementById('cropper-image');
+                    const container = document.getElementById('cropper-container');
+                    const canvas = document.getElementById('cropper-canvas');
+                    const ctx = canvas.getContext('2d');
+                    const cancelBtn = document.getElementById('cropper-cancel');
+                    const confirmBtn = document.getElementById('cropper-confirm');
+
+                    let points = [];
+                    let activePoint = -1;
+                    const handleRadius = 15;
+
+                    const initPoints = () => {
+                        const rect = img.getBoundingClientRect();
+                        const cRect = container.getBoundingClientRect();
+                        
+                        // Scale to canvas coordinates
+                        canvas.width = cRect.width;
+                        canvas.height = cRect.height;
+
+                        const x = (cRect.width - rect.width) / 2;
+                        const y = (cRect.height - rect.height) / 2;
+                        const w = rect.width;
+                        const h = rect.height;
+
+                        // Initial quadrilateral (slightly inset from image edges)
+                        const margin = 20;
+                        points = [
+                            { x: x + margin, y: y + margin }, // Top Left
+                            { x: x + w - margin, y: y + margin }, // Top Right
+                            { x: x + w - margin, y: y + h - margin }, // Bottom Right
+                            { x: x + margin, y: y + h - margin } // Bottom Left
+                        ];
+                        draw();
+                    };
+
+                    const draw = () => {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        
+                        // Draw lines
+                        ctx.beginPath();
+                        ctx.moveTo(points[0].x, points[0].y);
+                        for (let i = 1; i < 4; i++) ctx.lineTo(points[i].x, points[i].y);
+                        ctx.closePath();
+                        ctx.strokeStyle = '#27ae60';
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                        ctx.fillStyle = 'rgba(39, 174, 96, 0.2)';
+                        ctx.fill();
+
+                        // Draw points
+                        points.forEach((p, i) => {
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, handleRadius, 0, Math.PI * 2);
+                            ctx.fillStyle = activePoint === i ? '#fff' : '#27ae60';
+                            ctx.fill();
+                            ctx.strokeStyle = '#000';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                        });
+                    };
+
+                    const getMousePos = (e) => {
+                        const rect = canvas.getBoundingClientRect();
+                        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                        return {
+                            x: clientX - rect.left,
+                            y: clientY - rect.top
+                        };
+                    };
+
+                    container.onmousedown = container.ontouchstart = (e) => {
+                        const pos = getMousePos(e);
+                        activePoint = points.findIndex(p => {
+                            const dx = p.x - pos.x;
+                            const dy = p.y - pos.y;
+                            return Math.sqrt(dx*dx + dy*dy) < handleRadius * 2;
+                        });
+                        if (activePoint !== -1) e.preventDefault();
+                    };
+
+                    window.onmousemove = window.ontouchmove = (e) => {
+                        if (activePoint === -1) return;
+                        const pos = getMousePos(e);
+                        points[activePoint].x = Math.max(0, Math.min(canvas.width, pos.x));
+                        points[activePoint].y = Math.max(0, Math.min(canvas.height, pos.y));
+                        draw();
+                    };
+
+                    window.onmouseup = window.ontouchend = () => {
+                        activePoint = -1;
+                    };
+
+                    img.onload = () => {
+                        modal.style.display = 'flex';
+                        initPoints();
+                    };
+                    img.src = imageDataUrl;
+
+                    const cleanup = () => {
+                        modal.style.display = 'none';
+                        window.onmousemove = window.ontouchmove = null;
+                        window.onmouseup = window.ontouchend = null;
+                    };
+
+                    cancelBtn.onclick = () => {
+                        cleanup();
+                        resolve(null);
+                    };
+
+                    confirmBtn.onclick = () => {
+                        // Perspective Unwarp Logic
+                        const sourceCanvas = document.createElement('canvas');
+                        const sCtx = sourceCanvas.getContext('2d');
+                        const tempImg = new Image();
+                        tempImg.onload = () => {
+                            sourceCanvas.width = tempImg.naturalWidth;
+                            sourceCanvas.height = tempImg.naturalHeight;
+                            sCtx.drawImage(tempImg, 0, 0);
+
+                            const imgRect = img.getBoundingClientRect();
+                            const cRect = container.getBoundingClientRect();
+                            const offsetX = (cRect.width - imgRect.width) / 2;
+                            const offsetY = (cRect.height - imgRect.height) / 2;
+
+                            // Map points to natural image coordinates
+                            const srcPoints = points.map(p => ({
+                                x: (p.x - offsetX) * (tempImg.naturalWidth / imgRect.width),
+                                y: (p.y - offsetY) * (tempImg.naturalHeight / imgRect.height)
+                            }));
+
+                            // Perform Warp
+                            const outW = 1000; // Standard ID width
+                            const outH = 630;  // Standard ID height (ratio 1.58)
+                            const resultCanvas = document.createElement('canvas');
+                            resultCanvas.width = outW;
+                            resultCanvas.height = outH;
+                            const rCtx = resultCanvas.getContext('2d');
+
+                            // Simplified Perspective Warp (Bilinear mapping)
+                            unwarp(tempImg, srcPoints, resultCanvas);
+                            
+                            cleanup();
+                            resolve(resultCanvas.toDataURL('image/jpeg', 0.85));
+                        };
+                        tempImg.src = imageDataUrl;
+                    };
+
+                    // Math for Perspective Warping
+                    function unwarp(img, pts, canvas) {
+                        const ctx = canvas.getContext('2d');
+                        const w = canvas.width;
+                        const h = canvas.height;
+                        
+                        // For each pixel in output, find pixel in input
+                        const imgData = ctx.createImageData(w, h);
+                        
+                        // Get input image data
+                        const inCanvas = document.createElement('canvas');
+                        inCanvas.width = img.naturalWidth;
+                        inCanvas.height = img.naturalHeight;
+                        const inCtx = inCanvas.getContext('2d');
+                        inCtx.drawImage(img, 0, 0);
+                        const inData = inCtx.getImageData(0, 0, inCanvas.width, inCanvas.height).data;
+
+                        for (let y = 0; y < h; y++) {
+                            for (let x = 0; x < w; x++) {
+                                const u = x / w;
+                                const v = y / h;
+
+                                // Bilinear interpolation of the 4 points
+                                const px = (1-u)*(1-v)*pts[0].x + u*(1-v)*pts[1].x + u*v*pts[2].x + (1-u)*v*pts[3].x;
+                                const py = (1-u)*(1-v)*pts[0].y + u*(1-v)*pts[1].y + u*v*pts[2].y + (1-u)*v*pts[3].y;
+
+                                const ix = Math.floor(px);
+                                const iy = Math.floor(py);
+
+                                if (ix >= 0 && ix < inCanvas.width && iy >= 0 && iy < inCanvas.height) {
+                                    const outIdx = (y * w + x) * 4;
+                                    const inIdx = (iy * inCanvas.width + ix) * 4;
+                                    imgData.data[outIdx] = inData[inIdx];
+                                    imgData.data[outIdx+1] = inData[inIdx+1];
+                                    imgData.data[outIdx+2] = inData[inIdx+2];
+                                    imgData.data[outIdx+3] = inData[inIdx+3];
+                                }
+                            }
+                        }
+                        ctx.putImageData(imgData, 0, 0);
+                    }
+                });
             };
 
             // Signal that everything is ready

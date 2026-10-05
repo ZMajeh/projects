@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct User {
     pub email: String,
     pub uid: String,
+    pub role: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -36,10 +37,13 @@ pub struct Customer {
     pub aadhaar: String,
     pub age: Option<String>,
     pub gender: Option<String>,
-    pub photo_data: Option<String>,
-    pub id_card_data: Option<String>,
+    pub photo_url: Option<String>,
+    pub id_card_url: Option<String>,
+    pub id_card_back_url: Option<String>,
     #[serde(default)]
     pub verified: bool,
+    #[serde(default)]
+    pub search_keywords: String,
 }
 
 #[derive(Serialize)]
@@ -51,10 +55,12 @@ pub struct NewCustomer {
     pub aadhaar: String,
     pub age: Option<String>,
     pub gender: Option<String>,
-    pub photo_data: Option<String>,
-    pub id_card_data: Option<String>,
+    pub photo_url: Option<String>,
+    pub id_card_url: Option<String>,
+    pub id_card_back_url: Option<String>,
     #[serde(default)]
     pub verified: bool,
+    pub search_keywords: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

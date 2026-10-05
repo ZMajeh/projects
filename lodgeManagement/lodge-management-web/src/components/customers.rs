@@ -1,7 +1,7 @@
 use leptos::*;
 use wasm_bindgen::prelude::*;
 use crate::models::{Customer, NewCustomer};
-use crate::api::{get_customers_js, add_customer_js, update_customer_js, delete_customer_js, start_camera, take_snapshot, stop_camera, extract_aadhaar_js, read_file_as_data_url, manual_verify_aadhaar};
+use crate::api::{get_customers_js, add_customer_js, update_customer_js, delete_customer_js, start_camera, take_snapshot, stop_camera, extract_aadhaar_js, read_file_as_data_url, manual_verify_aadhaar, open_cropper};
 use crate::utils::{wait_for_bridge, calculate_age};
 
 #[component]
@@ -16,14 +16,17 @@ pub fn CustomerForm(
     let (age, set_age) = create_signal(initial_data.as_ref().and_then(|c| c.age.clone()).unwrap_or_default());
     let (gender, set_gender) = create_signal(initial_data.as_ref().and_then(|c| c.gender.clone()).unwrap_or("Male".to_string()));
     
-    let (photo, set_photo) = create_signal(initial_data.as_ref().and_then(|c| c.photo_data.clone()));
-    let (id_card, set_id_card) = create_signal(initial_data.as_ref().and_then(|c| c.id_card_data.clone()));
+    let (photo, set_photo) = create_signal(initial_data.as_ref().and_then(|c| c.photo_url.clone()));
+    let (id_card, set_id_card) = create_signal(initial_data.as_ref().and_then(|c| c.id_card_url.clone()));
+    let (id_card_back, set_id_card_back) = create_signal(initial_data.as_ref().and_then(|c| c.id_card_back_url.clone()));
     
     let (camera_active, set_camera_active) = create_signal(false);
     let (capture_target, set_capture_target) = create_signal("photo");
     let (ocr_loading, set_ocr_loading) = create_signal(false);
     let (is_verified, set_is_verified) = create_signal(initial_data.as_ref().map(|c| c.verified).unwrap_or(false));
     let (show_manual_verify, set_show_manual_verify) = create_signal(false);
+    let (is_saving, set_is_saving) = create_signal(false);
+    let (upload_status, set_upload_status) = create_signal("".to_string());
 
     let start_capture = move |target: &'static str| {
         set_capture_target.set(target);
@@ -63,8 +66,14 @@ pub fn CustomerForm(
                     wait_for_bridge().await;
                     if let Ok(data_js) = read_file_as_data_url(file).await {
                         if let Some(data) = data_js.as_string() {
-                            if target == "photo" { set_photo.set(Some(data)); } 
-                            else { set_id_card.set(Some(data.clone())); process_id_ocr(data); }
+                            // Open Cropper
+                            if let Ok(cropped_js) = open_cropper(data).await {
+                                if let Some(cropped_data) = cropped_js.as_string() {
+                                    if target == "photo" { set_photo.set(Some(cropped_data)); } 
+                                    else if target == "id" { set_id_card.set(Some(cropped_data.clone())); process_id_ocr(cropped_data); }
+                                    else if target == "id_back" { set_id_card_back.set(Some(cropped_data)); }
+                                }
+                            }
                         }
                     }
                 });
@@ -75,16 +84,128 @@ pub fn CustomerForm(
     let handle_submit = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
         if !is_verified.get() && editing_id.get().is_none() { window().alert_with_message("Please verify Aadhaar first!").ok(); return; }
-        let cust_data = NewCustomer { 
-            full_name: name.get(), phone: phone.get(), email: "".to_string(), aadhaar: aadhaar.get(), 
-            age: Some(age.get()), gender: Some(gender.get()), photo_data: photo.get(), id_card_data: id_card.get(),
-            verified: is_verified.get()
-        };
+        
+        if !crate::api::is_drive_authorized() && (photo.get_untracked().map(|d| d.starts_with("data:")).unwrap_or(false) || id_card.get_untracked().map(|d| d.starts_with("data:")).unwrap_or(false) || id_card_back.get_untracked().map(|d| d.starts_with("data:")).unwrap_or(false)) {
+             window().alert_with_message("Google Drive not authorized! Please sign in with Google in the sidebar first.").ok();
+             return;
+        }
+
+        let name_val = name.get();
+        let phone_val = phone.get();
+        let aadhaar_val = aadhaar.get();
+        let age_val = Some(age.get());
+        let gender_val = Some(gender.get());
+        let photo_val = photo.get();
+        let id_card_val = id_card.get();
+        let id_card_back_val = id_card_back.get();
+        let verified_val = is_verified.get();
+        let editing_id_val = editing_id.get();
+
+        set_is_saving.set(true);
+
+        let initial_data_cloned = initial_data.clone();
+
         spawn_local(async move {
             wait_for_bridge().await;
+            
+            // 1. Calculate how many uploads are needed
+            let mut total_uploads = 0;
+            if photo_val.as_ref().map(|d| d.starts_with("data:")).unwrap_or(false) { total_uploads += 1; }
+            if id_card_val.as_ref().map(|d| d.starts_with("data:")).unwrap_or(false) { total_uploads += 1; }
+            if id_card_back_val.as_ref().map(|d| d.starts_with("data:")).unwrap_or(false) { total_uploads += 1; }
+            
+            let mut current_upload = 0;
+            
+            // Searchable slug
+            let search_slug = format!("{}_{}_{}_{}", 
+                name_val.replace(" ", "-"), 
+                phone_val,
+                age_val.as_deref().unwrap_or("0"),
+                aadhaar_val
+            );
+
+            let get_storage_path = |url: &Option<String>| {
+                url.as_ref().and_then(|u| {
+                    if u.contains("firebasestorage.googleapis.com") {
+                        // Extract path between /o/ and ?
+                        u.split("/o/").nth(1).and_then(|s| s.split('?').next()).map(|s| s.replace("%2F", "/"))
+                    } else if u.contains("drive.google.com") {
+                        u.split("/d/").nth(1).and_then(|s| s.split('/').next()).and_then(|s| s.split('?').next()).map(|s| s.to_string())
+                    } else { None }
+                })
+            };
+
+            let is_drive = |url: &Option<String>| {
+                url.as_ref().map(|u| u.contains("drive.google.com")).unwrap_or(false)
+            };
+
+            let photo_url = if let Some(d) = photo_val {
+                if d.starts_with("data:") {
+                    current_upload += 1;
+                    set_upload_status.set(format!("Uploading Photo ({}/{})", current_upload, total_uploads));
+                    if let Some(old_path) = get_storage_path(&initial_data_cloned.as_ref().and_then(|c| c.photo_url.clone())) {
+                        if is_drive(&initial_data_cloned.as_ref().and_then(|c| c.photo_url.clone())) {
+                            let _ = crate::api::delete_file_from_drive(old_path).await;
+                        } else {
+                            let _ = crate::api::delete_file_from_storage(old_path).await;
+                        }
+                    }
+                    let path = format!("customers/{}/photo.jpg", aadhaar_val);
+                    crate::api::upload_image_to_storage(d, path).await.ok().and_then(|v| v.as_string())
+                } else { Some(d) }
+            } else { None };
+
+            let id_url = if let Some(d) = id_card_val {
+                if d.starts_with("data:") {
+                    current_upload += 1;
+                    set_upload_status.set(format!("Uploading ID Front ({}/{})", current_upload, total_uploads));
+                    if let Some(old_path) = get_storage_path(&initial_data_cloned.as_ref().and_then(|c| c.id_card_url.clone())) {
+                        if is_drive(&initial_data_cloned.as_ref().and_then(|c| c.id_card_url.clone())) {
+                            let _ = crate::api::delete_file_from_drive(old_path).await;
+                        } else {
+                            let _ = crate::api::delete_file_from_storage(old_path).await;
+                        }
+                    }
+                    let path = format!("customers/{}/id_front.jpg", aadhaar_val);
+                    crate::api::upload_image_to_storage(d, path).await.ok().and_then(|v| v.as_string())
+                } else { Some(d) }
+            } else { None };
+
+            let id_back_url = if let Some(d) = id_card_back_val {
+                if d.starts_with("data:") {
+                    current_upload += 1;
+                    set_upload_status.set(format!("Uploading ID Back ({}/{})", current_upload, total_uploads));
+                    if let Some(old_path) = get_storage_path(&initial_data_cloned.as_ref().and_then(|c| c.id_card_back_url.clone())) {
+                        if is_drive(&initial_data_cloned.as_ref().and_then(|c| c.id_card_back_url.clone())) {
+                            let _ = crate::api::delete_file_from_drive(old_path).await;
+                        } else {
+                            let _ = crate::api::delete_file_from_storage(old_path).await;
+                        }
+                    }
+                    let path = format!("customers/{}/id_back.jpg", aadhaar_val);
+                    crate::api::upload_image_to_storage(d, path).await.ok().and_then(|v| v.as_string())
+                } else { Some(d) }
+            } else { None };
+
+            set_upload_status.set("Saving record...".to_string());
+
+            // Comprehensive keywords for scalable prefix search
+            // Format: "name phone aadhaar"
+            let search_keywords = format!("{} {} {}", name_val.to_lowercase(), phone_val, aadhaar_val);
+
+            let cust_data = NewCustomer { 
+                full_name: name_val, phone: phone_val, email: "".to_string(), aadhaar: aadhaar_val, 
+                age: age_val, gender: gender_val, photo_url, 
+                id_card_url: id_url, id_card_back_url: id_back_url,
+                verified: verified_val,
+                search_keywords
+            };
+
             let js_val = serde_wasm_bindgen::to_value(&cust_data).unwrap();
-            if let Some(id) = editing_id.get() { let _ = update_customer_js(id, js_val).await; } 
+            if let Some(id) = editing_id_val { let _ = update_customer_js(id, js_val).await; } 
             else { let _ = add_customer_js(js_val).await; }
+            
+            set_is_saving.set(false);
             on_success.call(());
         });
     };
@@ -99,13 +220,58 @@ pub fn CustomerForm(
                 <div style="display: flex; flex-direction: column; grid-column: 1 / -1;"><label>"Aadhaar"</label><div style="display: flex; gap: 5px;"><input type="text" maxlength="12" on:input=move |ev| { set_aadhaar.set(event_target_value(&ev)); set_is_verified.set(false); } prop:value=aadhaar required /><button type="button" on:click=move |_| { let val = aadhaar.get_untracked(); spawn_local(async move { wait_for_bridge().await; let _ = manual_verify_aadhaar(val).await; set_show_manual_verify.set(true); }); } disabled=ocr_loading>"Verify"</button></div></div>
             </div>
             <div class="grid-form" style="margin-top: 20px;">
-                <div style="text-align: center; border: 1px dashed #ccc; padding: 10px;"><p>"Photo"</p>{move || photo.get().map(|d| view! { <img src=d style="width: 100%; max-height: 80px;" /> })}<div style="display: flex; flex-direction: column; gap: 5px; margin-top: 5px;"><button type="button" on:click=move |_| start_capture("photo") style="font-size: 0.7rem; padding: 5px;">"Camera"</button><input type="file" accept="image/*" on:change=move |ev| on_file_upload(ev, "photo") style="font-size: 0.6rem;" /></div></div>
-                <div style="text-align: center; border: 1px dashed #ccc; padding: 10px;"><p>"ID Scan"</p>{move || id_card.get().map(|d| view! { <img src=d style="width: 100%; max-height: 80px;" /> })}<div style="display: flex; flex-direction: column; gap: 5px; margin-top: 5px;"><button type="button" on:click=move |_| start_capture("id") style="font-size: 0.7rem; padding: 5px;">"Camera"</button><input type="file" accept="image/*" on:change=move |ev| on_file_upload(ev, "id") style="font-size: 0.6rem;" /></div></div>
+                <div style="text-align: center; border: 1px dashed #ccc; padding: 10px;"><p>"Photo"</p>{move || photo.get().map(|d| {
+                    if d.contains("drive.google.com") {
+                        let id = d.split("/d/").nth(1).and_then(|s| s.split('/').next()).and_then(|s| s.split('?').next()).unwrap_or("").to_string();
+                        let url_res = create_resource(move || id.clone(), |fid| async move {
+                            crate::api::get_drive_thumbnail(fid).await.ok().and_then(|v| v.as_string())
+                        });
+                        view! { 
+                            <Suspense fallback=move || view! { <p>"..."</p> }>
+                                {move || url_res.get().flatten().map(|u| view! { <img src=u style="width: 100%; max-height: 80px;" /> })}
+                            </Suspense>
+                        }.into_view()
+                    } else {
+                        view! { <img src=d style="width: 100%; max-height: 80px;" /> }.into_view()
+                    }
+                })}<div style="display: flex; flex-direction: column; gap: 5px; margin-top: 5px;"><button type="button" on:click=move |_| start_capture("photo") style="font-size: 0.7rem; padding: 5px;">"Camera"</button><input type="file" accept="image/*" on:change=move |ev| on_file_upload(ev, "photo") style="font-size: 0.6rem;" /></div></div>
+                <div style="text-align: center; border: 1px dashed #ccc; padding: 10px;"><p>"ID Front"</p>{move || id_card.get().map(|d| {
+                    if d.contains("drive.google.com") {
+                        let id = d.split("/d/").nth(1).and_then(|s| s.split('/').next()).and_then(|s| s.split('?').next()).unwrap_or("").to_string();
+                        let url_res = create_resource(move || id.clone(), |fid| async move {
+                            crate::api::get_drive_thumbnail(fid).await.ok().and_then(|v| v.as_string())
+                        });
+                        view! { 
+                            <Suspense fallback=move || view! { <p>"..."</p> }>
+                                {move || url_res.get().flatten().map(|u| view! { <img src=u style="width: 100%; max-height: 80px;" /> })}
+                            </Suspense>
+                        }.into_view()
+                    } else {
+                        view! { <img src=d style="width: 100%; max-height: 80px;" /> }.into_view()
+                    }
+                })}<div style="display: flex; flex-direction: column; gap: 5px; margin-top: 5px;"><button type="button" on:click=move |_| start_capture("id") style="font-size: 0.7rem; padding: 5px;">"Camera"</button><input type="file" accept="image/*" on:change=move |ev| on_file_upload(ev, "id") style="font-size: 0.6rem;" /></div></div>
+                <div style="text-align: center; border: 1px dashed #ccc; padding: 10px;"><p>"ID Back"</p>{move || id_card_back.get().map(|d| {
+                    if d.contains("drive.google.com") {
+                        let id = d.split("/d/").nth(1).and_then(|s| s.split('/').next()).and_then(|s| s.split('?').next()).unwrap_or("").to_string();
+                        let url_res = create_resource(move || id.clone(), |fid| async move {
+                            crate::api::get_drive_thumbnail(fid).await.ok().and_then(|v| v.as_string())
+                        });
+                        view! { 
+                            <Suspense fallback=move || view! { <p>"..."</p> }>
+                                {move || url_res.get().flatten().map(|u| view! { <img src=u style="width: 100%; max-height: 80px;" /> })}
+                            </Suspense>
+                        }.into_view()
+                    } else {
+                        view! { <img src=d style="width: 100%; max-height: 80px;" /> }.into_view()
+                    }
+                })}<div style="display: flex; flex-direction: column; gap: 5px; margin-top: 5px;"><button type="button" on:click=move |_| start_capture("id_back") style="font-size: 0.7rem; padding: 5px;">"Camera"</button><input type="file" accept="image/*" on:change=move |ev| on_file_upload(ev, "id_back") style="font-size: 0.6rem;" /></div></div>
             </div>
-            <button type="submit" style="width: 100%; margin-top: 20px; background-color: #27ae60;">{move || if editing_id.get().is_some() { "Update" } else { "Save Verified Guest" }}</button>
+            <button type="submit" style="width: 100%; margin-top: 20px; background-color: #27ae60;" disabled=is_saving>
+                {move || if is_saving.get() { upload_status.get() } else if editing_id.get().is_some() { "Update".to_string() } else { "Save Verified Guest".to_string() }}
+            </button>
             
             {move || if show_manual_verify.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 4000;"><div class="card" style="max-width: 300px; text-align: center; padding: 1.5rem;"><h3>"Verified?"</h3><div style="display: flex; gap: 10px; margin-top: 20px;"><button type="button" on:click=move |_| { set_is_verified.set(true); set_show_manual_verify.set(false); } style="background: green; flex: 1;">"YES"</button><button type="button" on:click=move |_| set_show_manual_verify.set(false) style="background: red; flex: 1;">"NO"</button></div></div></div> }.into_view() } else { view! {}.into_view() }}
-            {move || if camera_active.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 4000; padding: 1rem;"><video id="cam-preview-modal" style="width: 100%; max-width: 400px; border: 2px solid white;"></video><div style="margin-top: 20px; display: flex; gap: 10px;"><button type="button" on:click=move |_| { spawn_local(async move { wait_for_bridge().await; if let Ok(data_js) = take_snapshot("cam-preview-modal".to_string()).await { if let Some(data) = data_js.as_string() { if capture_target.get() == "photo" { set_photo.set(Some(data)); } else { set_id_card.set(Some(data.clone())); process_id_ocr(data); } } } let _ = stop_camera().await; set_camera_active.set(false); }); } style="background: green;">"CAPTURE"</button><button type="button" on:click=move |_| { spawn_local(async move { let _ = stop_camera().await; set_camera_active.set(false); }); } style="background: red;">"CLOSE"</button></div></div> }.into_view() } else { view! {}.into_view() }}
+            {move || if camera_active.get() { view! { <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 4000; padding: 1rem;"><video id="cam-preview-modal" style="width: 100%; max-width: 400px; border: 2px solid white;"></video><div style="margin-top: 20px; display: flex; gap: 10px;"><button type="button" on:click=move |_| { spawn_local(async move { wait_for_bridge().await; if let Ok(data_js) = take_snapshot("cam-preview-modal".to_string()).await { if let Some(data) = data_js.as_string() { let _ = stop_camera().await; set_camera_active.set(false); if let Ok(cropped_js) = open_cropper(data).await { if let Some(cropped_data) = cropped_js.as_string() { if capture_target.get() == "photo" { set_photo.set(Some(cropped_data)); } else if capture_target.get() == "id" { set_id_card.set(Some(cropped_data.clone())); process_id_ocr(cropped_data); } else if capture_target.get() == "id_back" { set_id_card_back.set(Some(cropped_data)); } } } } else { let _ = stop_camera().await; set_camera_active.set(false); } } else { let _ = stop_camera().await; set_camera_active.set(false); } }); } style="background: green;">"CAPTURE"</button><button type="button" on:click=move |_| { spawn_local(async move { let _ = stop_camera().await; set_camera_active.set(false); }); } style="background: red;">"CLOSE"</button></div></div> }.into_view() } else { view! {}.into_view() }}
         </form>
     }
 }
@@ -149,9 +315,39 @@ pub fn Customers() -> impl IntoView {
         window().scroll_to_with_x_and_y(0.0, 0.0);
     };
 
-    let on_delete_final = move |id: String| {
+    let on_delete_final = move |c: Customer| {
+        let id = c.id.clone().unwrap_or_default();
         spawn_local(async move {
             wait_for_bridge().await;
+
+            // Helper to extract path/ID
+            let get_storage_path = |url: &Option<String>| {
+                url.as_ref().and_then(|u| {
+                    if u.contains("firebasestorage.googleapis.com") {
+                        u.split("/o/").nth(1).and_then(|s| s.split('?').next()).map(|s| s.replace("%2F", "/"))
+                    } else if u.contains("drive.google.com") {
+                        u.split("/d/").nth(1).and_then(|s| s.split('/').next()).and_then(|s| s.split('?').next()).map(|s| s.to_string())
+                    } else { None }
+                })
+            };
+
+            let is_drive = |url: &Option<String>| {
+                url.as_ref().map(|u| u.contains("drive.google.com")).unwrap_or(false)
+            };
+
+            // Delete associated files
+            let urls = vec![c.photo_url.clone(), c.id_card_url.clone(), c.id_card_back_url.clone()];
+            for url_opt in urls {
+                if let Some(path) = get_storage_path(&url_opt) {
+                    if is_drive(&url_opt) {
+                        let _ = crate::api::delete_file_from_drive(path).await;
+                    } else {
+                        let _ = crate::api::delete_file_from_storage(path).await;
+                    }
+                }
+            }
+
+            // Delete from Firestore
             let _ = delete_customer_js(id).await;
             set_confirm_delete_id.set(None);
             load_customers(search_query.get_untracked());
@@ -179,11 +375,11 @@ pub fn Customers() -> impl IntoView {
                 }
             }}
 
-            <div style="margin: 2rem 0;"><input type="text" placeholder="Search..." on:input=move |ev| set_search_query.set(event_target_value(&ev)) /></div>
+            <div style="margin: 2rem 0;"><input type="text" placeholder="Search by name, phone or Aadhaar..." on:input=move |ev| set_search_query.set(event_target_value(&ev)) /></div>
             <h3>"Guest Directory"</h3>
             {move || if loading.get() { view! { <p>"Loading..."</p> }.into_view() } else { view! { 
                 <table>
-                    <thead><tr><th>"Name"</th><th>"Aadhaar"</th><th>"Status"</th><th>"Actions"</th></tr></thead>
+                    <thead><tr><th>"Name"</th><th>"Phone"</th><th>"Age"</th><th>"Aadhaar"</th><th>"Status"</th><th>"Actions"</th></tr></thead>
                     <tbody>
                         <For each=move || customers.get() key=|c| c.id.clone().unwrap_or_default() children=move |c| { 
                             let c_cloned = c.clone(); 
@@ -193,15 +389,17 @@ pub fn Customers() -> impl IntoView {
                             view! { 
                                 <tr>
                                     <td><strong>{c.full_name.clone()}</strong></td>
+                                    <td>{c.phone.clone()}</td>
+                                    <td>{c.age.clone().unwrap_or_else(|| "-".to_string())}</td>
                                     <td>{c.aadhaar.clone()}</td>
                                     <td>{if c.verified { "✅" } else { "⚠️" }}</td>
                                     <td>
                                         {move || if confirm_delete_id.get() == Some(id_c.clone()) {
-                                            let id_final = id_c.clone();
+                                            let c_final = c_cloned.clone();
                                             view! {
                                                 <div style="display: flex; gap: 5px; align-items: center;">
                                                     <span style="font-size: 0.7rem; color: red;">"Sure?"</span>
-                                                    <button on:click=move |_| on_delete_final(id_final.clone()) style="padding: 2px 8px; font-size: 0.7rem; background: #e74c3c;">"YES"</button>
+                                                    <button on:click=move |_| on_delete_final(c_final.clone()) style="padding: 2px 8px; font-size: 0.7rem; background: #e74c3c;">"YES"</button>
                                                     <button on:click=move |_| set_confirm_delete_id.set(None) style="padding: 2px 8px; font-size: 0.7rem; background: #6c757d;">"NO"</button>
                                                 </div>
                                             }.into_view()

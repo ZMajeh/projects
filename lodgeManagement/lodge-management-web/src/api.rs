@@ -3,7 +3,7 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(catch, js_name = loginUser)]
-    pub async fn login_user(email: String, pass: String) -> Result<JsValue, JsValue>;
+    pub async fn login_user() -> Result<JsValue, JsValue>;
     
     #[wasm_bindgen(catch, js_name = signOutUser)]
     pub async fn sign_out_user() -> Result<JsValue, JsValue>;
@@ -44,6 +44,15 @@ extern "C" {
     #[wasm_bindgen(catch, js_name = deleteBooking)]
     pub async fn delete_booking_js(id: String, roomId: String) -> Result<JsValue, JsValue>;
     
+    #[wasm_bindgen(catch, js_name = getWhitelistedUsers)]
+    pub async fn get_whitelisted_users() -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = addUserToWhitelist)]
+    pub async fn add_user_to_whitelist(email: String, role: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = deleteUserFromWhitelist)]
+    pub async fn delete_user_from_whitelist(email: String) -> Result<JsValue, JsValue>;
+
     #[wasm_bindgen(catch, js_name = startCamera)]
     pub async fn start_camera(id: String) -> Result<JsValue, JsValue>;
     
@@ -61,4 +70,34 @@ extern "C" {
     
     #[wasm_bindgen(catch, js_name = manualVerifyAadhaar)]
     pub async fn manual_verify_aadhaar(num: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = openCropper)]
+    pub async fn open_cropper(base64: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = uploadImageToDrive)]
+    pub async fn upload_image_to_drive(base64: String, filename: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = authorizeGoogleDrive)]
+    pub async fn authorize_google_drive() -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = validateDriveSession)]
+    pub async fn validate_drive_session() -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(js_name = isDriveAuthorized)]
+    pub fn is_drive_authorized() -> bool;
+
+    #[wasm_bindgen(catch, js_name = deleteFileFromDrive)]
+    pub async fn delete_file_from_drive(file_id: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = getDriveThumbnail)]
+    pub async fn get_drive_thumbnail(file_id: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = uploadImageToStorage)]
+    pub async fn upload_image_to_storage(base64: String, path: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = deleteFileFromStorage)]
+    pub async fn delete_file_from_storage(path: String) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(js_name = isOnline)]
+    pub fn is_online() -> bool;
 }

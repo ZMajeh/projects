@@ -1,0 +1,11 @@
+/workspaces/projects/Majeh's Email Browserr/target/debug/deps/manyhow-a5d077587ab2e1b0.d: /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/lib.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/span_ranged.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/macro_rules.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/error.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/parse_to_tokens.rs
+
+/workspaces/projects/Majeh's Email Browserr/target/debug/deps/libmanyhow-a5d077587ab2e1b0.rlib: /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/lib.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/span_ranged.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/macro_rules.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/error.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/parse_to_tokens.rs
+
+/workspaces/projects/Majeh's Email Browserr/target/debug/deps/libmanyhow-a5d077587ab2e1b0.rmeta: /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/lib.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/span_ranged.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/macro_rules.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/error.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/parse_to_tokens.rs
+
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/lib.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/span_ranged.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/macro_rules.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/error.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/manyhow-0.10.4/src/parse_to_tokens.rs:
