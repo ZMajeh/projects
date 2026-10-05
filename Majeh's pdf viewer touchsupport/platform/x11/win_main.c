@@ -18,12 +18,38 @@
 #ifndef WM_GESTURE
 #define WM_GESTURE 0x0119
 #endif
+#ifndef WM_TOUCH
+#define WM_TOUCH 0x0240
+#endif
+#ifndef TWF_WANTPALM
+#define TWF_WANTPALM 0x00000002
+#endif
+#ifndef TOUCHEVENTF_DOWN
+#define TOUCHEVENTF_DOWN 0x0002
+#endif
+#ifndef TOUCHEVENTF_MOVE
+#define TOUCHEVENTF_MOVE 0x0001
+#endif
+#ifndef TOUCHEVENTF_UP
+#define TOUCHEVENTF_UP 0x0004
+#endif
 #ifndef GID_ZOOM
 #define GID_ZOOM 3
 #endif
 #ifndef GF_BEGIN
 #define GF_BEGIN 0x00000001
 #endif
+
+typedef struct {
+	DWORD id;
+	int x, y;
+	int start_x, start_y;
+	int active;
+} touch_point_t;
+
+static touch_point_t touch_pts[10];
+static int gesture_fired = 0;
+static int touch_max_active = 0;
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
@@ -649,6 +675,13 @@ void winopen()
 	hwndframe, 0, 0, 0);
 	if (!hwndview)
 		winerror(&gapp, "cannot create view");
+	else
+	{
+		HMODULE hUser32 = GetModuleHandleA("user32.dll");
+		BOOL (WINAPI *pRegisterTouchWindow)(HWND, ULONG) = (void*)GetProcAddress(hUser32, "RegisterTouchWindow");
+		if (pRegisterTouchWindow)
+			pRegisterTouchWindow(hwndview, TWF_WANTPALM);
+	}
 
 	hdc = NULL;
 
@@ -1051,6 +1084,24 @@ viewproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 	int x = (signed short) LOWORD(lParam);
 	int y = (signed short) HIWORD(lParam);
 
+	/* Filter out touch-generated mouse messages for multi-finger gestures to prevent flicker.
+	 * We allow single-finger touch to pass through as mouse events. */
+	if (message >= WM_MOUSEFIRST && message <= WM_MOUSELAST)
+	{
+		if ((GetMessageExtraInfo() & 0xFFFFFF00) == 0xFF515700)
+		{
+			if (message == WM_RBUTTONDOWN || message == WM_RBUTTONUP || message == WM_MBUTTONDOWN || message == WM_MBUTTONUP)
+				return 0;
+			if (touch_max_active > 1)
+				return 0;
+		}
+	}
+	if (message == WM_CONTEXTMENU)
+	{
+		if ((GetMessageExtraInfo() & 0xFFFFFF00) == 0xFF515700)
+			return 0;
+	}
+
 	switch (message)
 	{
 	case WM_SIZE:
@@ -1061,12 +1112,8 @@ viewproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 		pdfapp_onresize(&gapp, LOWORD(lParam), HIWORD(lParam));
 		break;
 
-	/* Paint events are low priority and automagically catenated
-	 * so we don't need to do any fancy waiting to defer repainting.
-	 */
 	case WM_PAINT:
 	{
-		//puts("WM_PAINT");
 		PAINTSTRUCT ps;
 		hdc = BeginPaint(hwnd, &ps);
 		winblit();
@@ -1077,9 +1124,7 @@ viewproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 	}
 
 	case WM_ERASEBKGND:
-		return 1; // well, we don't need to erase to redraw cleanly
-
-	/* Mouse events */
+		return 1;
 
 	case WM_LBUTTONDOWN:
 		SetFocus(hwndview);
@@ -1169,44 +1214,170 @@ viewproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 		pdfapp_reloadpage(&gapp);
 		break;
 
-	case WM_GESTURE:
+	case WM_TOUCH:
 	{
 		HMODULE hUser32 = GetModuleHandleA("user32.dll");
-		BOOL (WINAPI *pGetGestureInfo)(HGESTUREINFO, PGESTUREINFO) = (void*)GetProcAddress(hUser32, "GetGestureInfo");
-		if (pGetGestureInfo)
+		BOOL (WINAPI *pGetTouchInputInfo)(HTOUCHINPUT, UINT, PTOUCHINPUT, int) = (void*)GetProcAddress(hUser32, "GetTouchInputInfo");
+		BOOL (WINAPI *pCloseTouchInputHandle)(HTOUCHINPUT) = (void*)GetProcAddress(hUser32, "CloseTouchInputHandle");
+
+		if (pGetTouchInputInfo && pCloseTouchInputHandle)
 		{
-			GESTUREINFO gi;
-			static double last_zoom_dist = 0;
-			memset(&gi, 0, sizeof(gi));
-			gi.cbSize = sizeof(gi);
-			if (pGetGestureInfo((HGESTUREINFO)lParam, &gi))
+			UINT cInputs = LOWORD(wParam);
+			TOUCHINPUT *pInputs = malloc(sizeof(TOUCHINPUT) * cInputs);
+			if (pInputs)
 			{
-				if (gi.dwID == GID_ZOOM)
+				if (pGetTouchInputInfo((HTOUCHINPUT)lParam, cInputs, pInputs, sizeof(TOUCHINPUT)))
 				{
-					if (gi.dwFlags & GF_BEGIN)
+					UINT i;
+					for (i = 0; i < cInputs; i++)
 					{
-						last_zoom_dist = (double)gi.ullArguments;
+						TOUCHINPUT *ti = &pInputs[i];
+						POINT pt;
+						pt.x = TOUCH_COORD_TO_PIXEL(ti->x);
+						pt.y = TOUCH_COORD_TO_PIXEL(ti->y);
+						ScreenToClient(hwnd, &pt);
+
+						int found = -1;
+						int j;
+						for (j = 0; j < 10; j++)
+						{
+							if (touch_pts[j].active && touch_pts[j].id == ti->dwID)
+							{
+								found = j;
+								break;
+							}
+						}
+
+						if (ti->dwFlags & TOUCHEVENTF_DOWN)
+						{
+							int already_active = 0;
+							for (j = 0; j < 10; j++) if (touch_pts[j].active) already_active++;
+							if (already_active == 0) {
+								touch_max_active = 0;
+								gesture_fired = 0;
+							}
+							for (j = 0; j < 10; j++)
+							{
+								if (!touch_pts[j].active)
+								{
+									touch_pts[j].id = ti->dwID;
+									touch_pts[j].active = 1;
+									touch_pts[j].start_x = pt.x;
+									touch_pts[j].start_y = pt.y;
+									touch_pts[j].x = pt.x;
+									touch_pts[j].y = pt.y;
+									if (already_active + 1 > touch_max_active)
+										touch_max_active = already_active + 1;
+									break;
+								}
+							}
+						}
+						else if (ti->dwFlags & TOUCHEVENTF_MOVE)
+						{
+							if (found != -1)
+							{
+								touch_pts[found].x = pt.x;
+								touch_pts[found].y = pt.y;
+							}
+						}
+						else if (ti->dwFlags & TOUCHEVENTF_UP)
+						{
+							if (found != -1)
+								touch_pts[found].active = 0;
+						}
 					}
-					else
+
+					int active_count = 0;
+					int active_indices[10];
+					long sum_dx = 0, sum_dy = 0;
+					int k;
+					for (k = 0; k < 10; k++)
 					{
-						double dist = (double)gi.ullArguments;
-						if (dist > last_zoom_dist * 1.05)
+						if (touch_pts[k].active)
 						{
-							handlekey('+');
-							last_zoom_dist = dist;
-						}
-						else if (dist < last_zoom_dist * 0.95)
-						{
-							handlekey('-');
-							last_zoom_dist = dist;
+							active_indices[active_count++] = k;
+							sum_dx += (touch_pts[k].x - touch_pts[k].start_x);
+							sum_dy += (touch_pts[k].y - touch_pts[k].start_y);
 						}
 					}
-					return 0;
+
+					if (active_count >= 2)
+					{
+						touch_point_t *p1 = &touch_pts[active_indices[0]];
+						touch_point_t *p2 = &touch_pts[active_indices[1]];
+
+						int dx1 = p1->x - p1->start_x;
+						int dy1 = p1->y - p1->start_y;
+						int dx2 = p2->x - p2->start_x;
+						int dy2 = p2->y - p2->start_y;
+
+						int curr_dx = p1->x - p2->x;
+						int curr_dy = p1->y - p2->y;
+						long curr_dist_sq = (long)curr_dx * curr_dx + (long)curr_dy * curr_dy;
+
+						int init_dx = p1->start_x - p2->start_x;
+						int init_dy = p1->start_y - p2->start_y;
+						long init_dist_sq = (long)init_dx * init_dx + (long)init_dy * init_dy;
+
+						/* Continuous Pinch Zoom (Ratio check) */
+						if (init_dist_sq > 400 && (curr_dist_sq > init_dist_sq * 1.5 || curr_dist_sq < init_dist_sq * 0.6))
+						{
+							if (curr_dist_sq > init_dist_sq)
+								handlekey('+');
+							else
+								handlekey('-');
+
+							p1->start_x = p1->x; p1->start_y = p1->y;
+							p2->start_x = p2->x; p2->start_y = p2->y;
+							gesture_fired = 1;
+						}
+						/* 2-Finger Swipe (Stabilized) */
+						else if (!gesture_fired && active_count == 2 && touch_max_active == 2)
+						{
+							if ((long)dx1*dx2 + (long)dy1*dy2 > 0) /* Move same direction */
+							{
+								int avg_dx = (dx1 + dx2) / 2;
+								int avg_dy = (dy1 + dy2) / 2;
+								if (avg_dx*avg_dx + avg_dy*avg_dy > 1600) /* 40px */
+								{
+									int key = 0;
+									if (abs(avg_dx) > abs(avg_dy))
+										key = (avg_dx > 0) ? 'i' : 'H';
+									else
+										key = (avg_dy > 0) ? 'f' : 'W';
+									if (key) handlekey(key);
+									gesture_fired = 1;
+								}
+							}
+						}
+						/* 3-Finger Swipe (Stabilized) */
+						else if (!gesture_fired && active_count == 3 && touch_max_active == 3)
+						{
+							int avg_dx = sum_dx / 3;
+							int avg_dy = sum_dy / 3;
+							if (avg_dx*avg_dx + avg_dy*avg_dy > 1600) /* 40px */
+							{
+								int key = 0;
+								if (abs(avg_dx) > abs(avg_dy))
+									key = (avg_dx > 0) ? 'R' : 'L';
+								else
+									key = (avg_dy > 0) ? 'Z' : 'C';
+								if (key) handlekey(key);
+								gesture_fired = 1;
+							}
+						}
+					}
 				}
+				free(pInputs);
 			}
+			pCloseTouchInputHandle((HTOUCHINPUT)lParam);
+			return 0;
 		}
 		break;
 	}
+
+	case WM_GESTURE:
+		return 0; /* Let WM_TOUCH handle it */
 
 	}
 
