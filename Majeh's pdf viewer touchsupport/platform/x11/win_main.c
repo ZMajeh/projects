@@ -417,11 +417,11 @@ dlogprintproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 		SetDlgItemTextA(hwnd, 104, print_range_text);
 
 		combo = GetDlgItem(hwnd, 105);
-		SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)"Default (Current)");
-		SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)"72 DPI (Low)");
-		SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)"150 DPI (Medium)");
-		SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)"300 DPI (High)");
-		SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)"600 DPI (Very High)");
+		SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)"Original");
+		SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)"72 DPI");
+		SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)"150 DPI");
+		SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)"300 DPI");
+		SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)"600 DPI");
 		SendMessageA(combo, CB_SETCURSEL, print_dpi_choice, 0);
 		return TRUE;
 
