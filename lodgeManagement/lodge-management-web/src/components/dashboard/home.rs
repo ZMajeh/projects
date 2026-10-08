@@ -265,15 +265,44 @@ pub fn DashboardHome() -> impl IntoView {
                         if !extra_selected.get_untracked().iter().any(|g| g.id == cid) { set_extra_selected.update(|v| v.push(ExtraGuest { id: cid, name: c.full_name.clone() })); }
                     }
                 };
+
+                let on_select_change = move |ev: leptos::ev::Event| {
+                    let cid = event_target_value(&ev);
+                    set_sel_cust.set(cid.clone());
+                    if !cid.is_empty() {
+                        if let Some(c) = customers.get_untracked().into_iter().find(|cust| cust.id.as_deref() == Some(&cid)) {
+                            set_extra_selected.update(|v| {
+                                if v.is_empty() {
+                                    v.push(ExtraGuest { id: cid, name: c.full_name.clone() });
+                                } else {
+                                    v[0] = ExtraGuest { id: cid, name: c.full_name.clone() };
+                                }
+                            });
+                        }
+                    }
+                };
+
                 let r_cloned = room.clone();
                 let handle_book = {
                     let r_cloned = r_cloned.clone();
                     move |ev: leptos::ev::SubmitEvent| {
                         ev.prevent_default(); set_saving.set(true);
-                        let guests = extra_selected.get_untracked();
+                        let mut guests = extra_selected.get_untracked();
+                        if guests.is_empty() {
+                            let cid = sel_cust.get_untracked();
+                            if !cid.is_empty() {
+                                if let Some(c) = customers.get_untracked().into_iter().find(|cust| cust.id.as_deref() == Some(&cid)) {
+                                    guests.push(ExtraGuest { id: cid, name: c.full_name.clone() });
+                                }
+                            }
+                        }
                         if guests.is_empty() { set_saving.set(false); return; }
-                        let primary = &guests[0]; let extras = guests[1..].to_vec(); let date = selected_date.get_untracked();
-                        let new_booking = NewBooking { room_id: r_cloned.id.clone().unwrap_or_default(), customer_id: primary.id.clone(), customer_name: primary.name.clone(), extra_guests: extras, room_number: r_cloned.number.clone(), check_in_date: date.clone(), check_out_date: check_out.get(), in_time: None, out_time: None, status: "Checked-In".to_string(), total_amount: final_price.get().parse::<f64>().unwrap_or(0.0), payments: vec![Payment { amount: paid_now.get().parse::<f64>().unwrap_or(0.0), date: date }] };
+                        let primary = &guests[0]; let extras = if guests.len() > 1 { guests[1..].to_vec() } else { vec![] }; let date = selected_date.get_untracked();
+                        let co_date = {
+                            let co = check_out.get();
+                            if co.is_empty() { date.clone() } else { co }
+                        };
+                        let new_booking = NewBooking { room_id: r_cloned.id.clone().unwrap_or_default(), customer_id: primary.id.clone(), customer_name: primary.name.clone(), extra_guests: extras, room_number: r_cloned.number.clone(), check_in_date: date.clone(), check_out_date: co_date, in_time: None, out_time: None, status: "Checked-In".to_string(), total_amount: final_price.get().parse::<f64>().unwrap_or(0.0), payments: vec![Payment { amount: paid_now.get().parse::<f64>().unwrap_or(0.0), date: date }] };
                         spawn_local(async move { 
                             wait_for_bridge().await; 
                             if let Ok(id_js) = add_booking_js(serde_wasm_bindgen::to_value(&new_booking).unwrap()).await {
@@ -330,14 +359,14 @@ pub fn DashboardHome() -> impl IntoView {
                                             <button type="button" on:click=move |_| set_show_add_guest_modal.set(true) style="padding: 0 15px; background: #3498db; font-weight: bold;" title="Register New Guest">"New"</button>
                                         </div>
                                         {move || if search_loading.get() { view! { <div style="font-size: 0.7rem; color: var(--primary); margin-bottom: 5px;">"Searching database..."</div> }.into_view() } else { view! {}.into_view() }}
-                                        <select on:change=move |ev| set_sel_cust.set(event_target_value(&ev)) prop:value=sel_cust>
+                                        <select on:change=on_select_change prop:value=sel_cust>
                                             <option value="">"Choose guest from search..."</option>
                                             {move || customers.get().into_iter().map(|c| { let cid = c.id.clone().unwrap_or_default(); view! { <option value=cid>{c.full_name.clone()} " (" {c.phone.clone()} ")" </option> } }).collect_view()}
                                         </select><div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">{move || extra_selected.get().into_iter().enumerate().map(|(idx, g)| { let g_id_val = g.id.clone(); let g_name_val = g.name.clone(); view! { <span style="background: #3498db; color: white; padding: 2px 10px; border-radius: 15px; font-size: 0.8rem;">{if idx==0 { "(P) " } else { "" }} {g_name_val} <button type="button" on:click=move |_| set_extra_selected.update(|v| v.retain(|x| x.id != g_id_val)) style="background:none; padding:0; margin-left:5px; font-weight:bold; color:white;">"×"</button></span> } }).collect_view()}</div></div>
                                     <div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Total Price"</label><input type="number" on:input=move |ev| set_final_price.set(event_target_value(&ev)) prop:value=final_price required /></div><div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: bold;">"Paying Now"</label><input type="number" on:input=move |ev| set_paid_now.set(event_target_value(&ev)) prop:value=paid_now required /></div></div>
-                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Estimated Check-out"</label><input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) required /></div>
+                                    <div><label style="font-size: 0.8rem; font-weight: bold;">"Estimated Check-out"</label><input type="date" on:input=move |ev| set_check_out.set(event_target_value(&ev)) /></div>
                                 </div>
-                                <div style="display: flex; gap: 10px; margin-top: 25px;"><button type="submit" disabled=move || saving.get() || extra_selected.get().is_empty() style="flex: 2; background: #27ae60;">"Confirm"</button><button type="button" on:click=move |_| set_show_book_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button></div>
+                                <div style="display: flex; gap: 10px; margin-top: 25px;"><button type="submit" disabled=move || saving.get() || (extra_selected.get().is_empty() && sel_cust.get().is_empty()) style="flex: 2; background: #27ae60;">"Confirm"</button><button type="button" on:click=move |_| set_show_book_modal.set(None) style="flex: 1; background: #6c757d;">"Cancel"</button></div>
                             </form>
                         </div>
                     </div>
