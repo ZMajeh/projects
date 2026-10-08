@@ -199,11 +199,287 @@ void winalert(pdfapp_t *app, pdf_alert_event *alert)
 	}
 }
 
+static int pd_okay = 0;
+static int print_range_type = 0; /* 0=All, 1=Current, 2=Custom */
+static char print_range_text[256] = "";
+static int print_dpi_choice = 0; /* 0=Default, 1=72, 2=150, 3=300, 4=600 */
+
+static int check_range_match(int p, const char *str)
+{
+	char buf[256];
+	char *token;
+	fz_strlcpy(buf, str, sizeof(buf));
+	token = strtok(buf, ",");
+	while (token)
+	{
+		while (*token == ' ') token++;
+		if (strchr(token, '-'))
+		{
+			int start = atoi(token);
+			int end = atoi(strchr(token, '-') + 1);
+			if (p >= start && p <= end)
+				return 1;
+		}
+		else
+		{
+			int num = atoi(token);
+			if (p == num)
+				return 1;
+		}
+		token = strtok(NULL, ",");
+	}
+	return 0;
+}
+
+static int is_page_included(int p, int pagecount)
+{
+	if (print_range_type == 0)
+		return 1;
+	if (print_range_type == 1)
+		return (p == gapp.pageno);
+	if (print_range_type == 2)
+		return check_range_match(p, print_range_text);
+	return 1;
+}
+
+static int get_dpi_value(int choice, int current_res)
+{
+	switch (choice)
+	{
+	case 1: return 72;
+	case 2: return 150;
+	case 3: return 300;
+	case 4: return 600;
+	default: return current_res > 0 ? current_res : 72;
+	}
+}
+
+static void update_preview_status(HWND hwnd, int curr_page)
+{
+	char buf[64];
+	int total_matched = 0;
+	int p;
+	for (p = 1; p <= gapp.pagecount; p++)
+	{
+		if (is_page_included(p, gapp.pagecount))
+			total_matched++;
+	}
+	snprintf(buf, sizeof(buf), "Page %d (Total: %d)", curr_page, total_matched);
+	SetDlgItemTextA(hwnd, 12, buf);
+}
+
+INT_PTR CALLBACK
+dlogpreviewproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	static int curr_page = 1;
+	switch(message)
+	{
+	case WM_INITDIALOG:
+		{
+			int p;
+			curr_page = gapp.pageno;
+			for (p = 1; p <= gapp.pagecount; p++)
+			{
+				if (is_page_included(p, gapp.pagecount))
+				{
+					curr_page = p;
+					break;
+				}
+			}
+			update_preview_status(hwnd, curr_page);
+			return TRUE;
+		}
+	case WM_COMMAND:
+		switch(wParam)
+		{
+		case 1:
+			EndDialog(hwnd, 1);
+			return TRUE;
+		case 10: /* Prev */
+			{
+				int p;
+				for (p = curr_page - 1; p >= 1; p--)
+				{
+					if (is_page_included(p, gapp.pagecount))
+					{
+						curr_page = p;
+						break;
+					}
+				}
+				update_preview_status(hwnd, curr_page);
+				InvalidateRect(hwnd, NULL, TRUE);
+			}
+			return TRUE;
+		case 11: /* Next */
+			{
+				int p;
+				for (p = curr_page + 1; p <= gapp.pagecount; p++)
+				{
+					if (is_page_included(p, gapp.pagecount))
+					{
+						curr_page = p;
+						break;
+					}
+				}
+				update_preview_status(hwnd, curr_page);
+				InvalidateRect(hwnd, NULL, TRUE);
+			}
+			return TRUE;
+		}
+		break;
+	case WM_PAINT:
+		{
+			PAINTSTRUCT ps;
+			HDC hdc = BeginPaint(hwnd, &ps);
+			int old_pageno = gapp.pageno;
+			int old_res = gapp.resolution;
+			int dpi = get_dpi_value(print_dpi_choice, old_res);
+			gapp.resolution = dpi > 0 ? dpi : 72;
+			pdfapp_gotopage(&gapp, curr_page);
+
+			if (gapp.image)
+			{
+				int image_w = fz_pixmap_width(gapp.ctx, gapp.image);
+				int image_h = fz_pixmap_height(gapp.ctx, gapp.image);
+				int image_n = fz_pixmap_components(gapp.ctx, gapp.image);
+				unsigned char *samples = fz_pixmap_samples(gapp.ctx, gapp.image);
+				RECT rc;
+				GetClientRect(hwnd, &rc);
+				int pw = rc.right - 20;
+				int ph = rc.bottom - 60;
+				int x = 10, y = 10, w = pw, h = ph;
+
+				if (image_w > 0 && image_h > 0)
+				{
+					double scale_x = (double)pw / image_w;
+					double scale_y = (double)ph / image_h;
+					double scale = scale_x < scale_y ? scale_x : scale_y;
+					w = (int)(image_w * scale);
+					h = (int)(image_h * scale);
+					x = 10 + (pw - w) / 2;
+					y = 10 + (ph - h) / 2;
+				}
+
+				HBRUSH bg = CreateSolidBrush(RGB(0xa0, 0xa0, 0xa0));
+				RECT prev_box = {10, 10, 10 + pw, 10 + ph};
+				FillRect(hdc, &prev_box, bg);
+				DeleteObject(bg);
+
+				if (dibinf)
+				{
+					dibinf->bmiHeader.biWidth = image_w;
+					dibinf->bmiHeader.biHeight = -image_h;
+					dibinf->bmiHeader.biSizeImage = image_h * 4;
+
+					if (image_n == 2)
+					{
+						int i = image_w * image_h;
+						unsigned char *color = malloc(i * 4);
+						if (color)
+						{
+							unsigned char *s = samples;
+							unsigned char *d = color;
+							for (; i > 0; i--)
+							{
+								d[2] = d[1] = d[0] = *s++;
+								d[3] = *s++;
+								d += 4;
+							}
+							StretchDIBits(hdc, x, y, w, h, 0, 0, image_w, image_h, color, dibinf, DIB_RGB_COLORS, SRCCOPY);
+							free(color);
+						}
+					}
+					else if (image_n == 4)
+					{
+						StretchDIBits(hdc, x, y, w, h, 0, 0, image_w, image_h, samples, dibinf, DIB_RGB_COLORS, SRCCOPY);
+					}
+				}
+			}
+
+			pdfapp_gotopage(&gapp, old_pageno);
+			gapp.resolution = old_res;
+
+			EndPaint(hwnd, &ps);
+			return 0;
+		}
+	}
+	return FALSE;
+}
+
+INT_PTR CALLBACK
+dlogprintproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	HWND combo;
+	switch(message)
+	{
+	case WM_INITDIALOG:
+		CheckRadioButton(hwnd, 101, 103, 101 + print_range_type);
+		SetDlgItemTextA(hwnd, 104, print_range_text);
+
+		combo = GetDlgItem(hwnd, 105);
+		SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)"Original");
+		SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)"72 DPI");
+		SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)"150 DPI");
+		SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)"300 DPI");
+		SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)"600 DPI");
+		SendMessageA(combo, CB_SETCURSEL, print_dpi_choice, 0);
+		return TRUE;
+
+	case WM_COMMAND:
+		switch(wParam)
+		{
+		case 1:
+			if (IsDlgButtonChecked(hwnd, 101) == BST_CHECKED)
+				print_range_type = 0;
+			else if (IsDlgButtonChecked(hwnd, 102) == BST_CHECKED)
+				print_range_type = 1;
+			else if (IsDlgButtonChecked(hwnd, 103) == BST_CHECKED)
+				print_range_type = 2;
+
+			GetDlgItemTextA(hwnd, 104, print_range_text, sizeof(print_range_text));
+			combo = GetDlgItem(hwnd, 105);
+			print_dpi_choice = SendMessageA(combo, CB_GETCURSEL, 0, 0);
+			if (print_dpi_choice == CB_ERR)
+				print_dpi_choice = 0;
+
+			pd_okay = 1;
+			EndDialog(hwnd, 1);
+			return TRUE;
+
+		case 3: /* Preview */
+			if (IsDlgButtonChecked(hwnd, 101) == BST_CHECKED)
+				print_range_type = 0;
+			else if (IsDlgButtonChecked(hwnd, 102) == BST_CHECKED)
+				print_range_type = 1;
+			else if (IsDlgButtonChecked(hwnd, 103) == BST_CHECKED)
+				print_range_type = 2;
+
+			GetDlgItemTextA(hwnd, 104, print_range_text, sizeof(print_range_text));
+			combo = GetDlgItem(hwnd, 105);
+			print_dpi_choice = SendMessageA(combo, CB_GETCURSEL, 0, 0);
+			if (print_dpi_choice == CB_ERR)
+				print_dpi_choice = 0;
+
+			DialogBoxW(NULL, L"IDD_DLOGPREVIEW", hwnd, dlogpreviewproc);
+			return TRUE;
+
+		case 2:
+			pd_okay = 0;
+			EndDialog(hwnd, 1);
+			return TRUE;
+		}
+		break;
+	}
+	return FALSE;
+}
+
 void winprint(pdfapp_t *app)
 {
 	PRINTDLGA pd;
 	DOCINFOA di;
 	int old_pageno;
+	int old_res;
+	int dpi;
 	int p;
 
 	if (!app->doc)
@@ -211,6 +487,10 @@ void winprint(pdfapp_t *app)
 		winwarn(app, "No document loaded to print.");
 		return;
 	}
+
+	pd_okay = 0;
+	if (DialogBoxW(NULL, L"IDD_DLOGPRINT", hwndframe, dlogprintproc) <= 0 || !pd_okay)
+		return;
 
 	memset(&pd, 0, sizeof(pd));
 	pd.lStructSize = sizeof(pd);
@@ -231,6 +511,9 @@ void winprint(pdfapp_t *app)
 	}
 
 	old_pageno = app->pageno;
+	old_res = app->resolution;
+	dpi = get_dpi_value(print_dpi_choice, old_res);
+	app->resolution = dpi > 0 ? dpi : 72;
 
 	for (p = 1; p <= app->pagecount; p++)
 	{
@@ -240,6 +523,9 @@ void winprint(pdfapp_t *app)
 		BITMAPINFO *bmi;
 		int pw, ph;
 		int x, y, w, h;
+
+		if (!is_page_included(p, app->pagecount))
+			continue;
 
 		pdfapp_gotopage(app, p);
 
@@ -319,6 +605,7 @@ void winprint(pdfapp_t *app)
 	}
 
 	pdfapp_gotopage(app, old_pageno);
+	app->resolution = old_res;
 
 	EndDoc(pd.hDC);
 	DeleteDC(pd.hDC);
@@ -438,11 +725,13 @@ static char pd_password[256] = "";
 static wchar_t pd_passwordw[256] = {0};
 static char td_textinput[1024] = "";
 static int td_retry = 0;
-static int cd_nopts;
-static int *cd_nvals;
-static char **cd_opts;
-static char **cd_vals;
-static int pd_okay = 0;
+static int cd_nopts = 0;
+static int *cd_nvals = NULL;
+static char **cd_opts = NULL;
+static char **cd_vals = NULL;
+
+
+
 
 INT_PTR CALLBACK
 dlogpassproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
