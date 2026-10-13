@@ -1315,6 +1315,8 @@ epub_css_parse_selector(fz_context *ctx, epub_css_rule *rule, const char *sel, i
 		else
 		{
 			int j = i;
+			while (j < n && epub_is_white(sel[j])) j++; /* skip separators */
+			if (j == i) j++; /* ensure progress */
 			while (j < n && !epub_is_white(sel[j]) && sel[j] != '.' && sel[j] != '#' && sel[j] != '[') j++;
 			if (j > i && !rule->tag) rule->tag = epub_strndup(ctx, sel + i, j - i);
 			i = j;
@@ -1498,6 +1500,7 @@ epub_load_stylesheet(epub_document *doc, const char *dir, const char *href)
 	int len;
 
 	fz_var(data);
+	data = NULL;
 	path = epub_resolve_path(ctx, dir, href);
 
 	fz_try(ctx)
@@ -1508,12 +1511,12 @@ epub_load_stylesheet(epub_document *doc, const char *dir, const char *href)
 	fz_always(ctx)
 	{
 		fz_free(ctx, data);
-		fz_free(ctx, path);
 	}
 	fz_catch(ctx)
 	{
-		fz_warn(ctx, "cannot load epub stylesheet: %s", path ? path : href);
+		fz_warn(ctx, "cannot load epub stylesheet: %s", href);
 	}
+	fz_free(ctx, path);
 }
 
 /* Does a rule match the element at stack[depth]? */
