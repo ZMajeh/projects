@@ -443,14 +443,17 @@ epub_read_zip_dir(epub_document *doc)
 {
 	fz_context *ctx = doc->ctx;
 	fz_stream *file = doc->file;
-	int try, i;
+	int filesize, i, start;
 
 	fz_seek(file, 0, 2);
-	try = (int)fz_tell(file);
-	if (try > 65536)
-		try = 65536;
+	filesize = (int)fz_tell(file);
 
-	for (i = try; i >= 0; i--)
+	/* the end-of-central-directory record lives in the last 64KB */
+	start = filesize - 65536;
+	if (start < 0)
+		start = 0;
+
+	for (i = filesize - 22; i >= start; i--)
 	{
 		fz_seek(file, i, 0);
 		if (epub_getlong(file) == ZIP_END_OF_CENTRAL_DIRECTORY_SIG)
@@ -495,6 +498,8 @@ epub_read_file(epub_document *doc, const char *name, int *lenp)
 /* ---- Path resolution ---- */
 
 static void epub_percent_decode(char *s);
+static char *epub_xml_text_content(fz_context *ctx, fz_xml *node);
+static char *epub_trim(char *s);
 
 /* Resolve a relative href against a base directory inside the zip.
  Strips fragments and queries. Returns a fz_malloc'd string. */
@@ -736,23 +741,17 @@ epub_parse_opf(epub_document *doc, unsigned char *data, int len)
 			for (n = fz_xml_down(node); n; n = fz_xml_next(n))
 			{
 				char *tag = (char *)epub_bare_tag(n);
-				char *text = fz_xml_text(n);
-				if (text)
+				char *text = epub_xml_text_content(ctx, n);
+				if (text && *epub_trim(text))
 				{
-					char *end;
-					while (*text && epub_is_white(*text)) text++;
-					end = text + strlen(text);
-					while (end > text && epub_is_white(end[-1])) *--end = 0;
-					if (*text)
-					{
-						char *bare = strrchr(tag, ':');
-						bare = bare ? bare + 1 : tag;
-						if (!strcmp(bare, "title") && !doc->title)
-							doc->title = epub_strdup(ctx, text);
-						else if (!strcmp(bare, "creator") && !doc->author)
-							doc->author = epub_strdup(ctx, text);
-					}
+					char *bare = strrchr(tag, ':');
+					bare = bare ? bare + 1 : tag;
+					if (!strcmp(bare, "title") && !doc->title)
+						doc->title = epub_strdup(ctx, text);
+					else if (!strcmp(bare, "creator") && !doc->author)
+						doc->author = epub_strdup(ctx, text);
 				}
+				fz_free(ctx, text);
 				if (!strcmp(tag, "meta"))
 				{
 					char *name = fz_xml_att(n, "name");
@@ -992,8 +991,13 @@ epub_parse_ncx_navpoints(epub_document *doc, fz_xml *node, int depth)
 			if (label)
 			{
 				fz_xml *t = epub_find_child(label, "text");
-				if (t && fz_xml_text(t))
-					title = epub_strdup(ctx, fz_xml_text(t));
+				if (t)
+				{
+					char *full = epub_xml_text_content(ctx, t);
+					if (full && *epub_trim(full))
+						title = epub_strdup(ctx, full);
+					fz_free(ctx, full);
+				}
 			}
 			if (content)
 				src = fz_xml_att_dup(ctx, content, "src");
@@ -1044,6 +1048,34 @@ epub_parse_ncx_toc(epub_document *doc, char *path)
 	}
 }
 
+/* Recursively collect <a> links from an EPUB3 navigation tree. */
+static void
+epub_parse_nav_tree(epub_document *doc, fz_xml *node)
+{
+	fz_context *ctx = doc->ctx;
+	fz_xml *n;
+
+	for (n = node; n; n = fz_xml_next(n))
+	{
+		const char *tag = epub_bare_tag(n);
+		if (!strcmp(tag, "a"))
+		{
+			char *href = fz_xml_att_dup(ctx, n, "href");
+			if (href)
+			{
+				char *text = epub_xml_text_content(ctx, n);
+				char *title = NULL;
+				if (text && *epub_trim(text))
+					title = epub_strdup(ctx, text);
+				fz_free(ctx, text);
+				epub_toc_append(doc, title, href);
+			}
+		}
+		else if (fz_xml_down(n))
+			epub_parse_nav_tree(doc, fz_xml_down(n));
+	}
+}
+
 static void
 epub_parse_nav_toc(epub_document *doc, char *path)
 {
@@ -1081,52 +1113,7 @@ epub_parse_nav_toc(epub_document *doc, char *path)
 		}
 
 		if (nav)
-		{
-			/* walk list items: <li><a href>text</a><ul>...</ul></li> */
-			for (n = fz_xml_down(nav); n; n = fz_xml_next(n))
-			{
-				fz_xml *li;
-				for (li = fz_xml_down(n); li; li = fz_xml_next(li))
-				{
-					fz_xml *a;
-					if (strcmp(fz_xml_tag(li), "li") && strcmp(fz_xml_tag(li), "ol") && strcmp(fz_xml_tag(li), "ul"))
-						continue;
-					if (!strcmp(fz_xml_tag(li), "li"))
-					{
-						for (a = fz_xml_down(li); a; a = fz_xml_next(a))
-						{
-							if (!strcmp(fz_xml_tag(a), "a"))
-							{
-								char *href = fz_xml_att_dup(ctx, a, "href");
-								char *text = fz_xml_text(a);
-								if (href)
-									epub_toc_append(doc, text ? epub_strdup(ctx, text) : NULL, href);
-							}
-							else if (!strcmp(fz_xml_tag(a), "ol") || !strcmp(fz_xml_tag(a), "ul"))
-							{
-								fz_xml *sub;
-								for (sub = fz_xml_down(a); sub; sub = fz_xml_next(sub))
-								{
-									fz_xml *sa;
-									if (strcmp(fz_xml_tag(sub), "li"))
-										continue;
-									for (sa = fz_xml_down(sub); sa; sa = fz_xml_next(sa))
-									{
-										if (!strcmp(fz_xml_tag(sa), "a"))
-										{
-											char *href = fz_xml_att_dup(ctx, sa, "href");
-											char *text = fz_xml_text(sa);
-											if (href)
-												epub_toc_append(doc, text ? epub_strdup(ctx, text) : NULL, href);
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+			epub_parse_nav_tree(doc, fz_xml_down(nav));
 
 		fz_free_xml(ctx, root);
 	}
@@ -2179,6 +2166,15 @@ epub_layout(fz_context *ctx, epub_document *doc)
 
 	for (b = doc->blocks; b; b = b->next)
 	{
+		/* apply an explicit page break before this block first */
+		if (b->page_break_before && y > EPUB_MARGIN_T)
+		{
+			page_index++;
+			epub_new_page(ctx, doc, EPUB_PAGE_CONTENT);
+			y = EPUB_MARGIN_T;
+			b->page_break_before = 0; /* consumed; children must not repeat it */
+		}
+
 		/* record which page this chapter starts on */
 		if (b->chapter >= 0 && b->chapter < doc->spine_count &&
 			doc->chapter_start_page[b->chapter] == -1)
