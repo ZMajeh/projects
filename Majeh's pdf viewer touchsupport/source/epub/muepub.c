@@ -71,6 +71,33 @@ typedef struct epub_block_s epub_block;
 typedef struct epub_run_s epub_run;
 typedef struct epub_toc_entry_s epub_toc_entry;
 
+/* A parsed CSS rule: one selector + the declarations we understand */
+typedef struct epub_css_rule_s
+{
+	char *tag; /* element name, or NULL for universal */
+	char *cls; /* class name, or NULL */
+	char *id; /* id, or NULL */
+	char *attr; /* attribute name for [attr=value], or NULL */
+	char *attrval; /* attribute value for [attr=value], or NULL */
+	int align; /* 0 = unset, 1 = left, 2 = center, 3 = right, 4 = justify */
+	int italic; /* -1 = unset, 0 = normal, 1 = italic */
+	int bold; /* -1 = unset, 0 = normal, 1 = bold */
+	float size; /* 0 = unset, else points */
+	float margin_top; /* -1 = unset, else points */
+	float margin_bottom; /* -1 = unset, else points */
+	int spec; /* specificity: ids*100 + classes/attrs*10 + tags */
+	int order; /* source order for tie-breaking */
+} epub_css_rule;
+
+/* One element on the walker's ancestor stack */
+typedef struct epub_elem_s
+{
+	char *tag;
+	char *cls; /* first class token */
+	char *id;
+	fz_xml *node; /* for attribute selectors */
+} epub_elem;
+
 /* A styled span of UTF-8 text inside a block */
 struct epub_run_s
 {
@@ -189,6 +216,10 @@ struct epub_document_s
 
 	epub_toc_entry *toc;
 	char *toc_dir; /* directory of the toc file, for resolving hrefs */
+
+	/* CSS: rules loaded from stylesheets and inline styles, in source order */
+	epub_css_rule *css_rules;
+	int css_rule_count, css_rule_cap;
 
 	/* fonts */
 	fz_font *fonts[FONT_COUNT];
@@ -1130,6 +1161,441 @@ epub_parse_nav_toc(epub_document *doc, char *path)
 	}
 }
 
+/* ---- Minimal CSS engine ---- */
+
+/* Case-insensitive check that s (length n) equals keyword. */
+static int
+epub_keyword(const char *s, int n, const char *kw)
+{
+	while (n > 0 && kw[0])
+	{
+		int a = *s++, b = *kw++;
+		if (a >= 'A' && a <= 'Z') a += 32;
+		if (a != b) return 0;
+		n--;
+	}
+	return n == 0 && kw[0] == 0;
+}
+
+/* Parse a CSS length to points. Returns 0 if it cannot be understood.
+ em/ex are relative to the given base size. */
+static float
+epub_css_len(const char *s, int n, float base)
+{
+	float v;
+	char unit[8];
+	int ui = 0, i, neg = 0, seen = 0;
+
+	if (n <= 0) return 0;
+	i = 0;
+	if (s[i] == '-') { neg = 1; i++; }
+	else if (s[i] == '+') i++;
+	if (i >= n) return 0;
+
+	v = 0;
+	while (i < n && s[i] >= '0' && s[i] <= '9') { v = v * 10 + (s[i] - '0'); i++; seen = 1; }
+	if (i < n && s[i] == '.')
+	{
+		float scale = 0.1f;
+		i++;
+		while (i < n && s[i] >= '0' && s[i] <= '9') { v += (s[i] - '0') * scale; scale *= 0.1f; i++; seen = 1; }
+	}
+	if (!seen) return 0;
+	if (neg) v = -v;
+
+	while (i < n && ui < 7 && !epub_is_white(s[i]))
+		unit[ui++] = (s[i] >= 'A' && s[i] <= 'Z') ? s[i] + 32 : s[i], i++;
+	unit[ui] = 0;
+
+	if (!strcmp(unit, "pt")) return v;
+	if (!strcmp(unit, "px")) return v * 0.75f;
+	if (!strcmp(unit, "in")) return v * 72;
+	if (!strcmp(unit, "cm")) return v * 28.3465f;
+	if (!strcmp(unit, "mm")) return v * 2.83465f;
+	if (!strcmp(unit, "pc")) return v * 12;
+	if (!strcmp(unit, "em") || !strcmp(unit, "rem")) return v * base;
+	if (!strcmp(unit, "ex")) return v * base * 0.5f;
+	if (ui == 0) return v; /* bare number: treat as pt */
+	return 0; /* %, auto, etc: unset */
+}
+
+/* Apply a single "prop:value" declaration to a rule. */
+static void
+epub_css_decl(epub_css_rule *rule, const char *prop, const char *val, int vlen, float base)
+{
+	while (vlen > 0 && epub_is_white(val[0])) { val++; vlen--; }
+	while (vlen > 0 && epub_is_white(val[vlen-1])) vlen--;
+	if (vlen <= 0) return;
+
+	if (!strcmp(prop, "text-align"))
+	{
+		if (epub_keyword(val, vlen, "center")) rule->align = 2;
+		else if (epub_keyword(val, vlen, "right")) rule->align = 3;
+		else if (epub_keyword(val, vlen, "justify")) rule->align = 4;
+		else if (epub_keyword(val, vlen, "left")) rule->align = 1;
+	}
+	else if (!strcmp(prop, "font-style"))
+	{
+		rule->italic = (epub_keyword(val, vlen, "italic") || epub_keyword(val, vlen, "oblique")) ? 1 : 0;
+	}
+	else if (!strcmp(prop, "font-weight"))
+	{
+		rule->bold = (epub_keyword(val, vlen, "bold") || epub_keyword(val, vlen, "bolder")) ? 1 : 0;
+	}
+	else if (!strcmp(prop, "font-size"))
+	{
+		float sz = epub_css_len(val, vlen, base);
+		if (sz > 0) rule->size = sz;
+	}
+	else if (!strcmp(prop, "margin-top"))
+	{
+		float m = epub_css_len(val, vlen, base);
+		if (m != 0) rule->margin_top = m;
+	}
+	else if (!strcmp(prop, "margin-bottom"))
+	{
+		float m = epub_css_len(val, vlen, base);
+		if (m != 0) rule->margin_bottom = m;
+	}
+}
+
+/* Parse a compound selector (no combinators) into a rule. */
+static void
+epub_css_parse_selector(fz_context *ctx, epub_css_rule *rule, const char *sel, int n)
+{
+	int i = 0;
+
+	while (n > 0 && epub_is_white(sel[0])) { sel++; n--; }
+	while (n > 0 && epub_is_white(sel[n-1])) n--;
+
+	while (i < n)
+	{
+		char c = sel[i];
+		if (c == '.')
+		{
+			int j = i + 1;
+			while (j < n && !epub_is_white(sel[j]) && sel[j] != '.' && sel[j] != '#' && sel[j] != '[') j++;
+			if (j > i + 1 && !rule->cls) rule->cls = epub_strndup(ctx, sel + i + 1, j - i - 1);
+			i = j;
+		}
+		else if (c == '#')
+		{
+			int j = i + 1;
+			while (j < n && !epub_is_white(sel[j]) && sel[j] != '.' && sel[j] != '#' && sel[j] != '[') j++;
+			if (j > i + 1 && !rule->id) rule->id = epub_strndup(ctx, sel + i + 1, j - i - 1);
+			i = j;
+		}
+		else if (c == '[')
+		{
+			int j = i + 1, k;
+			while (j < n && sel[j] != ']' && sel[j] != '=') j++;
+			if (j > i + 1 && !rule->attr) rule->attr = epub_strndup(ctx, sel + i + 1, j - (i + 1));
+			if (j < n && sel[j] == '=')
+			{
+				j++;
+				if (j < n && (sel[j] == '"' || sel[j] == '\''))
+				{
+					char q = sel[j++];
+					k = j;
+					while (k < n && sel[k] != q) k++;
+					rule->attrval = epub_strndup(ctx, sel + j, k - j);
+					j = k + 1;
+				}
+				else
+				{
+					k = j;
+					while (k < n && sel[k] != ']') k++;
+					rule->attrval = epub_strndup(ctx, sel + j, k - j);
+					j = k;
+				}
+			}
+			while (j < n && sel[j] != ']') j++;
+			i = (j < n) ? j + 1 : n;
+		}
+		else
+		{
+			int j = i;
+			while (j < n && !epub_is_white(sel[j]) && sel[j] != '.' && sel[j] != '#' && sel[j] != '[') j++;
+			if (j > i && !rule->tag) rule->tag = epub_strndup(ctx, sel + i, j - i);
+			i = j;
+		}
+	}
+
+	rule->spec = 0;
+	if (rule->id) rule->spec += 100;
+	if (rule->cls) rule->spec += 10;
+	if (rule->attr) rule->spec += 10;
+	if (rule->tag) rule->spec += 1;
+}
+
+/* Append a fresh rule to the document. */
+static epub_css_rule *
+epub_css_add(fz_context *ctx, epub_document *doc)
+{
+	epub_css_rule *rule;
+	if (doc->css_rule_count == doc->css_rule_cap)
+	{
+		doc->css_rule_cap = doc->css_rule_cap ? doc->css_rule_cap * 2 : 32;
+		doc->css_rules = fz_resize_array(ctx, doc->css_rules, doc->css_rule_cap, sizeof(epub_css_rule));
+	}
+	rule = &doc->css_rules[doc->css_rule_count++];
+	memset(rule, 0, sizeof *rule);
+	rule->order = doc->css_rule_count;
+	rule->italic = -1;
+	rule->bold = -1;
+	rule->margin_top = -1;
+	rule->margin_bottom = -1;
+	return rule;
+}
+
+/* Parse a stylesheet body: a sequence of "selector { decls }" rules.
+ Selectors containing combinators or pseudo-classes are skipped. */
+static void
+epub_css_parse(fz_context *ctx, epub_document *doc, const char *css)
+{
+	const char *s = css;
+
+	while (*s)
+	{
+		epub_css_rule *rule;
+		const char *sel_start;
+		int sel_len, brace, skip = 0, i;
+
+		for (;;)
+		{
+			while (*s && epub_is_white(*s)) s++;
+			if (s[0] == '/' && s[1] == '*')
+			{
+				s += 2;
+				while (*s && !(s[0] == '*' && s[1] == '/')) s++;
+				if (*s) s += 2;
+			}
+			else break;
+		}
+		if (!*s) break;
+		if (*s == '@')
+		{
+			while (*s && *s != '{' && *s != ';') s++;
+			if (*s == '{')
+			{
+				int depth = 0;
+				while (*s)
+				{
+					if (*s == '{') depth++;
+					else if (*s == '}') { depth--; s++; if (depth == 0) break; }
+					s++;
+				}
+			}
+			else if (*s == ';') s++;
+			continue;
+		}
+
+		sel_start = s;
+		while (*s && *s != '{')
+		{
+			if (*s == '/' && s[1] == '*')
+			{
+				s += 2;
+				while (*s && !(*s == '*' && s[1] == '/')) s++;
+				if (*s) s += 2;
+				continue;
+			}
+			s++;
+		}
+		if (*s != '{') break;
+		sel_len = s - sel_start;
+		s++; /* past '{' */
+
+		for (i = 0; i < sel_len; i++)
+		{
+			char c = sel_start[i];
+			if (c == '>' || c == '+' || c == '~' || c == ':' || c == ',')
+				skip = 1;
+		}
+
+		rule = epub_css_add(ctx, doc);
+		if (skip)
+		{
+			brace = 1;
+			while (*s && brace > 0)
+			{
+				if (*s == '{') brace++;
+				else if (*s == '}') brace--;
+				s++;
+			}
+			doc->css_rule_count--;
+			continue;
+		}
+		epub_css_parse_selector(ctx, rule, sel_start, sel_len);
+
+		brace = 1;
+		while (*s && brace > 0)
+		{
+			const char *pstart, *vstart;
+			int plen, vlen;
+
+			while (*s && epub_is_white(*s)) s++;
+			if (!*s) break;
+			if (*s == '}')
+			{
+				brace--;
+				s++;
+				break;
+			}
+			if (s[0] == '/' && s[1] == '*')
+			{
+				s += 2;
+				while (*s && !(*s == '*' && s[1] == '/')) s++;
+				if (*s) s += 2;
+				continue;
+			}
+
+			pstart = s;
+			while (*s && *s != ':' && *s != ';' && *s != '}') s++;
+			if (*s != ':')
+			{
+				while (*s && *s != ';' && *s != '}') s++;
+				if (*s == ';') s++;
+				else if (*s == '}') { brace--; s++; }
+				continue;
+			}
+			plen = s - pstart;
+			while (plen > 0 && epub_is_white(pstart[plen-1])) plen--;
+			s++;
+
+			vstart = s;
+			while (*s && *s != ';' && *s != '}')
+			{
+				if (s[0] == '/' && s[1] == '*')
+				{
+					s += 2;
+					while (*s && !(*s == '*' && s[1] == '/')) s++;
+					if (*s) s += 2;
+					continue;
+				}
+				s++;
+			}
+			vlen = s - vstart;
+			if (*s == ';') s++;
+
+			if (plen > 0)
+			{
+				char *prop = epub_strndup(ctx, pstart, plen);
+				epub_css_decl(rule, prop, vstart, vlen, EPUB_BODY_SIZE);
+				fz_free(ctx, prop);
+			}
+		}
+	}
+}
+
+/* Load an external stylesheet referenced by <link rel=stylesheet href=...>. */
+static void
+epub_load_stylesheet(epub_document *doc, const char *dir, const char *href)
+{
+	fz_context *ctx = doc->ctx;
+	unsigned char *data;
+	char *path;
+	int len;
+
+	fz_var(data);
+	path = epub_resolve_path(ctx, dir, href);
+
+	fz_try(ctx)
+	{
+		data = epub_read_file(doc, path, &len);
+		epub_css_parse(ctx, doc, (const char *)data);
+	}
+	fz_always(ctx)
+	{
+		fz_free(ctx, data);
+		fz_free(ctx, path);
+	}
+	fz_catch(ctx)
+	{
+		fz_warn(ctx, "cannot load epub stylesheet: %s", path ? path : href);
+	}
+}
+
+/* Does a rule match the element at stack[depth]? */
+static int
+epub_css_matches(const epub_css_rule *r, const epub_elem *stack, int depth)
+{
+	const epub_elem *e = &stack[depth];
+
+	if (r->tag)
+	{
+		if (!e->tag) return 0;
+		if (strcmp(r->tag, e->tag) && !epub_keyword(r->tag, strlen(r->tag), e->tag))
+			return 0;
+	}
+	if (r->id)
+	{
+		if (!e->id || strcmp(r->id, e->id)) return 0;
+	}
+	if (r->cls)
+	{
+		char *cls;
+		if (!e->cls) return 0;
+		for (cls = e->cls; cls && *cls; )
+		{
+			const char *tok = cls;
+			char *sp = strchr(cls, ' ');
+			int tlen = sp ? (int)(sp - cls) : (int)strlen(cls);
+			if ((int)strlen(r->cls) == tlen && !strncmp(r->cls, tok, tlen))
+				break;
+			cls = sp ? sp + 1 : NULL;
+		}
+		if (!cls || !*cls) return 0;
+	}
+	if (r->attr)
+	{
+		char *v;
+		if (!e->node) return 0;
+		v = fz_xml_att(e->node, r->attr);
+		if (!v) return 0;
+		if (r->attrval && strcmp(r->attrval, v)) return 0;
+	}
+
+	return 1;
+}
+
+/* Pick the highest-priority matching rule, or NULL. */
+static const epub_css_rule *
+epub_css_match(epub_document *doc, const epub_elem *stack, int depth)
+{
+	const epub_css_rule *best = NULL;
+	int i;
+	for (i = 0; i < doc->css_rule_count; i++)
+	{
+		const epub_css_rule *r = &doc->css_rules[i];
+		if (!epub_css_matches(r, stack, depth))
+			continue;
+		if (!best || r->spec > best->spec ||
+			(r->spec == best->spec && r->order > best->order))
+			best = r;
+	}
+	return best;
+}
+
+/* Free all CSS rules. */
+static void
+epub_css_free(fz_context *ctx, epub_document *doc)
+{
+	int i;
+	for (i = 0; i < doc->css_rule_count; i++)
+	{
+		epub_css_rule *r = &doc->css_rules[i];
+		fz_free(ctx, r->tag);
+		fz_free(ctx, r->cls);
+		fz_free(ctx, r->id);
+		fz_free(ctx, r->attr);
+		fz_free(ctx, r->attrval);
+	}
+	fz_free(ctx, doc->css_rules);
+	doc->css_rules = NULL;
+	doc->css_rule_count = doc->css_rule_cap = 0;
+}
+
 /* ---- Chapter parsing: XHTML -> blocks of styled runs ---- */
 
 typedef struct epub_list_state_s
@@ -1155,6 +1621,8 @@ typedef struct epub_parser_s
 	int center;
 	int right;
 	int pending_break;
+	float pending_margin_top; /* -1 = unset */
+	float pending_margin_bottom;
 
 	/* current block under construction */
 	epub_block *block;
@@ -1166,6 +1634,14 @@ typedef struct epub_parser_s
 	int dd_indent;
 
 	int suppress; /* inside script/style/head */
+
+	/* CSS ancestor stack (innermost last) */
+	epub_elem stack[32];
+	int depth;
+
+	/* saved alignment/margins for style scoping */
+	int save_center, save_right;
+	float save_margin_top, save_margin_bottom;
 } epub_parser;
 
 /* Decode a named entity into UTF-8 at d; returns bytes written (0 to drop). */
@@ -1495,12 +1971,133 @@ epub_parse_img(epub_parser *p, fz_xml *node)
 /* Walk an XML node list building blocks and runs. */
 static void epub_walk(epub_parser *p, fz_xml *node);
 
+static void epub_walk(epub_parser *p, fz_xml *node);
+
+static void epub_dispatch(epub_parser *p, fz_xml *node, char *tag, char *text);
+
+/* Push an element onto the CSS ancestor stack. */
+static int
+epub_push(epub_parser *p, fz_xml *node)
+{
+	epub_elem *e;
+	if (p->depth >= 32)
+		return 0;
+	e = &p->stack[p->depth];
+	e->tag = (char *)epub_bare_tag(node);
+	e->cls = fz_xml_att(node, "class");
+	e->id = fz_xml_att(node, "id");
+	e->node = node;
+	p->depth++;
+	return 1;
+}
+
+static void
+epub_pop(epub_parser *p)
+{
+	if (p->depth > 0)
+		p->depth--;
+}
+
+/* Apply an inline style="..." declaration list onto the current element's
+ style, treating it as the highest priority. Modifies p->bold/italic/size
+ and the pending block's align/margins. Returns the align it set (0 none). */
+static void
+epub_apply_inline_style(epub_parser *p, fz_xml *node)
+{
+	char *sty = fz_xml_att(node, "style");
+	const char *s = sty;
+	if (!s) return;
+	while (*s)
+	{
+		const char *pstart, *vstart;
+		int plen, vlen;
+		epub_css_rule tmp;
+
+		while (*s && epub_is_white(*s)) s++;
+		if (!*s) break;
+		pstart = s;
+		while (*s && *s != ':' && *s != ';') s++;
+		if (*s != ':') { while (*s && *s != ';') s++; if (*s == ';') s++; continue; }
+		plen = s - pstart;
+		s++;
+		vstart = s;
+		while (*s && *s != ';') s++;
+		vlen = s - vstart;
+		if (*s == ';') s++;
+		if (plen <= 0) continue;
+
+		memset(&tmp, 0, sizeof tmp);
+		tmp.italic = -1; tmp.bold = -1; tmp.margin_top = -1; tmp.margin_bottom = -1;
+		{
+			char *prop = epub_strndup(p->doc->ctx, pstart, plen);
+			epub_css_decl(&tmp, prop, vstart, vlen, p->size > 0 ? p->size : EPUB_BODY_SIZE);
+			fz_free(p->doc->ctx, prop);
+		}
+		if (tmp.align)
+		{
+			if (tmp.align == 2) { p->center = 1; p->right = 0; }
+			else if (tmp.align == 3) { p->right = 1; p->center = 0; }
+			else if (tmp.align == 4) { p->right = 0; p->center = 0; }
+			else { p->center = 0; p->right = 0; }
+			if (p->block) { p->block->center = p->center; p->block->right = p->right; }
+		}
+		if (tmp.italic >= 0) p->italic = tmp.italic;
+		if (tmp.bold >= 0) p->bold = tmp.bold;
+		if (tmp.size > 0) p->size = tmp.size;
+		if (tmp.margin_top >= 0) p->pending_margin_top = tmp.margin_top;
+		if (tmp.margin_bottom >= 0) p->pending_margin_bottom = tmp.margin_bottom;
+	}
+}
+
+/* Apply matched CSS rules for the current element (stack top) to the
+ current block/pending inline style. Inline style has already been applied
+ with higher priority, so only fill unset fields here. */
+static void
+epub_apply_css(epub_parser *p)
+{
+	const epub_css_rule *r = epub_css_match(p->doc, p->stack, p->depth - 1);
+	if (!r) return;
+
+	if (r->align)
+	{
+		if (r->align == 2) { p->center = 1; p->right = 0; }
+		else if (r->align == 3) { p->right = 1; p->center = 0; }
+		else if (r->align == 4) { p->right = 0; p->center = 0; }
+		else { p->center = 0; p->right = 0; }
+		if (p->block) { p->block->center = p->center; p->block->right = p->right; }
+	}
+	if (r->italic >= 0) p->italic = r->italic;
+	if (r->bold >= 0) p->bold = r->bold;
+	if (r->size > 0) p->size = r->size;
+	if (r->margin_top >= 0) p->pending_margin_top = r->margin_top;
+	if (r->margin_bottom >= 0) p->pending_margin_bottom = r->margin_bottom;
+}
+
 static void
 epub_walk_children(epub_parser *p, fz_xml *node)
 {
 	fz_xml *child = fz_xml_down(node);
 	if (child)
 		epub_walk(p, child);
+}
+
+/* Save/restore alignment and margins around an element. */
+static void
+epub_style_scope_begin(epub_parser *p)
+{
+	p->save_center = p->center;
+	p->save_right = p->right;
+	p->save_margin_top = p->pending_margin_top;
+	p->save_margin_bottom = p->pending_margin_bottom;
+}
+
+static void
+epub_style_scope_end(epub_parser *p)
+{
+	p->center = p->save_center;
+	p->right = p->save_right;
+	p->pending_margin_top = p->save_margin_top;
+	p->pending_margin_bottom = p->save_margin_bottom;
 }
 
 /* Recurse with a saved style snapshot. */
@@ -1573,12 +2170,50 @@ epub_walk(epub_parser *p, fz_xml *node)
 			continue;
 		}
 
-		/* skip non-content elements entirely */
-		if (!strcmp(tag, "head") || !strcmp(tag, "script") || !strcmp(tag, "style") ||
-			!strcmp(tag, "meta") || !strcmp(tag, "link") || !strcmp(tag, "title"))
+		/* <style> and <link rel=stylesheet>: load into the CSS rule set */
+		if (!strcmp(tag, "style"))
+		{
+			if (text)
+				epub_css_parse(p->doc->ctx, p->doc, text);
+			continue;
+		}
+		if (!strcmp(tag, "link"))
+		{
+			char *rel = fz_xml_att(node, "rel");
+			char *href = fz_xml_att(node, "href");
+			if (rel && href && epub_strstr(rel, "stylesheet"))
+				epub_load_stylesheet(p->doc, p->dir, href);
+			continue;
+		}
+
+		/* skip other non-content elements entirely */
+		if (!strcmp(tag, "head") || !strcmp(tag, "script") ||
+			!strcmp(tag, "meta") || !strcmp(tag, "title"))
 		{
 			continue;
 		}
+
+		/* push element, apply CSS + inline style, dispatch, then restore */
+		{
+			int pushed = epub_push(p, node);
+			epub_style_scope_begin(p);
+			epub_apply_css(p);
+			epub_apply_inline_style(p, node);
+
+			epub_dispatch(p, node, tag, text);
+
+			epub_style_scope_end(p);
+			if (pushed) epub_pop(p);
+		}
+	}
+}
+
+/* Dispatch a single (non-text, non-void, non-style) element. The element
+ has already been pushed and its CSS applied by the caller. */
+static void
+epub_dispatch(epub_parser *p, fz_xml *node, char *tag, char *text)
+{
+	fz_context *ctx = p->doc->ctx;
 
 		/* headings */
 		if (tag[0] == 'h' && tag[1] >= '1' && tag[1] <= '6' && tag[2] == 0)
@@ -1603,7 +2238,7 @@ epub_walk(epub_parser *p, fz_xml *node)
 				p->bold = 0;
 				epub_end_block(p);
 			}
-			continue;
+			return;
 		}
 
 		/* block-level containers */
@@ -1613,7 +2248,7 @@ epub_walk(epub_parser *p, fz_xml *node)
 			!strcmp(tag, "address") || !strcmp(tag, "dt") || !strcmp(tag, "dd") ||
 			!strcmp(tag, "blockquote") || !strcmp(tag, "center"))
 		{
-			if (p->suppress) continue;
+			if (p->suppress) return;
 			epub_end_block(p);
 			if (!strcmp(tag, "blockquote"))
 				p->quote_depth++;
@@ -1631,13 +2266,13 @@ epub_walk(epub_parser *p, fz_xml *node)
 			else if (!strcmp(tag, "dd"))
 				p->dd_indent--;
 			epub_end_block(p);
-			continue;
+			return;
 		}
 
 		/* lists */
 		if (!strcmp(tag, "ul") || !strcmp(tag, "ol"))
 		{
-			if (p->suppress) continue;
+			if (p->suppress) return;
 			epub_end_block(p);
 			if (p->list_depth < 32)
 			{
@@ -1648,11 +2283,11 @@ epub_walk(epub_parser *p, fz_xml *node)
 			epub_walk_children(p, node);
 			if (p->list_depth > 0) p->list_depth--;
 			epub_end_block(p);
-			continue;
+			return;
 		}
 		if (!strcmp(tag, "li"))
 		{
-			if (p->suppress) continue;
+			if (p->suppress) return;
 			epub_end_block(p);
 			if (p->list_depth > 0 && p->list_depth <= 32)
 			{
@@ -1666,18 +2301,20 @@ epub_walk(epub_parser *p, fz_xml *node)
 				p->block->kind = EPUB_B_PARA;
 				p->block->chapter = p->chapter;
 				p->block->indent = (p->quote_depth + p->list_depth + p->dd_indent) * 22;
+				p->block->center = p->center;
+				p->block->right = p->right;
 				p->block->marker = epub_strdup(ctx, buf);
 				p->block->spacing_after = EPUB_LIST_SPACE;
 			}
 			epub_walk_children(p, node);
 			epub_end_block(p);
-			continue;
+			return;
 		}
 
 		/* preformatted */
 		if (!strcmp(tag, "pre"))
 		{
-			if (p->suppress) continue;
+			if (p->suppress) return;
 			epub_end_block(p);
 			p->block = fz_malloc_struct(ctx, epub_block);
 			p->block->kind = EPUB_B_PRE;
@@ -1689,47 +2326,46 @@ epub_walk(epub_parser *p, fz_xml *node)
 			p->pre = 0;
 			p->mono = 0;
 			epub_end_block(p);
-			continue;
+			return;
 		}
 
 		/* inline style tags */
 		if (!strcmp(tag, "b") || !strcmp(tag, "strong"))
 		{
 			epub_walk_styled(p, node, 1, p->italic, p->mono, p->size, p->rise);
-			continue;
+			return;
 		}
 		if (!strcmp(tag, "i") || !strcmp(tag, "em") || !strcmp(tag, "cite") ||
 			!strcmp(tag, "var"))
 		{
 			epub_walk_styled(p, node, p->bold, 1, p->mono, p->size, p->rise);
-			continue;
+			return;
 		}
 		if (!strcmp(tag, "code") || !strcmp(tag, "kbd") || !strcmp(tag, "samp") ||
 			!strcmp(tag, "tt"))
 		{
 			epub_walk_styled(p, node, p->bold, p->italic, 1, p->size, p->rise);
-			continue;
+			return;
 		}
 		if (!strcmp(tag, "small"))
 		{
 			float sz = p->size > 0 ? p->size - 1 : EPUB_BODY_SIZE - 1;
 			epub_walk_styled(p, node, p->bold, p->italic, p->mono, sz, p->rise);
-			continue;
+			return;
 		}
 		if (!strcmp(tag, "sup"))
 		{
 			epub_walk_styled(p, node, p->bold, p->italic, p->mono, p->size, p->rise + 4);
-			continue;
+			return;
 		}
 		if (!strcmp(tag, "sub"))
 		{
 			epub_walk_styled(p, node, p->bold, p->italic, p->mono, p->size, p->rise - 3);
-			continue;
+			return;
 		}
 
 		/* default: recurse transparently */
 		epub_walk_children(p, node);
-	}
 }
 
 /* Parse one XHTML chapter file into blocks. */
@@ -1743,6 +2379,8 @@ epub_parse_chapter(epub_document *doc, int chapter, const char *path)
 	int len;
 
 	memset(&p, 0, sizeof p);
+	p.pending_margin_top = -1;
+	p.pending_margin_bottom = -1;
 	p.doc = doc;
 	p.chapter = chapter;
 	p.dir = epub_dirname(ctx, path);
@@ -1754,6 +2392,37 @@ epub_parse_chapter(epub_document *doc, int chapter, const char *path)
 	{
 		data = epub_read_file(doc, path, &len);
 		root = epub_xml_root(fz_parse_xml(ctx, data, len + 1));
+
+		/* load stylesheets from <head> (both inline <style> and <link>) */
+		if (root)
+		{
+			fz_xml *head = NULL;
+			if (!strcmp(epub_bare_tag(root), "html"))
+				head = epub_find_child(root, "head");
+			else if (!strcmp(epub_bare_tag(root), "head"))
+				head = root;
+			if (head)
+			{
+				fz_xml *hn;
+				for (hn = fz_xml_down(head); hn; hn = fz_xml_next(hn))
+				{
+					const char *ht = epub_bare_tag(hn);
+					if (!strcmp(ht, "style"))
+					{
+						char *htext = fz_xml_text(hn);
+						if (htext)
+							epub_css_parse(ctx, doc, htext);
+					}
+					else if (!strcmp(ht, "link"))
+					{
+						char *rel = fz_xml_att(hn, "rel");
+						char *href = fz_xml_att(hn, "href");
+						if (rel && href && epub_strstr(rel, "stylesheet"))
+							epub_load_stylesheet(doc, p.dir, href);
+					}
+				}
+			}
+		}
 
 		/* find <body> (namespace tolerant) */
 		body = NULL;
@@ -2439,6 +3108,8 @@ epub_close_document(epub_document *doc)
 
 	if (!doc) return;
 	ctx = doc->ctx;
+
+	epub_css_free(ctx, doc);
 
 	for (i = 0; i < FONT_COUNT; i++)
 		fz_drop_font(ctx, doc->fonts[i]);
