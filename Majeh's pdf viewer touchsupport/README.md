@@ -15,6 +15,14 @@ This version is uniquely improved with **Native Touch Support**, meaning if you 
 *   **Comic Books:** CBZ.
 *   **Images:** PNG, JPG, JPEG, TIFF, BMP, GIF.
 
+#### 📖 About EPUB (eBook) Support
+EPUB files are real, reflowable ebooks — not dumped as raw text. When you open one, Majeh's Viewer reads the book's structure and shows it the way it was meant to be read:
+*   **Reflowable text** — chapters are laid out and word-wrapped to fit your screen, in the book's own fonts (headings, bold, italics, lists, blockquotes and more).
+*   **Book styling** — it reads the book's stylesheet (CSS), so things like centered headings and right-aligned attributions appear correctly.
+*   **Table of Contents** — the book's own chapter list (outline) is loaded and available in the viewer, just like for PDFs.
+*   **Cover & title page** — a nice title page with the cover art is added automatically.
+*   **Images** — pictures inside the book are shown in place.
+
 ## 🎮 How to Use It
 *   **Zooming:** Use two fingers to pinch the screen, or press `+` and `-` on your keyboard.
 *   **Mouse Zoom:** Hold **Ctrl** and scroll your mouse wheel.
