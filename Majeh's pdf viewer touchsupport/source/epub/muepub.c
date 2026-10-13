@@ -453,7 +453,10 @@ epub_read_zip_dir(epub_document *doc)
 	if (start < 0)
 		start = 0;
 
-	for (i = filesize - 22; i >= start; i--)
+	i = filesize - 22;
+	if (i < start)
+		i = start;
+	for (; i >= start; i--)
 	{
 		fz_seek(file, i, 0);
 		if (epub_getlong(file) == ZIP_END_OF_CENTRAL_DIRECTORY_SIG)
