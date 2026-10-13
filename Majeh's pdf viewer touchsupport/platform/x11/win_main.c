@@ -632,7 +632,7 @@ int winfilename(wchar_t *buf, int len)
 	ofn.nMaxFile = len;
 	ofn.lpstrInitialDir = NULL;
 	ofn.lpstrTitle = L"Majeh's PDF Viewer: Open PDF file";
-	ofn.lpstrFilter = L"Documents (*.pdf;*.xps;*.cbz;*.zip;*.png;*.jpg;*.tif;*.txt;*.reg)\0*.zip;*.cbz;*.xps;*.pdf;*.jpe;*.jpg;*.jpeg;*.jfif;*.tif;*.tiff;*.txt;*.reg\0PDF Files (*.pdf)\0*.pdf\0XPS Files (*.xps)\0*.xps\0CBZ Files (*.cbz;*.zip)\0*.zip;*.cbz\0Text Files (*.txt;*.reg)\0*.txt;*.reg\0Image Files (*.png;*.jpe;*.tif)\0*.png;*.jpg;*.jpe;*.jpeg;*.jfif;*.tif;*.tiff\0All Files\0*\0\0";
+	ofn.lpstrFilter = L"Documents (*.pdf;*.xps;*.cbz;*.epub;*.zip;*.png;*.jpg;*.tif;*.txt;*.reg)\0*.epub;*.zip;*.cbz;*.xps;*.pdf;*.jpe;*.jpg;*.jpeg;*.jfif;*.tif;*.tiff;*.txt;*.reg\0EPUB Files (*.epub)\0*.epub\0PDF Files (*.pdf)\0*.pdf\0XPS Files (*.xps)\0*.xps\0CBZ Files (*.cbz;*.zip)\0*.zip;*.cbz\0Text Files (*.txt;*.reg)\0*.txt;*.reg\0Image Files (*.png;*.jpe;*.tif)\0*.png;*.jpg;*.jpe;*.jpeg;*.jfif;*.tif;*.tiff\0All Files\0*\0\0";
 	ofn.Flags = OFN_FILEMUSTEXIST|OFN_HIDEREADONLY;
 	return GetOpenFileNameW(&ofn);
 }
@@ -650,7 +650,7 @@ int wingetsavepath(pdfapp_t *app, char *buf, int len)
 	ofn.nMaxFile = PATH_MAX;
 	ofn.lpstrInitialDir = NULL;
 	ofn.lpstrTitle = L"Majeh's PDF Viewer: Save PDF file";
-	ofn.lpstrFilter = L"Documents (*.pdf;*.xps;*.cbz;*.zip;*.png;*.jpg;*.tif;*.txt;*.reg)\0*.zip;*.cbz;*.xps;*.pdf;*.jpe;*.jpg;*.jpeg;*.jfif;*.tif;*.tiff;*.txt;*.reg\0PDF Files (*.pdf)\0*.pdf\0XPS Files (*.xps)\0*.xps\0CBZ Files (*.cbz;*.zip)\0*.zip;*.cbz\0Text Files (*.txt;*.reg)\0*.txt;*.reg\0Image Files (*.png;*.jpe;*.tif)\0*.png;*.jpg;*.jpe;*.jpeg;*.jfif;*.tif;*.tiff\0All Files\0*\0\0";
+	ofn.lpstrFilter = L"Documents (*.pdf;*.xps;*.cbz;*.epub;*.zip;*.png;*.jpg;*.tif;*.txt;*.reg)\0*.epub;*.zip;*.cbz;*.xps;*.pdf;*.jpe;*.jpg;*.jpeg;*.jfif;*.tif;*.tiff;*.txt;*.reg\0EPUB Files (*.epub)\0*.epub\0PDF Files (*.pdf)\0*.pdf\0XPS Files (*.xps)\0*.xps\0CBZ Files (*.cbz;*.zip)\0*.zip;*.cbz\0Text Files (*.txt;*.reg)\0*.txt;*.reg\0Image Files (*.png;*.jpe;*.tif)\0*.png;*.jpg;*.jpe;*.jpeg;*.jfif;*.tif;*.tiff\0All Files\0*\0\0";
 	ofn.Flags = OFN_HIDEREADONLY;
 	if (GetSaveFileName(&ofn))
 	{

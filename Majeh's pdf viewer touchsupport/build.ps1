@@ -13,7 +13,7 @@ if (!(Test-Path "generated")) { New-Item -ItemType Directory "generated" }
 mingw32-make OS=MINGW CC=gcc $MakeConfig generate
 
 Write-Host "--- Creating Build Folders ---"
-$dirs = @("fitz", "pdf", "pdf/js", "xps", "cbz", "img", "tiff", "tools", "platform/x11", "freetype", "jbig2dec", "jpeg", "openjpeg", "zlib", "mujs")
+$dirs = @("fitz", "pdf", "pdf/js", "xps", "cbz", "img", "tiff", "epub", "tools", "platform/x11", "freetype", "jbig2dec", "jpeg", "openjpeg", "zlib", "mujs")
 foreach ($d in $dirs) { New-Item -ItemType Directory -Force -Path "build/$Config/$d" | Out-Null }
 
 Write-Host "--- Compiling Libraries ---"
