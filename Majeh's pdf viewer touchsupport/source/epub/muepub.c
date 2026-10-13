@@ -404,6 +404,8 @@ epub_read_zip_dir_imp(epub_document *doc, int startoffset)
 		if (sig != ZIP_CENTRAL_DIRECTORY_SIG)
 			fz_throw(ctx, FZ_ERROR_GENERIC, "wrong zip central directory signature (0x%x)", sig);
 
+		(void) epub_getshort(file); /* version made by */
+		(void) epub_getshort(file); /* version to extract */
 		general = epub_getshort(file);
 		method = epub_getshort(file);
 		(void) epub_getshort(file); /* file time */
@@ -419,10 +421,10 @@ epub_read_zip_dir_imp(epub_document *doc, int startoffset)
 		(void) epub_getlong(file); /* external attributes */
 
 		entry = &doc->entry[doc->entry_count];
+		entry->offset = epub_getlong(file); /* local header offset */
 		entry->name = fz_malloc(ctx, namelength + 1);
 		fz_read(file, (unsigned char *)entry->name, namelength);
 		entry->name[namelength] = 0;
-		entry->offset = epub_getlong(file);
 		entry->csize = csize;
 		entry->usize = usize;
 
@@ -492,6 +494,8 @@ epub_read_file(epub_document *doc, const char *name, int *lenp)
 
 /* ---- Path resolution ---- */
 
+static void epub_percent_decode(char *s);
+
 /* Resolve a relative href against a base directory inside the zip.
  Strips fragments and queries. Returns a fz_malloc'd string. */
 static char *
@@ -514,6 +518,7 @@ epub_resolve_path(fz_context *ctx, const char *dir, const char *href)
 	}
 
 	path = epub_strndup(ctx, href, len);
+	epub_percent_decode(path);
 
 	if (dir && dir[0])
 	{
@@ -575,9 +580,50 @@ epub_find_child(fz_xml *parent, const char *tag)
 {
 	fz_xml *n;
 	for (n = fz_xml_down(parent); n; n = fz_xml_next(n))
-		if (!strcmp(fz_xml_tag(n), tag))
+	{
+		char *t = fz_xml_tag(n);
+		char *c = strrchr(t, ':');
+		if (!strcmp(c ? c + 1 : t, tag))
 			return n;
+	}
 	return NULL;
+}
+
+/* Strip an XML namespace prefix: "opf:package" -> "package". */
+static const char *
+epub_bare_tag(fz_xml *node)
+{
+	char *tag = fz_xml_tag(node);
+	char *c = strrchr(tag, ':');
+	return c ? c + 1 : tag;
+}
+
+static int
+epub_hexval(int c)
+{
+	if (c >= '0' && c <= '9') return c - '0';
+	if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+	if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+	return -1;
+}
+
+/* Decode %XX sequences in place ("My%20Book.xhtml" -> "My Book.xhtml"). */
+static void
+epub_percent_decode(char *s)
+{
+	char *d = s;
+	while (*s)
+	{
+		int hi, lo;
+		if (s[0] == '%' && (hi = epub_hexval(s[1])) >= 0 && (lo = epub_hexval(s[2])) >= 0)
+		{
+			*d++ = (hi << 4) | lo;
+			s += 3;
+		}
+		else
+			*d++ = *s++;
+	}
+	*d = 0;
 }
 
 /* Duplicate the value of an attribute, or return NULL. */
@@ -674,7 +720,7 @@ epub_parse_opf(epub_document *doc, unsigned char *data, int len)
 	char *cover_id = NULL;
 
 	root = epub_xml_root(fz_parse_xml(ctx, data, len + 1));
-	if (!root || strcmp(fz_xml_tag(root), "package"))
+	if (!root || strcmp(epub_bare_tag(root), "package"))
 	{
 		fz_free_xml(ctx, root);
 		fz_throw(ctx, FZ_ERROR_GENERIC, "epub opf file is not a package document");
@@ -689,16 +735,21 @@ epub_parse_opf(epub_document *doc, unsigned char *data, int len)
 			fz_xml *n;
 			for (n = fz_xml_down(node); n; n = fz_xml_next(n))
 			{
-				char *tag = fz_xml_tag(n);
+				char *tag = (char *)epub_bare_tag(n);
 				char *text = fz_xml_text(n);
 				if (text)
 				{
+					char *end;
 					while (*text && epub_is_white(*text)) text++;
+					end = text + strlen(text);
+					while (end > text && epub_is_white(end[-1])) *--end = 0;
 					if (*text)
 					{
-						if (!strcmp(tag, "title") && !doc->title)
+						char *bare = strrchr(tag, ':');
+						bare = bare ? bare + 1 : tag;
+						if (!strcmp(bare, "title") && !doc->title)
 							doc->title = epub_strdup(ctx, text);
-						else if (!strcmp(tag, "creator") && !doc->author)
+						else if (!strcmp(bare, "creator") && !doc->author)
 							doc->author = epub_strdup(ctx, text);
 					}
 				}
@@ -721,7 +772,7 @@ epub_parse_opf(epub_document *doc, unsigned char *data, int len)
 			for (item = fz_xml_down(node); item; item = fz_xml_next(item))
 			{
 				char *id, *href, *type, *props;
-				if (strcmp(fz_xml_tag(item), "item"))
+				if (strcmp(epub_bare_tag(item), "item"))
 					continue;
 				id = fz_xml_att(item, "id");
 				href = fz_xml_att(item, "href");
@@ -752,7 +803,7 @@ epub_parse_opf(epub_document *doc, unsigned char *data, int len)
 			for (itemref = fz_xml_down(node); itemref; itemref = fz_xml_next(itemref))
 			{
 				char *idref, *linear;
-				if (strcmp(fz_xml_tag(itemref), "itemref"))
+				if (strcmp(epub_bare_tag(itemref), "itemref"))
 					continue;
 				linear = fz_xml_att(itemref, "linear");
 				if (linear && !strcmp(linear, "no"))
@@ -858,6 +909,66 @@ epub_toc_append(epub_document *doc, char *title, char *href)
 	*tail = entry;
 }
 
+/* Concatenate all descendant text of an element into a fz_malloc'd string. */
+static char *
+epub_xml_text_content(fz_context *ctx, fz_xml *node)
+{
+	fz_xml *n;
+	char *out = NULL;
+	int len = 0, cap = 0;
+
+	for (n = fz_xml_down(node); n; n = fz_xml_next(n))
+	{
+		char *t = fz_xml_text(n);
+		if (t)
+		{
+			int tl = strlen(t);
+			if (len + tl + 1 > cap)
+			{
+				cap = len + tl + 64;
+				out = fz_resize_array(ctx, out, cap, 1);
+			}
+			memcpy(out + len, t, tl);
+			len += tl;
+			out[len] = 0;
+		}
+		else
+		{
+			/* recurse into nested elements */
+			char *sub = epub_xml_text_content(ctx, n);
+			if (sub)
+			{
+				int sl = strlen(sub);
+				if (len + sl + 2 > cap)
+				{
+					cap = len + sl + 64;
+					out = fz_resize_array(ctx, out, cap, 1);
+				}
+				if (len > 0 && out[len-1] != ' ')
+					out[len++] = ' ';
+				memcpy(out + len, sub, sl);
+				len += sl;
+				out[len] = 0;
+				fz_free(ctx, sub);
+			}
+		}
+	}
+	return out;
+}
+
+/* Trim leading/trailing whitespace of a NUL-terminated string in place. */
+static char *
+epub_trim(char *s)
+{
+	char *end;
+	while (*s && epub_is_white(*s)) s++;
+	if (*s == 0) return s;
+	end = s + strlen(s);
+	while (end > s && epub_is_white(end[-1])) end--;
+	*end = 0;
+	return s;
+}
+
 static void
 epub_parse_ncx_navpoints(epub_document *doc, fz_xml *node, int depth)
 {
@@ -869,7 +980,7 @@ epub_parse_ncx_navpoints(epub_document *doc, fz_xml *node, int depth)
 
 	for (n = fz_xml_down(node); n; n = fz_xml_next(n))
 	{
-		if (strcmp(fz_xml_tag(n), "navPoint"))
+		if (strcmp(epub_bare_tag(n), "navPoint"))
 			continue;
 
 		{
@@ -915,7 +1026,7 @@ epub_parse_ncx_toc(epub_document *doc, char *path)
 		data = epub_read_file(doc, path, &len);
 		doc->toc_dir = epub_dirname(ctx, path);
 		root = epub_xml_root(fz_parse_xml(ctx, data, len + 1));
-		if (root && !strcmp(fz_xml_tag(root), "ncx"))
+		if (root && !strcmp(epub_bare_tag(root), "ncx"))
 		{
 			map = epub_find_child(root, "navMap");
 			if (map)
@@ -956,7 +1067,7 @@ epub_parse_nav_toc(epub_document *doc, char *path)
 			for (n = root; n; n = fz_xml_next(n))
 			{
 				char *epubtype = fz_xml_att(n, "epub:type");
-				if (!strcmp(fz_xml_tag(n), "nav"))
+				if (!strcmp(epub_bare_tag(n), "nav"))
 				{
 					if (!nav)
 						nav = n;
@@ -1654,16 +1765,16 @@ epub_parse_chapter(epub_document *doc, int chapter, const char *path)
 		data = epub_read_file(doc, path, &len);
 		root = epub_xml_root(fz_parse_xml(ctx, data, len + 1));
 
-		/* find <body> */
+		/* find <body> (namespace tolerant) */
 		body = NULL;
 		if (root)
 		{
-			if (!strcmp(fz_xml_tag(root), "body"))
+			if (!strcmp(epub_bare_tag(root), "body"))
 				body = root;
 			else
 			{
 				for (n = fz_xml_down(root); n; n = fz_xml_next(n))
-					if (!strcmp(fz_xml_tag(n), "body"))
+					if (!strcmp(epub_bare_tag(n), "body"))
 					{ body = n; break; }
 				if (!body)
 					body = root; /* fallback: walk everything */
@@ -2570,6 +2681,30 @@ epub_open_document_with_stream(fz_context *ctx, fz_stream *file)
 		epub_parse_opf(doc, opf_data, opf_len);
 		fz_free(ctx, opf_data);
 		opf_data = NULL;
+
+		/* fallback: if no spine entries were found, treat every
+		   xhtml/html manifest item as a chapter (document order) */
+		if (doc->spine_count == 0)
+		{
+			int cap = 16, i;
+			doc->spine = fz_malloc_array(ctx, cap, sizeof(char *));
+			for (i = 0; i < doc->item_count; i++)
+			{
+				char *type = doc->items[i].type;
+				char *href = doc->items[i].href;
+				if (type && (!strcmp(type, "application/xhtml+xml") ||
+						!strcmp(type, "text/html")) &&
+					href && href[0])
+				{
+					if (doc->spine_count == cap)
+					{
+						cap *= 2;
+						doc->spine = fz_resize_array(ctx, doc->spine, cap, sizeof(char *));
+					}
+					doc->spine[doc->spine_count++] = epub_strdup(ctx, doc->items[i].id);
+				}
+			}
+		}
 
 		/* parse all spine chapters into blocks */
 		for (i = 0; i < doc->spine_count; i++)
