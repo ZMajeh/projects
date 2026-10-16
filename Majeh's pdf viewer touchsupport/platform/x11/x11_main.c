@@ -142,6 +142,15 @@ void winwarn(pdfapp_t *app, char *msg)
 	fprintf(stderr, "majehpdfviewer: %s\n", buf);
 }
 
+/* No dialog support in the X11 frontend; notify the user and default to yes,
+ * matching the YES default used in winalert below. */
+int winquery(pdfapp_t *app, char *msg)
+{
+	showmessage(app, 10, msg);
+	fprintf(stderr, "majehpdfviewer: query: %s (defaulting to yes)\n", msg);
+	return 1;
+}
+
 void winalert(pdfapp_t *app, pdf_alert_event *alert)
 {
 	char buf[1024];

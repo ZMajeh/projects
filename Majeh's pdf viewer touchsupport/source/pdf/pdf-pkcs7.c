@@ -28,7 +28,8 @@ typedef struct bsegs_struct
 
 static int bsegs_read(BIO *b, char *buf, int size)
 {
-	BIO_SEGS_CTX *ctx = (BIO_SEGS_CTX *)b->ptr;
+	BIO_SEGS_CTX *ctx = (BIO_SEGS_CTX *)BIO_get_data(b);
+	BIO *next = BIO_next(b);
 	int read = 0;
 
 	while (size > 0 && ctx->current_seg < ctx->nsegs)
@@ -41,9 +42,9 @@ static int bsegs_read(BIO *b, char *buf, int size)
 		if (nb > 0)
 		{
 			if (ctx->seg_pos == 0)
-				(void)BIO_seek(b->next_bio, ctx->seg[ctx->current_seg][SEG_START]);
+				(void)BIO_seek(next, ctx->seg[ctx->current_seg][SEG_START]);
 
-			(void)BIO_read(b->next_bio, buf, nb);
+			(void)BIO_read(next, buf, nb);
 			ctx->seg_pos += nb;
 			read += nb;
 			buf += nb;
@@ -63,7 +64,7 @@ static int bsegs_read(BIO *b, char *buf, int size)
 
 static long bsegs_ctrl(BIO *b, int cmd, long arg1, void *arg2)
 {
-	return BIO_ctrl(b->next_bio, cmd, arg1, arg2);
+	return BIO_ctrl(BIO_next(b), cmd, arg1, arg2);
 }
 
 static int bsegs_new(BIO *b)
@@ -79,10 +80,8 @@ static int bsegs_new(BIO *b)
 	ctx->seg = NULL;
 	ctx->nsegs = 0;
 
-	b->init = 1;
-	b->ptr = (char *)ctx;
-	b->flags = 0;
-	b->num = 0;
+	BIO_set_data(b, ctx);
+	BIO_set_init(b, 1);
 
 	return 1;
 }
@@ -92,40 +91,42 @@ static int bsegs_free(BIO *b)
 	if (b == NULL)
 		return 0;
 
-	free(b->ptr);
-	b->ptr = NULL;
-	b->init = 0;
-	b->flags = 0;
+	free(BIO_get_data(b));
+	BIO_set_data(b, NULL);
+	BIO_set_init(b, 0);
 
 	return 1;
 }
 
 static long bsegs_callback_ctrl(BIO *b, int cmd, bio_info_cb *fp)
 {
-	return BIO_callback_ctrl(b->next_bio, cmd, fp);
+	return BIO_callback_ctrl(BIO_next(b), cmd, fp);
 }
 
-static BIO_METHOD methods_bsegs =
-{
-	0,"segment reader",
-	NULL,
-	bsegs_read,
-	NULL,
-	NULL,
-	bsegs_ctrl,
-	bsegs_new,
-	bsegs_free,
-	bsegs_callback_ctrl,
-};
+/* BIO is opaque from OpenSSL 1.1 onwards, so the method has to be
+ * constructed at run time instead of statically initialised. */
+static BIO_METHOD *methods_bsegs;
 
 static BIO_METHOD *BIO_f_segments(void)
 {
-	return &methods_bsegs;
+	if (methods_bsegs == NULL)
+	{
+		BIO_METHOD *m = BIO_meth_new(BIO_TYPE_FILTER | BIO_TYPE_START, "segment reader");
+		if (m == NULL)
+			return NULL;
+		BIO_meth_set_read(m, bsegs_read);
+		BIO_meth_set_ctrl(m, bsegs_ctrl);
+		BIO_meth_set_create(m, bsegs_new);
+		BIO_meth_set_destroy(m, bsegs_free);
+		BIO_meth_set_callback_ctrl(m, bsegs_callback_ctrl);
+		methods_bsegs = m;
+	}
+	return methods_bsegs;
 }
 
 static void BIO_set_segments(BIO *b, int (*seg)[2], int nsegs)
 {
-	BIO_SEGS_CTX *ctx = (BIO_SEGS_CTX *)b->ptr;
+	BIO_SEGS_CTX *ctx = (BIO_SEGS_CTX *)BIO_get_data(b);
 
 	ctx->seg = seg;
 	ctx->nsegs = nsegs;
@@ -133,31 +134,49 @@ static void BIO_set_segments(BIO *b, int (*seg)[2], int nsegs)
 
 typedef struct verify_context_s
 {
-	X509_STORE_CTX x509_ctx;
 	char certdesc[256];
 	int err;
 } verify_context;
 
+/* X509_STORE_CTX is opaque from OpenSSL 1.1 onwards, so verify_context
+ * can no longer live inside it (and its ex_data is reset by the
+ * X509_STORE_CTX_init() that PKCS7_dataVerify() performs internally).
+ * Instead the verify_context is hung off the X509_STORE, which the
+ * callback finds back via X509_STORE_CTX_get0_store(). */
+static int verify_context_index = -1;
+
+static int get_verify_context_index(void)
+{
+	if (verify_context_index < 0)
+		verify_context_index = X509_STORE_get_ex_new_index(0, NULL, NULL, NULL, NULL);
+	return verify_context_index;
+}
+
 static int verify_callback(int ok, X509_STORE_CTX *ctx)
 {
-	verify_context *vctx;
+	X509_STORE *store = X509_STORE_CTX_get0_store(ctx);
+	verify_context *vctx = (store != NULL) ? X509_STORE_get_ex_data(store, verify_context_index) : NULL;
 	X509 *err_cert;
 	int err, depth;
-
-	vctx = (verify_context *)ctx;
 
 	err_cert = X509_STORE_CTX_get_current_cert(ctx);
 	err = X509_STORE_CTX_get_error(ctx);
 	depth = X509_STORE_CTX_get_error_depth(ctx);
 
-	X509_NAME_oneline(X509_get_subject_name(err_cert), vctx->certdesc, sizeof(vctx->certdesc));
+	if (vctx != NULL)
+	{
+		if (err_cert != NULL)
+			X509_NAME_oneline(X509_get_subject_name(err_cert), vctx->certdesc, sizeof(vctx->certdesc));
+		else
+			vctx->certdesc[0] = 0;
+	}
 
 	if (!ok && depth >= 6)
 	{
 		X509_STORE_CTX_set_error(ctx, X509_V_ERR_CERT_CHAIN_TOO_LONG);
 	}
 
-	switch (ctx->error)
+	switch (X509_STORE_CTX_get_error(ctx))
 	{
 	case X509_V_ERR_INVALID_PURPOSE:
 	case X509_V_ERR_CERT_HAS_EXPIRED:
@@ -179,7 +198,7 @@ static int verify_callback(int ok, X509_STORE_CTX *ctx)
 		break;
 	}
 
-	if (ok && vctx->err == X509_V_OK)
+	if (ok && vctx != NULL && vctx->err == X509_V_OK)
 		vctx->err = err;
 	return ok;
 }
@@ -188,26 +207,36 @@ static int pk7_verify(X509_STORE *cert_store, PKCS7 *p7, BIO *detached, char *eb
 {
 	PKCS7_SIGNER_INFO *si;
 	verify_context vctx;
+	X509_STORE_CTX *x509_ctx = NULL;
 	BIO *p7bio=NULL;
 	char readbuf[1024*4];
 	int res = 1;
 	int i;
 	STACK_OF(PKCS7_SIGNER_INFO) *sk;
 
+	vctx.certdesc[0] = 0;
 	vctx.err = X509_V_OK;
 	ebuf[0] = 0;
 
-	OpenSSL_add_all_algorithms();
-
-	EVP_add_digest(EVP_md5());
-	EVP_add_digest(EVP_sha1());
-
-	ERR_load_crypto_strings();
-
 	ERR_clear_error();
 
-	X509_VERIFY_PARAM_set_flags(cert_store->param, X509_V_FLAG_CB_ISSUER_CHECK);
+	/* X509_V_FLAG_CB_ISSUER_CHECK is deprecated and defined as 0
+	 * (i.e. a no-op) in OpenSSL 1.1 and later, so it is no longer set. */
 	X509_STORE_set_verify_cb_func(cert_store, verify_callback);
+
+	if (!X509_STORE_set_ex_data(cert_store, get_verify_context_index(), &vctx))
+	{
+		fz_strlcpy(ebuf, "Out of memory", ebufsize);
+		return 0;
+	}
+
+	x509_ctx = X509_STORE_CTX_new();
+	if (x509_ctx == NULL)
+	{
+		X509_STORE_set_ex_data(cert_store, get_verify_context_index(), NULL);
+		fz_strlcpy(ebuf, "Out of memory", ebufsize);
+		return 0;
+	}
 
 	p7bio = PKCS7_dataInit(p7, detached);
 
@@ -229,7 +258,7 @@ static int pk7_verify(X509_STORE *cert_store, PKCS7 *p7, BIO *detached, char *eb
 	{
 		int rc;
 		si = sk_PKCS7_SIGNER_INFO_value(sk, i);
-		rc = PKCS7_dataVerify(cert_store, &vctx.x509_ctx, p7bio,p7, si);
+		rc = PKCS7_dataVerify(cert_store, x509_ctx, p7bio, p7, si);
 		if (rc <= 0 || vctx.err != X509_V_OK)
 		{
 			char tbuf[120];
@@ -250,8 +279,8 @@ static int pk7_verify(X509_STORE *cert_store, PKCS7 *p7, BIO *detached, char *eb
 	}
 
 exit:
-	X509_STORE_CTX_cleanup(&vctx.x509_ctx);
-	ERR_free_strings();
+	X509_STORE_CTX_free(x509_ctx);
+	X509_STORE_set_ex_data(cert_store, get_verify_context_index(), NULL);
 
 	return res;
 }
@@ -288,7 +317,7 @@ static int verify_sig(char *sig, int sig_len, char *file, int (*byte_range)[2], 
 	if (bsegs == NULL)
 		goto exit;
 
-	bsegs->next_bio = bdata;
+	BIO_set_next(bsegs, bdata);
 	BIO_set_segments(bsegs, byte_range, byte_range_len);
 
 	/* Find the certificates in the pk7 file */
@@ -364,26 +393,26 @@ void pdf_free_designated_name(pdf_designated_name *dn)
 }
 
 
-static void add_from_bags(X509 **pX509, EVP_PKEY **pPkey, STACK_OF(PKCS12_SAFEBAG) *bags, const char *pw);
+static void add_from_bags(X509 **pX509, EVP_PKEY **pPkey, const STACK_OF(PKCS12_SAFEBAG) *bags, const char *pw);
 
 static void add_from_bag(X509 **pX509, EVP_PKEY **pPkey, PKCS12_SAFEBAG *bag, const char *pw)
 {
 	EVP_PKEY *pkey = NULL;
 	X509 *x509 = NULL;
-	PKCS8_PRIV_KEY_INFO *p8 = NULL;
 	switch (M_PKCS12_bag_type(bag))
 	{
 	case NID_keyBag:
-		p8 = bag->value.keybag;
-		pkey = EVP_PKCS82PKEY(p8);
+		pkey = EVP_PKCS82PKEY(PKCS12_SAFEBAG_get0_p8inf(bag));
 		break;
 
 	case NID_pkcs8ShroudedKeyBag:
-		p8 = PKCS12_decrypt_skey(bag, pw, (int)strlen(pw));
-		if (p8)
 		{
-			pkey = EVP_PKCS82PKEY(p8);
-			PKCS8_PRIV_KEY_INFO_free(p8);
+			PKCS8_PRIV_KEY_INFO *p8 = PKCS12_decrypt_skey(bag, pw, (int)strlen(pw));
+			if (p8)
+			{
+				pkey = EVP_PKCS82PKEY(p8);
+				PKCS8_PRIV_KEY_INFO_free(p8);
+			}
 		}
 		break;
 
@@ -393,7 +422,7 @@ static void add_from_bag(X509 **pX509, EVP_PKEY **pPkey, PKCS12_SAFEBAG *bag, co
 		break;
 
 	case NID_safeContentsBag:
-		add_from_bags(pX509, pPkey, bag->value.safes, pw);
+		add_from_bags(pX509, pPkey, PKCS12_SAFEBAG_get0_safes(bag), pw);
 		break;
 	}
 
@@ -414,7 +443,7 @@ static void add_from_bag(X509 **pX509, EVP_PKEY **pPkey, PKCS12_SAFEBAG *bag, co
 	}
 }
 
-static void add_from_bags(X509 **pX509, EVP_PKEY **pPkey, STACK_OF(PKCS12_SAFEBAG) *bags, const char *pw)
+static void add_from_bags(X509 **pX509, EVP_PKEY **pPkey, const STACK_OF(PKCS12_SAFEBAG) *bags, const char *pw)
 {
 	int i;
 
@@ -438,13 +467,6 @@ pdf_signer *pdf_read_pfx(fz_context *ctx, const char *pfile, const char *pw)
 		signer = fz_malloc_struct(ctx, pdf_signer);
 		signer->ctx = ctx;
 		signer->refs = 1;
-
-		OpenSSL_add_all_algorithms();
-
-		EVP_add_digest(EVP_md5());
-		EVP_add_digest(EVP_sha1());
-
-		ERR_load_crypto_strings();
 
 		ERR_clear_error();
 
@@ -599,7 +621,7 @@ void pdf_write_digest(pdf_document *doc, char *filename, pdf_obj *byte_range, in
 		if (bsegs == NULL)
 			fz_throw(ctx, FZ_ERROR_GENERIC, "Failed to create segment filter");
 
-		bsegs->next_bio = bdata;
+		BIO_set_next(bsegs, bdata);
 		BIO_set_segments(bsegs, brange, brange_len);
 
 		p7 = PKCS7_new();
