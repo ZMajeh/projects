@@ -6,6 +6,15 @@
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
 #include <X11/XF86keysym.h>
+#include <X11/extensions/XInput.h>
+#include <X11/extensions/XInput2.h>
+
+#include <string.h>
+
+/* Some XI2.h versions only provide XIMaskLen/XIMaskIsSet */
+#ifndef XIMaskSet
+#define XIMaskSet(mask, event) (((unsigned char*)(mask))[(event)>>3] |= (1 << ((event) & 7)))
+#endif
 
 #include <sys/select.h>
 #include <sys/time.h>
@@ -94,6 +103,15 @@ static char copyutf8[1024 * 48] = "";
 static Time copytime;
 static char *filename;
 static char message[1024] = "";
+
+static int xi_opcode = -1;
+
+/* Multi-touch gesture state (mirrors win_main.c) */
+typedef struct { unsigned int id; int active; int start_x, start_y, x, y; } touch_point_t;
+static touch_point_t touch_pts[10];
+static int gesture_fired = 0;
+static int touch_max_active = 0;
+static int touch_emulating = 0;
 
 static pdfapp_t gapp;
 static int closing = 0;
@@ -255,6 +273,33 @@ static void winopen(void)
 	XSelectInput(xdpy, xwin,
 		StructureNotifyMask | ExposureMask | KeyPressMask |
 		PointerMotionMask | ButtonPressMask | ButtonReleaseMask);
+
+	/* Select for multi-touch events (XInput 2.2+). Once selected, the server
+	 * no longer emulates the mouse for touch input, so single finger press,
+	 * drag and release are emulated manually in ontouch(). */
+	{
+		int ev, err;
+		XExtensionVersion *ver;
+		if (XQueryExtension(xdpy, "XInputExtension", &xi_opcode, &ev, &err))
+		{
+			ver = XGetExtensionVersion(xdpy, "XInputExtension");
+			if (ver && ver->present && ver->major_version >= 2 && ver->minor_version >= 2)
+			{
+				XIEventMask mask;
+				unsigned char m[XIMaskLen(XI_TouchEnd) + 1];
+				mask.deviceid = XIAllMasterDevices;
+				mask.mask_len = sizeof(m);
+				mask.mask = m;
+				memset(m, 0, sizeof(m));
+				XIMaskSet(m, XI_TouchBegin);
+				XIMaskSet(m, XI_TouchUpdate);
+				XIMaskSet(m, XI_TouchEnd);
+				XISelectEvents(xdpy, xwin, &mask, 1);
+			}
+			if (ver)
+				XFree(ver);	/* libXi does not export XFreeExtensionVersion */
+		}
+	}
 
 	mapped = 0;
 
@@ -788,6 +833,195 @@ static void onmouse(int x, int y, int btn, int modifiers, int state)
 	pdfapp_onmouse(&gapp, x, y, btn, modifiers, state);
 }
 
+static void ontouch(XEvent *xev)
+{
+	XIEvent *xiev;
+	XIDeviceEvent *ev;
+	unsigned int id;
+	int x, y;
+	int found = -1;
+	int j;
+
+	if (xev->xcookie.extension != xi_opcode)
+		return;
+	if (!XGetEventData(xdpy, &xev->xcookie))
+		return;
+
+	xiev = (XIEvent *)xev->xcookie.data;
+	if (xiev->evtype != XI_TouchBegin &&
+		xiev->evtype != XI_TouchUpdate &&
+		xiev->evtype != XI_TouchEnd)
+	{
+		XFreeEventData(xdpy, &xev->xcookie);
+		return;
+	}
+
+	ev = (XIDeviceEvent *)xiev;
+	id = ev->detail;
+	x = (int)ev->event_x;
+	y = (int)ev->event_y;
+
+	for (j = 0; j < 10; j++)
+		if (touch_pts[j].active && touch_pts[j].id == id)
+		{
+			found = j;
+			break;
+		}
+
+	if (xiev->evtype == XI_TouchBegin)
+	{
+		int already_active = 0;
+		for (j = 0; j < 10; j++) if (touch_pts[j].active) already_active++;
+		if (already_active == 0)
+		{
+			touch_max_active = 0;
+			gesture_fired = 0;
+		}
+		for (j = 0; j < 10; j++)
+		{
+			if (!touch_pts[j].active)
+			{
+				touch_pts[j].id = id;
+				touch_pts[j].active = 1;
+				touch_pts[j].start_x = x;
+				touch_pts[j].start_y = y;
+				touch_pts[j].x = x;
+				touch_pts[j].y = y;
+				if (already_active + 1 > touch_max_active)
+					touch_max_active = already_active + 1;
+				break;
+			}
+		}
+		if (already_active == 0)
+		{
+			/* First finger: emulate a mouse press (server side mouse
+			 * emulation is disabled once we select for touch events). */
+			onmouse(x, y, 1, 0, 1);
+			touch_emulating = 1;
+		}
+		else if (touch_emulating)
+		{
+			/* Second finger down: end the emulated press/drag so the
+			 * ongoing pan does not fight with gesture recognition. */
+			onmouse(x, y, 1, 0, -1);
+			touch_emulating = 0;
+		}
+	}
+	else if (xiev->evtype == XI_TouchUpdate)
+	{
+		if (found != -1)
+		{
+			touch_pts[found].x = x;
+			touch_pts[found].y = y;
+			if (touch_emulating)
+				onmouse(x, y, 0, 0, 0);
+		}
+	}
+	else /* XI_TouchEnd */
+	{
+		if (found != -1)
+		{
+			touch_pts[found].active = 0;
+			if (touch_emulating)
+			{
+				int any_active = 0;
+				for (j = 0; j < 10; j++) if (touch_pts[j].active) any_active = 1;
+				if (!any_active)
+				{
+					onmouse(x, y, 1, 0, -1);
+					touch_emulating = 0;
+				}
+			}
+		}
+	}
+
+	/* Gesture recognition (identical logic to the WM_TOUCH handler in win_main.c) */
+	{
+		int active_count = 0;
+		int active_indices[10];
+		long sum_dx = 0, sum_dy = 0;
+		int k;
+		for (k = 0; k < 10; k++)
+		{
+			if (touch_pts[k].active)
+			{
+				active_indices[active_count++] = k;
+				sum_dx += (touch_pts[k].x - touch_pts[k].start_x);
+				sum_dy += (touch_pts[k].y - touch_pts[k].start_y);
+			}
+		}
+
+		if (active_count >= 2)
+		{
+			touch_point_t *p1 = &touch_pts[active_indices[0]];
+			touch_point_t *p2 = &touch_pts[active_indices[1]];
+
+			int dx1 = p1->x - p1->start_x;
+			int dy1 = p1->y - p1->start_y;
+			int dx2 = p2->x - p2->start_x;
+			int dy2 = p2->y - p2->start_y;
+
+			int curr_dx = p1->x - p2->x;
+			int curr_dy = p1->y - p2->y;
+			long curr_dist_sq = (long)curr_dx * curr_dx + (long)curr_dy * curr_dy;
+
+			int init_dx = p1->start_x - p2->start_x;
+			int init_dy = p1->start_y - p2->start_y;
+			long init_dist_sq = (long)init_dx * init_dx + (long)init_dy * init_dy;
+
+			/* Continuous Pinch Zoom (Ratio check) */
+			if (init_dist_sq > 400 && (curr_dist_sq > init_dist_sq * 1.5 || curr_dist_sq < init_dist_sq * 0.6))
+			{
+				if (curr_dist_sq > init_dist_sq)
+					onkey('+');
+				else
+					onkey('-');
+
+				p1->start_x = p1->x; p1->start_y = p1->y;
+				p2->start_x = p2->x; p2->start_y = p2->y;
+				gesture_fired = 1;
+			}
+			/* 2-Finger Swipe (Stabilized) */
+			else if (!gesture_fired && active_count == 2 && touch_max_active == 2)
+			{
+				if ((long)dx1*dx2 + (long)dy1*dy2 > 0) /* Move same direction */
+				{
+					int avg_dx = (dx1 + dx2) / 2;
+					int avg_dy = (dy1 + dy2) / 2;
+					if (avg_dx*avg_dx + avg_dy*avg_dy > 1600) /* 40px */
+					{
+						int key = 0;
+						if (abs(avg_dx) > abs(avg_dy))
+							key = (avg_dx > 0) ? 'i' : 'H';
+						else
+							key = (avg_dy > 0) ? 'f' : 'W';
+						if (key) onkey(key);
+						gesture_fired = 1;
+					}
+				}
+			}
+			/* 3-Finger Swipe (Stabilized) */
+			else if (!gesture_fired && active_count == 3 && touch_max_active == 3)
+			{
+				int avg_dx = sum_dx / 3;
+				int avg_dy = sum_dy / 3;
+				if (avg_dx*avg_dx + avg_dy*avg_dy > 1600) /* 40px */
+				{
+					int key = 0;
+					if (abs(avg_dx) > abs(avg_dy))
+						key = (avg_dx > 0) ? 'R' : 'L';
+					else
+						key = (avg_dy > 0) ? 'Z' : 'C';
+					if (key) onkey(key);
+					gesture_fired = 1;
+				}
+			}
+		}
+	}
+
+	XFreeEventData(xdpy, &xev->xcookie);
+}
+
 static void signal_handler(int signal)
 {
 	if (signal == SIGHUP)
@@ -985,6 +1219,10 @@ int main(int argc, char **argv)
 					pdfapp_reloadpage(&gapp);
 				else if (xevt.xclient.format == 32 && xevt.xclient.data.l[0] == WM_DELETE_WINDOW)
 					closing = 1;
+				break;
+
+			case GenericEvent:
+				ontouch(&xevt);
 				break;
 			}
 		}
