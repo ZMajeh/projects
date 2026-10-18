@@ -61,19 +61,42 @@
 
 ## Todo Next 📋
 
-### High Priority
-1. **Token auto-refresh** — Use `refresh_access_token()` when access token is near expiry before Gmail API calls
-2. **Error UI** — Show user-facing error messages when OAuth or Gmail API fails (currently only console logs)
-3. **UI feedback in Settings** — Show connected account status (email, provider, token expiry)
+### High Priority (blocking core UX)
+
+1. **Progress bar during email fetch** — Show how many emails are being fetched and for which account (e.g., "Fetching 20 emails for mundhe.anand.anand@gmail.com — 12/20"). Currently there's only a loading state with no progress feedback.
+
+2. **Date/time of fetched emails** — Gmail API returns `internalDate` (epoch ms) per message. Currently not parsed or displayed. Need to extract and format date/time in the email list and reading pane.
+
+3. **To field always shows "me"** — The `To` header from Gmail API is not being parsed/displayed correctly. Currently reading pane shows "To me" hardcoded. Need to extract the actual `To` header from `payload.headers`.
+
+4. **Email fetch caching** — Re-clicking an already-fetched account re-fetches all emails from Gmail API. Need to cache fetched emails per account (by email address) so re-clicking shows cached results instantly without re-fetching.
+
+5. **Email body not completely fetched** — Gmail API `snippet` only shows partial body. Need to fetch full body from `payload.parts` or `payload.body.data` (base64url encoded) and populate `Email.body` completely.
+
+6. **App logo not visible** — The app logo/brand image is not showing on the page. Need to verify the logo asset path and `brand-logo` div styling.
+
+7. **Per-account email count** — Maintain a count of how many emails have been fetched for each connected email account (e.g., "Gmail Personal: 142 emails"). Display in sidebar next to each account.
+
+8. **Manual date/time filter for fetching** — User can manually specify date/time ranges for which they want to fetch emails, supporting multiple accounts and multiple dates. Each account+date combination needs its own progress bar showing fetch status.
 
 ### Medium Priority
-4. **Account switching** — When clicking a different OAuth account, properly refresh emails
-5. **Reading pane** — Show full email body when clicking an email (currently shows preview only)
+
+7. **Email-wise Mail/Labels subsections** — When clicking an email in the reading pane, it should expand and show 2 subsections:
+   - **Mail subsection** — emails from/to that specific email address
+   - **Labels subsection** — labels applied to that email's thread
+   - Global Mail and Labels sections should remain and fetch from all emails across all accounts
+
+8. **Account switching** — When clicking a different OAuth account, properly refresh emails without stale data mixing
+
+9. **Token auto-refresh** — Use `refresh_access_token()` when access token is near expiry before Gmail API calls
+
+10. **Error UI** — Show user-facing error messages when OAuth or Gmail API fails (currently only console logs)
 
 ### Low Priority
-6. **Outlook support (Phase 2)**
-7. **Trunk build verification**
-8. **Security** — `index.html` no longer contains client_secret (reads from localStorage at runtime)
+
+11. **Outlook support (Phase 2)**
+12. **Trunk build verification** — Run `trunk build --release`
+13. **Security** — `index.html` no longer contains client_secret (reads from localStorage at runtime)
 
 ---
 
@@ -260,6 +283,8 @@ For a personal email browser with 90 accounts, **Option A (localStorage)** is th
 ---
 
 ## Git Status
+- Branch: `main` — pushed to `origin/main` ✅
+- Last commit: `06e99035` "Fetch emails via Gmail API with OAuth PKCE"
 - Modified: `.gitignore`, `Cargo.toml`, `index.html`, `src/app.rs`, `src/oauth.rs`, `src/tokens.rs`, `src/components/settings.rs`, `src/components/sidebar.rs`, `src/components/reading_pane.rs`, `src/data.rs`, `src/main.rs`, `run.sh`, `Trunk.toml`
-- Deleted: `src/components/mailbox.rs`, `dist/` artifacts
 - New: `CurrentWork.md`
+- Build artifacts (`dist/`, `target/`) removed from tracking
