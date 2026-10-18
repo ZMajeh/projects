@@ -50,6 +50,14 @@ serve() {
     fi
 }
 
+# Function to start server accessible from other devices (LAN/VPN)
+serve_remote() {
+    if check_prereqs; then
+        echo -e "${GREEN}Starting development server (remote-accessible)...${NC}"
+        ./scripts/serve-remote.sh
+    fi
+}
+
 # Function to build for production
 build() {
     if check_prereqs; then
@@ -67,15 +75,19 @@ case "$1" in
     serve|run)
         serve
         ;;
+    serve-remote|remote)
+        serve_remote
+        ;;
     build)
         build
         ;;
     *)
-        echo "Usage: $0 {setup|serve|build}"
+        echo "Usage: $0 {setup|serve|serve-remote|build}"
         echo ""
-        echo "  setup  : Install Rust, Trunk, and other dependencies"
-        echo "  serve  : Start the local development server (alias: run)"
-        echo "  build  : Build the project for production"
+        echo "  setup         : Install Rust, Trunk, and other dependencies"
+        echo "  serve         : Start the local development server (alias: run)"
+        echo "  serve-remote  : Start server reachable from other devices (alias: remote)"
+        echo "  build         : Build the project for production"
         echo ""
         if [ -z "$1" ]; then
             echo -e "${BLUE}No command provided. Starting development server by default...${NC}"

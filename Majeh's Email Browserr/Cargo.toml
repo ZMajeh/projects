@@ -8,6 +8,34 @@ leptos = { version = "0.6", features = ["csr"] }
 leptos_router = { version = "0.6", features = ["csr"] }
 console_error_panic_hook = "0.1.7"
 wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+    "Window",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "HtmlAnchorElement",
+    "HtmlInputElement",
+    "Location",
+    "History",
+    "FileReader",
+    "Blob",
+    "Storage",
+    "Crypto",
+    "Event",
+] }
+pbkdf2 = "0.11"
+aes-gcm = "0.10"
+base64 = "0.22"
+zeroize = "1.6"
+sha2 = "0.10"
+hmac = "0.12"
+aead = "0.5"
+gloo-net = { version = "0.6", features = ["json", "http"] }
+urlencoding = "2.1"
 
 [profile.release]
 codegen-units = 1

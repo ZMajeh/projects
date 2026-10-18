@@ -1,1 +1,21 @@
 firebase.ts
+
+# Local OAuth credentials (client ID + dev origins — never commit)
+OAUTH_CONFIG.md
+
+# Rust / Cargo
+/target
+
+# Trunk build output
+/dist
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs / env
+*.log
+.env
+.env.local

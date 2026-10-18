@@ -7,24 +7,27 @@ pub enum Tab {
     About,
 }
 
+/// Bottom tab bar (mobile only; hidden by CSS on desktop).
 #[component]
-pub fn BottomNavigation(
-    active_tab: WriteSignal<Tab>,
-    mailbox_visible: ReadSignal<bool>,
-    settings_visible: ReadSignal<bool>,
-    about_visible: ReadSignal<bool>,
-) -> impl IntoView {
+pub fn BottomNavigation(active: ReadSignal<Tab>, set_active_tab: WriteSignal<Tab>) -> impl IntoView {
+    let items = [
+        (Tab::Mailbox, "mail", "Mailbox"),
+        (Tab::Settings, "settings", "Settings"),
+        (Tab::About, "info", "About"),
+    ];
+
     view! {
-        <div class="bottom-nav">
-            <Show when=move || mailbox_visible.get()>
-                <button on:click=move |_| active_tab.set(Tab::Mailbox)>"Mailbox"</button>
-            </Show>
-            <Show when=move || settings_visible.get()>
-                <button on:click=move |_| active_tab.set(Tab::Settings)>"Settings"</button>
-            </Show>
-            <Show when=move || about_visible.get()>
-                <button on:click=move |_| active_tab.set(Tab::About)>"About"</button>
-            </Show>
-        </div>
+        <nav class="bottom-nav mobile-only">
+            {items.into_iter().map(|(tab, icon, label)| view! {
+                <button
+                    class="nav-item"
+                    class:active=move || active.get() == tab
+                    on:click=move |_| set_active_tab.set(tab)
+                >
+                    <crate::components::icons::Icon name=icon/>
+                    <span>{label}</span>
+                </button>
+            }).collect_view()}
+        </nav>
     }
 }
