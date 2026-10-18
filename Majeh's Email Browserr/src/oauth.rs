@@ -4,10 +4,10 @@ use wasm_bindgen::JsCast;
 
 use crate::tokens::OAuthToken;
 
-/// Read the OAuth client ID and the canonical redirect URI from the HTML page
-/// at runtime. These are set in index.html by the build step and never live
-/// inside compiled Rust.
-pub fn config() -> Result<(String, String), String> {
+/// Read the OAuth client ID, client secret, and canonical redirect URI from
+/// the HTML page at runtime. Client secret is read from localStorage first
+/// (so it never needs to be committed), falling back to the meta tag.
+pub fn config() -> Result<(String, String, String), String> {
     let window = match web_sys::window() {
         Some(w) => w,
         None => return Err("no window".to_string()),
@@ -23,12 +23,27 @@ pub fn config() -> Result<(String, String), String> {
         .and_then(|el| el.get_attribute("data-client-id"))
         .filter(|s| !s.is_empty())
         .ok_or_else(|| "missing #__oauth_client_id[data-client-id]".to_string())?;
+    // Try localStorage first (never committed), then fall back to meta tag.
+    let client_secret = window
+        .local_storage()
+        .ok()
+        .flatten()
+        .and_then(|ls| ls.get_item("oauth_client_secret").ok().flatten())
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            doc.query_selector("#__oauth_client_id")
+                .ok()
+                .flatten()
+                .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
+                .and_then(|el| el.get_attribute("data-client-secret"))
+        })
+        .unwrap_or_default();
     let origin = window
         .location()
         .origin()
         .map_err(|e| format!("location.origin failed: {e:?}"))?;
     let redirect_uri = format!("{origin}/auth/callback/google");
-    Ok((client_id, redirect_uri))
+    Ok((client_id, client_secret, redirect_uri))
 }
 
 
@@ -163,6 +178,7 @@ fn form_body(pairs: &[(&str, &str)]) -> String {
 /// Exchange an authorization `code` + verifier for tokens (PKCE flow).
 pub async fn exchange_code(
     client_id: &str,
+    client_secret: &str,
     redirect_uri: &str,
     code: &str,
     code_verifier: &str,
@@ -170,6 +186,7 @@ pub async fn exchange_code(
     let body = form_body(&[
         ("grant_type", "authorization_code"),
         ("client_id", client_id),
+        ("client_secret", client_secret),
         ("code", code),
         ("redirect_uri", redirect_uri),
         ("code_verifier", code_verifier),
@@ -219,6 +236,90 @@ pub async fn fetch_userinfo(access_token: &str) -> Result<UserInfo, String> {
         .json::<UserInfo>()
         .await
         .map_err(|e| format!("userinfo parse failed: {e}"))
+}
+
+/// Gmail API: list message IDs for the authenticated user.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GmailListResponse {
+    #[serde(default)]
+    pub messages: Vec<GmailMessageRef>,
+    #[serde(default)]
+    pub result_size_estimate: u64,
+    #[serde(default, rename = "nextPageToken")]
+    pub next_page_token: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GmailMessageRef {
+    pub id: String,
+    #[serde(rename = "threadId")]
+    pub thread_id: String,
+}
+
+/// Gmail API: get a single message.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GmailMessage {
+    pub id: String,
+    #[serde(rename = "threadId")]
+    pub thread_id: String,
+    #[serde(default, rename = "labelIds")]
+    pub label_ids: Vec<String>,
+    #[serde(default)]
+    pub snippet: String,
+    #[serde(default)]
+    pub payload: Option<GmailMessagePart>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GmailMessagePart {
+    #[serde(default)]
+    pub headers: Vec<GmailHeader>,
+    #[serde(default)]
+    pub body: Option<GmailBody>,
+    #[serde(default)]
+    pub parts: Vec<GmailMessagePart>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GmailHeader {
+    pub name: String,
+    pub value: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GmailBody {
+    #[serde(default)]
+    pub data: Option<String>,
+    #[serde(default)]
+    pub size: u32,
+}
+
+/// List Gmail message IDs (max 20 by default).
+pub async fn gmail_list_messages(access_token: &str) -> Result<GmailListResponse, String> {
+    let url = "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20";
+    let response = gloo_net::http::Request::get(url)
+        .header("Authorization", &format!("Bearer {access_token}"))
+        .send()
+        .await
+        .map_err(|e| format!("gmail list request failed: {e}"))?;
+    response
+        .json::<GmailListResponse>()
+        .await
+        .map_err(|e| format!("gmail list parse failed: {e}"))
+}
+
+/// Fetch a single Gmail message by ID.
+pub async fn gmail_get_message(access_token: &str, message_id: &str) -> Result<GmailMessage, String> {
+    let url = format!("https://gmail.googleapis.com/gmail/v1/users/me/messages/{message_id}");
+    let response = gloo_net::http::Request::get(&url)
+        .header("Authorization", &format!("Bearer {access_token}"))
+        .send()
+        .await
+        .map_err(|e| format!("gmail get request failed: {e}"))?;
+    response
+        .json::<GmailMessage>()
+        .await
+        .map_err(|e| format!("gmail get parse failed: {e}"))
 }
 
 /// Handle the Google OAuth callback. Reads the `code` from the URL query string,
@@ -271,8 +372,8 @@ pub async fn handle_google_callback() -> Result<(OAuthToken, UserInfo), String> 
         let _ = storage.remove_item("oauth_pkce_verifier");
     }
     // Build the redirect URI the same way we did in start_google_oauth.
-    let (client_id, redirect_uri) = config().map_err(|e| e.to_string())?;
-    let token_resp = exchange_code(&client_id, &redirect_uri, &code, &verifier)
+    let (client_id, client_secret, redirect_uri) = config().map_err(|e| e.to_string())?;
+    let token_resp = exchange_code(&client_id, &client_secret, &redirect_uri, &code, &verifier)
         .await
         .map_err(|e| format!("token exchange failed: {e}"))?;
     let user = fetch_userinfo(&token_resp.access_token)
@@ -308,7 +409,7 @@ pub fn extract_google_tokens(response: &TokenResponse, profile: Option<UserInfo>
 }
 
 pub fn start_google_oauth() -> Result<(), String> {
-    let (client_id, redirect_uri) = config()?;
+    let (client_id, _client_secret, redirect_uri) = config()?;
 
     let state = new_state()?;
     let verifier = new_code_verifier()?;

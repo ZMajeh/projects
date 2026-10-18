@@ -50,44 +50,44 @@ impl Folder {
 
 #[derive(Clone)]
 pub struct Account {
-    pub name: &'static str,
-    pub email: &'static str,
-    pub initial: &'static str,
-    pub color: &'static str,
+    pub name: String,
+    pub email: String,
+    pub initial: String,
+    pub color: String,
     pub unread: u32,
 }
 
 #[derive(Clone)]
 pub struct Email {
     pub id: usize,
-    pub sender: &'static str,
-    pub address: &'static str,
-    pub subject: &'static str,
-    pub preview: &'static str,
-    pub time: &'static str,
-    pub initial: &'static str,
-    pub color: &'static str,
+    pub sender: String,
+    pub address: String,
+    pub subject: String,
+    pub preview: String,
+    pub time: String,
+    pub initial: String,
+    pub color: String,
     pub unread: bool,
     pub starred: bool,
     pub folder: Folder,
-    pub body: &'static [&'static str],
+    pub body: Vec<String>,
 }
 
 pub fn accounts() -> Vec<Account> {
     vec![
-        Account { name: "Gmail Personal", email: "majeh@gmail.com", initial: "G", color: "#ea4335", unread: 245 },
-        Account { name: "Outlook Work", email: "majeh@company.com", initial: "O", color: "#0078d4", unread: 27 },
-        Account { name: "Yahoo Backup", email: "majeh@yahoo.com", initial: "Y", color: "#6001d2", unread: 3 },
-        Account { name: "Custom IMAP", email: "mail@majeh.io", initial: "I", color: "#2d8a4e", unread: 0 },
+        Account { name: "Gmail Personal".into(), email: "majeh@gmail.com".into(), initial: "G".into(), color: "#ea4335".into(), unread: 245 },
+        Account { name: "Outlook Work".into(), email: "majeh@company.com".into(), initial: "O".into(), color: "#0078d4".into(), unread: 27 },
+        Account { name: "Yahoo Backup".into(), email: "majeh@yahoo.com".into(), initial: "Y".into(), color: "#6001d2".into(), unread: 3 },
+        Account { name: "Custom IMAP".into(), email: "mail@majeh.io".into(), initial: "I".into(), color: "#2d8a4e".into(), unread: 0 },
     ]
 }
 
 macro_rules! email {
     ($id:expr, $sender:expr, $addr:expr, $subj:expr, $prev:expr, $time:expr, $init:expr, $color:expr, $unread:expr, $starred:expr, [$($p:expr),+]) => {
         Email {
-            id: $id, sender: $sender, address: $addr, subject: $subj, preview: $prev,
-            time: $time, initial: $init, color: $color, unread: $unread, starred: $starred,
-            folder: Folder::Inbox, body: &[$($p),+],
+            id: $id, sender: $sender.into(), address: $addr.into(), subject: $subj.into(), preview: $prev.into(),
+            time: $time.into(), initial: $init.into(), color: $color.into(), unread: $unread, starred: $starred,
+            folder: Folder::Inbox, body: vec![$($p.into()),+],
         }
     };
 }

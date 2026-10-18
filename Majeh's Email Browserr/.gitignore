@@ -19,3 +19,8 @@ OAUTH_CONFIG.md
 *.log
 .env
 .env.local
+
+# Build artifacts
+dist/
+target/
+.wasm-pack/

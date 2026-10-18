@@ -36,7 +36,7 @@ pub fn ReadingPane(
                             <span class="time">{e.time.clone()}</span>
                         </div>
                         <div class="reading-body">
-                            {e.body.iter().map(|p| view! { <p>{*p}</p> }).collect_view()}
+                            {e.body.iter().map(|p| view! { <p>{p}</p> }).collect_view()}
                         </div>
                         <div class="reading-footer">
                             <button class="btn-action"><Icon name="reply"/>"Reply"</button>

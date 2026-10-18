@@ -1,5 +1,6 @@
 use leptos::*;
 use serde::{Deserialize, Serialize};
+use serde_json;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
@@ -46,18 +47,63 @@ fn download_file(content: &str, filename: &str) {
 
 /// Reactive token store. Unlock with a password; tokens live in memory only.
 #[component]
-pub fn TokenVault() -> impl IntoView {
-    let tokens = create_rw_signal(Vec::<OAuthToken>::new());
+pub fn TokenVault(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoView {
+    let tokens = connected_accounts;
     let is_unlocked = create_rw_signal(false);
     let password_set = create_rw_signal(false);
+    let vault_password = create_rw_signal(String::new());
 
     let existing = window_local_storage()
         .and_then(|ls| ls.get_item(VAULT_KEY).ok().flatten());
     password_set.set(existing.is_some());
 
+    // When vault unlocks, check for a pending OAuth token from the callback flow
+    // and add it to the vault automatically (encrypted with the vault password).
+    let tokens_clone = tokens.clone();
+    let is_unlocked_clone = is_unlocked.clone();
+    let vault_password_clone = vault_password.clone();
+    create_effect(move |_| {
+        if is_unlocked_clone.get() {
+            if let Ok(Some(storage)) = web_sys::window().unwrap().session_storage() {
+                if let Ok(Some(pending)) = storage.get_item("pending_oauth_token") {
+                    if !pending.is_empty() {
+                        if let Ok(token) = serde_json::from_str::<OAuthToken>(&pending) {
+                            let mut current = tokens_clone.get();
+                            if !current.iter().any(|t| t.email == token.email) {
+                                current.push(token.clone());
+                                tokens_clone.set(current.clone());
+                                // Persist to vault immediately
+                                let pw = vault_password_clone.get();
+                                if !pw.is_empty() {
+                                    let payload = VaultPayload {
+                                        version: VAULT_VERSION,
+                                        tokens: current.clone(),
+                                    };
+                                    if let Ok(json) = serde_json::to_string(&payload) {
+                                        if let Ok(encrypted) = crate::crypto::encrypt(&json, &pw) {
+                                            if let Some(ls) = window_local_storage() {
+                                                let _ = ls.set_item(VAULT_KEY, &encrypted);
+                                            }
+                                        }
+                                    }
+                                }
+                                leptos::logging::log!(
+                                    "OAuth token saved to vault for {}",
+                                    token.email
+                                );
+                            }
+                            let _ = storage.remove_item("pending_oauth_token");
+                        }
+                    }
+                }
+            }
+        }
+    });
+
     let unlock = move |password: String| {
         let tokens = tokens.clone();
         let is_unlocked = is_unlocked.clone();
+        let vault_password = vault_password.clone();
         move || {
             match window_local_storage()
                 .and_then(|ls| ls.get_item(VAULT_KEY).ok().flatten())
@@ -69,6 +115,7 @@ pub fn TokenVault() -> impl IntoView {
                             .unwrap();
                         tokens.set(payload.tokens);
                         is_unlocked.set(true);
+                        vault_password.set(password);
                     }
                     Err(_) => is_unlocked.set(false),
                 },
@@ -80,6 +127,7 @@ pub fn TokenVault() -> impl IntoView {
     let lock = move || {
         tokens.set(Vec::new());
         is_unlocked.set(false);
+        vault_password.set(String::new());
         if let Some(ls) = window_local_storage() {
             let _ = ls.remove_item(VAULT_KEY);
         }
