@@ -1109,6 +1109,23 @@ input {
 
 .splash-title { margin: 0; font-size: 22px; }
 
+/* Splash hero logo — much larger than the 64px .brand-logo.xl used elsewhere */
+.brand-logo.splash-logo {
+    width: 148px;
+    height: 148px;
+    border-radius: 34px;
+    background-size: 88%;
+    box-shadow: 0 18px 50px rgba(59, 130, 246, 0.28);
+}
+
+@media (max-width: 480px) {
+    .brand-logo.splash-logo {
+        width: 116px;
+        height: 116px;
+        border-radius: 28px;
+    }
+}
+
 .splash-subtitle { margin: 0; color: var(--text-1); font-size: 13px; }
 
 .splash-progress {

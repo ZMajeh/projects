@@ -56,7 +56,7 @@ pub fn Splash(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoView {
     view! {
         <Show when=move || !dismissed.get()>
             <div class="gate-screen splash">
-                <div class="brand-logo xl"></div>
+                <div class="brand-logo splash-logo"></div>
                 <h1 class="splash-title">"Majeh's Email Browserr"</h1>
 
                 {move || if has_vault {

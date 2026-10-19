@@ -66,6 +66,7 @@
 
 ### Splash Screen (`src/components/splash.rs`)
 - Hard-gate splash: centered `logo.png`, app name, indefinite progress bar
+- **Large hero logo** — dedicated `.brand-logo.splash-logo` (148px, 34px radius, soft blue glow) instead of the shared 64px `.brand-logo.xl`; drops to 116px on narrow screens. About page logo unchanged
 - When a vault exists: password input + "Unlock" button + error display
 - When no vault: "Create your vault password" (new + confirm fields)
 - Unlocking/creating dismisses the splash and reveals the app
