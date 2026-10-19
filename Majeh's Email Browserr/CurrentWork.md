@@ -68,6 +68,7 @@
 - Hard-gate splash: centered `logo.png`, app name, indefinite progress bar
 - **Large hero logo** — dedicated `.brand-logo.splash-logo` (156px, 36px radius, soft blue glow, artwork fills the box) instead of the shared 64px `.brand-logo.xl`; drops to 122px on narrow screens. About page logo unchanged
 - **No separate title text** — `logo.png` already contains the "Majeh's Email Browserr" wordmark + tagline, so the duplicate `<h1>` was removed (and the now-unused `.splash-title` CSS)
+- **Logo background made transparent** — `logo.png` was an opaque **RGB** image whose near-black surround (RGB 3,3,3) rendered as a dark frame around the artwork on the navy background. Fixed by flood-filling the border-connected near-black pixels to alpha 0 (icon interior untouched) and downscaling 1254→640px: **1.87 MB → 498 KB**. CSS `border-radius` now uses `22%` to match the artwork's own corner curve
 - When a vault exists: password input + "Unlock" button + error display
 - When no vault: "Create your vault password" (new + confirm fields)
 - Unlocking/creating dismisses the splash and reveals the app
@@ -164,7 +165,6 @@
 
 ## Known Limitations (non-blocking)
 - Default fetch returns the 20 most recent INBOX messages (`labelIds=INBOX`)
-- `logo.png` is 1.9 MB for a 32px icon — worth optimizing later
 
 ## Known Warnings (non-blocking)
 - **None** — the build is warning-free (only a third-party `proc-macro-error2` future-incompat notice from cargo)

@@ -108,7 +108,7 @@ input {
 .brand-logo {
     width: 32px;
     height: 32px;
-    border-radius: 8px;
+    border-radius: 22%; /* matches the artwork's own corner radius */
     background-image: url("logo.png");
     background-size: contain;
     background-repeat: no-repeat;
@@ -123,7 +123,7 @@ input {
 .brand-logo.xl {
     width: 64px;
     height: 64px;
-    border-radius: 16px;
+    border-radius: 22%;
 }
 
 .brand-logo.xl .icon {
@@ -1101,29 +1101,27 @@ input {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    justify-content: safe center;
     gap: 12px;
     background: var(--bg-0);
     text-align: center;
     padding: 24px;
+    overflow-y: auto;
 }
 
-/* Splash hero logo — much larger than the 64px .brand-logo.xl used elsewhere.
+/* Splash hero logo — matches the width of the vault password field
+   (.splash-unlock is `width: 100%; max-width: 320px`, and this uses the same
+   sizing so the logo and the input line up on every screen).
    The artwork already includes the "Majeh's Email Browserr" wordmark, so no
    separate title text is rendered. */
 .brand-logo.splash-logo {
-    width: 156px;
-    height: 156px;
-    border-radius: 36px;
+    width: 100%;
+    max-width: 320px;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    border-radius: 22%; /* matches the artwork's own corner radius */
     background-size: 100%;
     box-shadow: 0 18px 50px rgba(59, 130, 246, 0.28);
-}
-
-@media (max-width: 480px) {
-    .brand-logo.splash-logo {
-        width: 122px;
-        height: 122px;
-        border-radius: 30px;
-    }
 }
 
 .splash-subtitle { margin: 0; color: var(--text-1); font-size: 13px; }
@@ -1155,7 +1153,7 @@ input {
 
 /* ---------- Splash unlock form ---------- */
 .splash-unlock {
-    margin-top: 24px;
+    margin-top: 14px;
     display: flex;
     flex-direction: column;
     align-items: center;
