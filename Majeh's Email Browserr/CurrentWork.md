@@ -64,6 +64,22 @@
 - Also explains the 3-step start flow: **create the vault in Settings → connect Gmail → read mail**, with a live status line (no vault / vault locked / N accounts connected) and CTAs to Settings and Mailbox.
 - Sidebar gets a **Home** entry (top of the list, new `home` icon) and a Home entry in the bottom navigation. Home highlights when active; Mail folder items only highlight while the Mailbox tab is open (no double-highlight).
 
+### App Homepage — Google Play "App Homepage" checklist
+Audit of the live home page (`https://majehsemailviewer.web.app`) against the Play guidance:
+
+| Requirement | Status | Where |
+|---|---|---|
+| Accurately represent/identify the app or brand | ✅ | Logo + "Majeh's Email Browserr" + tagline (Home tab and static block) |
+| Fully describe the app's functionality | ✅ | 6 feature cards: three-pane UI, read-only sign-in, encrypted vault, fetch-by-date, cache + JSON backup, multi-account, token inspection |
+| Transparently explain the purpose of the data request | ✅ | "Data we access, and why" — one row per scope (`gmail.readonly`, `email`, `profile`, `openid`) |
+| Hosted on a verified domain you own | ⚠️ | `web.app` is a **shared Google domain** — see `DOMAIN_SETUP.md` for the custom-domain migration |
+| Privacy-policy link matching the consent screen | ✅ | Absolute `https://majehsemailviewer.web.app/privacy.html` (single source: `util::SITE_URL`) |
+| Visible without logging in | ✅ | Home is the default tab; the static block in `index.html` needs no JS at all |
+
+- **Static homepage block** (`index.html` → `#static-home`): real HTML text (purpose, scopes, architecture, how to start, policy link) so crawlers and pre-WASM visitors see the app description. The app removes the block on boot (`src/main.rs`).
+- **Single source of truth for the domain**: `util::SITE_URL` + `util::site_url(path)` drive every public link (Home, About, canonical tags, static block). Changing the domain is a one-line code change.
+- `index.html` gained a meta description, Open Graph tags and a canonical-friendly title; `privacy.html` / `terms.html` gained meta descriptions and `<link rel="canonical">`.
+
 ### Add Account — Google flow from the sidebar
 - The sidebar **"Add Account"** button and the **"+" icon** next to the *Accounts* heading now start the **Google OAuth (PKCE) flow** — they were previously dead buttons.
 - One shared handler `add_google_account` in `app.rs` is used by all three entry points: sidebar **Add Account**, sidebar **"+"**, and **Settings → Connect Gmail** (which previously called `start_google_oauth()` directly and swallowed errors).

@@ -5,12 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-site-verification" content="dY68mbC5lxp4Ebec9a5gM0tcTP4iVfOr7Q1dQSh47J8"/>
     <meta id="__oauth_client_id" data-client-id="243563831076-dq6cfctvvl5lh9b8g84cg3shok0f6dhh.apps.googleusercontent.com" data-client-secret=""/>
-    <title>Majeh's Email Browserr</title>
+    <title>Majeh's Email Browserr — private, client-side Gmail reader</title>
+    <meta name="description" content="Majeh's Email Browserr is a private web app for reading and browsing your Gmail inbox. It requests only read-only Gmail access (gmail.readonly) to display message subjects, senders and bodies. It runs entirely in your browser: no backend, no database, no tracking."/>
+    <meta property="og:title" content="Majeh's Email Browserr"/>
+    <meta property="og:description" content="A fast, private, client-side webmail for Gmail. Read-only access, encrypted local vault, no servers."/>
+    <meta property="og:type" content="website"/>
+    <meta property="og:url" content="https://majehsemailviewer.web.app"/>
+    <meta name="twitter:card" content="summary"/>
     <link data-trunk rel="css" href="style.css"/>
     <link data-trunk rel="copy-file" href="logo.png"/>
     <link data-trunk rel="copy-file" href="privacy.html"/>
     <link data-trunk rel="copy-file" href="terms.html"/>
 </head>
 <body>
+    <!--
+      Static homepage content. It is plain HTML, so it is readable by search
+      crawlers and by anyone whose WebAssembly has not loaded yet. The app
+      removes this block the moment it boots and takes over the page.
+      Everything here is also available in-app on the Home tab.
+    -->
+    <div id="static-home">
+        <h1>Majeh's Email Browserr</h1>
+        <p class="sh-tagline">A secure, local way to browse your inbox.</p>
+
+        <h2>What this app does</h2>
+        <p>
+            Majeh's Email Browserr is an intuitive dashboard designed to let users
+            easily read and browse their Gmail inbox. The application requires
+            read-only access to display your message subjects, senders, and email
+            bodies directly within the interface.
+        </p>
+        <ul>
+            <li>A fast three-pane mail client: inbox, message list and reading pane.</li>
+            <li>Read-only Google sign-in &mdash; the app can never send, delete or modify your mail.</li>
+            <li>Your tokens are encrypted locally in a vault opened by your own password.</li>
+            <li>Fetched mail is cached on your device and can be exported or re-imported as a JSON backup.</li>
+        </ul>
+
+        <h2>Data we access, and why</h2>
+        <ul>
+            <li><code>https://www.googleapis.com/auth/gmail.readonly</code> &mdash; read the message subjects, senders and bodies you ask the app to display.</li>
+            <li><code>email</code> &mdash; your Google email address, used only to label your account in the sidebar.</li>
+            <li><code>profile</code> &mdash; your display name and picture, shown next to your account.</li>
+            <li><code>openid</code> &mdash; your Google account identity, used only to link the sign-in to your encrypted vault.</li>
+        </ul>
+
+        <h2>100% Private &amp; Serverless Architecture</h2>
+        <p>
+            Your security is our priority. Majeh's Email Browserr operates entirely
+            on the client side within your local web browser, hosted as a static
+            web app via Firebase Hosting. All email fetches using the
+            <code>gmail.readonly</code> API are processed locally on your device. We
+            do not own, maintain, or utilize an external database server, and your
+            private email data is never tracked or transmitted to any third party.
+            Your authentication tokens and fetched email data are held only in your
+            own browser &mdash; the tokens encrypted in a local vault, the mail in
+            your browser's local storage &mdash; and are deleted by you at any time.
+        </p>
+
+        <h2>How to get started</h2>
+        <ol>
+            <li><strong>Create your vault</strong> &mdash; open <em>Settings</em> and set a vault password under &ldquo;Connected Accounts&rdquo;.</li>
+            <li><strong>Connect Gmail</strong> &mdash; in <em>Settings</em>, tap &ldquo;Connect Gmail&rdquo; and sign in with Google.</li>
+            <li><strong>Read your mail</strong> &mdash; pick your account in the sidebar, then use &ldquo;Fetch by date&rdquo; for older mail.</li>
+        </ol>
+
+        <p class="sh-legal">
+            <a href="https://majehsemailviewer.web.app/privacy.html">Privacy Policy</a>
+            &middot;
+            <a href="https://majehsemailviewer.web.app/terms.html">Terms of Service</a>
+            &middot;
+            <a href="mailto:zmajeh@gmail.com">Contact</a>
+        </p>
+    </div>
 </body>
 </html>

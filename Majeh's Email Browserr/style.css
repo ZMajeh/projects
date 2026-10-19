@@ -1462,6 +1462,39 @@ input {
     color: var(--text-0);
 }
 
+.home-scopes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.home-scope {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+}
+
+.home-scope code {
+    align-self: flex-start;
+    font-size: 12px;
+    background: var(--bg-0);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 7px;
+    color: var(--accent);
+    overflow-wrap: anywhere;
+}
+
+.home-scope span {
+    color: var(--text-1);
+    font-size: 13px;
+    line-height: 1.55;
+}
+
 .home-features {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -1563,3 +1596,62 @@ input {
     .home-cta .btn-primary,
     .home-cta .btn-secondary { flex: 1 1 100%; justify-content: center; }
 }
+
+/* ---------- Static homepage (index.html, shown until the app boots) ---------- */
+#static-home {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 24px 64px;
+    color: var(--text-1);
+    line-height: 1.65;
+}
+
+#static-home h1 {
+    margin: 0 0 6px;
+    font-size: 30px;
+    color: var(--text-0);
+}
+
+#static-home .sh-tagline {
+    margin: 0 0 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-0);
+}
+
+#static-home h2 {
+    margin: 30px 0 8px;
+    font-size: 18px;
+    color: var(--text-0);
+}
+
+#static-home p { margin: 0 0 10px; font-size: 14px; }
+
+#static-home ul,
+#static-home ol {
+    margin: 0 0 10px;
+    padding-left: 20px;
+    font-size: 14px;
+}
+
+#static-home li { margin-bottom: 6px; }
+
+#static-home code {
+    font-size: 12.5px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1px 5px;
+    color: var(--text-0);
+    overflow-wrap: anywhere;
+}
+
+#static-home .sh-legal {
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+}
+
+#static-home .sh-legal a { color: var(--accent); text-decoration: none; }
+#static-home .sh-legal a:hover { text-decoration: underline; }

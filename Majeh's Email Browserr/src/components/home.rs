@@ -2,6 +2,7 @@ use leptos::*;
 use crate::components::icons::Icon;
 use crate::components::navigation::Tab;
 use crate::tokens::OAuthToken;
+use crate::util::site_url;
 
 /// Home view - the app's public homepage. Explains what the app does, why it
 /// needs Gmail read-only access, how the client-side architecture protects your
@@ -30,9 +31,44 @@ pub fn Home(
             "OAuth tokens live in an AES-256-GCM vault in your browser, opened only by your vault password. There is no server.",
         ),
         (
+            "clock",
+            "Fetch by date, not by luck",
+            "Pull any date range from your inbox - the count you ask for is an upper bound, so you can grab 20 or 500 messages at a time.",
+        ),
+        (
             "download",
             "Keep and back up your mail",
             "Fetched mail is cached on your device so it survives restarts, and can be exported or re-imported as a JSON backup.",
+        ),
+        (
+            "mail",
+            "Many accounts, one window",
+            "Connect as many Google accounts as you like. Each one keeps its own inbox, its own cache and its own tokens.",
+        ),
+        (
+            "shield",
+            "Tokens you can inspect",
+            "The Tokens page shows every access and refresh token, its expiry and a one-click refresh - nothing hidden from you.",
+        ),
+    ];
+
+    // The exact Google scopes requested at sign-in and what each one is for.
+    let scopes = [
+        (
+            "https://www.googleapis.com/auth/gmail.readonly",
+            "Read the message subjects, senders and bodies you ask the app to display. It can never send, delete or modify your mail.",
+        ),
+        (
+            "email",
+            "Your Google email address - used only to label your account in the sidebar.",
+        ),
+        (
+            "profile",
+            "Your display name and picture - shown next to your account in the sidebar.",
+        ),
+        (
+            "openid",
+            "Your Google account identity - used only to link the sign-in to the encrypted vault in your browser.",
         ),
     ];
 
@@ -78,6 +114,21 @@ pub fn Home(
                     <p>
                         "Your security is our priority. Majeh's Email Browserr operates entirely on the client side within your local web browser, hosted as a static web app via Firebase Hosting. All email fetches using the gmail.readonly API are processed locally on your device. We do not own, maintain, or utilize an external database server, and your private email data is never tracked or transmitted to any third party. Your authentication tokens and fetched email data are held only in your own browser - the tokens encrypted in a local vault, the mail in your browser's local storage - and are deleted by you at any time."
                     </p>
+                </div>
+
+                <h2 class="home-heading">"Data we access, and why"</h2>
+                <div class="home-scopes">
+                    {scopes
+                        .into_iter()
+                        .map(|(scope, why)| {
+                            view! {
+                                <div class="home-scope">
+                                    <code>{scope}</code>
+                                    <span>{why}</span>
+                                </div>
+                            }
+                        })
+                        .collect_view()}
                 </div>
 
                 <h2 class="home-heading">"What this app does"</h2>
@@ -163,11 +214,19 @@ pub fn Home(
                 </div>
 
                 <p class="home-legal">
-                    <a href="/privacy.html" target="_blank" rel="noopener noreferrer">
+                    <a
+                        href=site_url("/privacy.html")
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
                         "Privacy Policy"
                     </a>
                     <span>" · "</span>
-                    <a href="/terms.html" target="_blank" rel="noopener noreferrer">
+                    <a
+                        href=site_url("/terms.html")
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
                         "Terms of Service"
                     </a>
                     <span>" · "</span>

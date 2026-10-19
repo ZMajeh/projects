@@ -1,17 +1,18 @@
 use leptos::*;
 use crate::components::icons::Icon;
+use crate::util::site_url;
 
 /// About view: hero with logo + link rows.
 #[component]
 pub fn About() -> impl IntoView {
     // (icon, title, href) — rows with a href open the page in a new tab.
-    let rows: [(&str, &str, Option<&str>); 6] = [
+    let rows: [(&str, &str, Option<String>); 6] = [
         ("book", "Features", None),
         ("globe", "Open Source", None),
         ("bug", "Report a Bug", None),
         ("mail", "Contact", None),
-        ("shield", "Privacy Policy", Some("/privacy.html")),
-        ("info", "Terms of Service", Some("/terms.html")),
+        ("shield", "Privacy Policy", Some(site_url("/privacy.html"))),
+        ("info", "Terms of Service", Some(site_url("/terms.html"))),
     ];
 
     view! {
