@@ -18,6 +18,15 @@ pub fn EmailList(
     query: RwSignal<String>,
     selected_id: RwSignal<Option<usize>>,
     on_select: impl Fn(usize) + Copy + 'static,
+    /// True when the active account is a connected OAuth account (refresh applies).
+    #[prop(optional)]
+    show_refresh: Option<Callback<(), bool>>,
+    /// True while the active account's inbox fetch is running (spinner state).
+    #[prop(optional)]
+    refreshing: Option<Callback<(), bool>>,
+    /// Manual inbox refresh (always hits the network, merges by msg_id).
+    #[prop(optional)]
+    on_refresh: Option<Callback<()>>,
 ) -> impl IntoView {
     let tabs = [(ListFilter::All, "All"), (ListFilter::Unread, "Unread"), (ListFilter::Starred, "Starred")];
 
@@ -46,6 +55,30 @@ pub fn EmailList(
                 <span class="unread-count">
                     {move || scoped().iter().filter(|e| e.unread).count()} " unread"
                 </span>
+                {move || show_refresh.as_ref().map(|show| {
+                    let show = show.clone();
+                    let refreshing = refreshing.clone();
+                    let on_refresh = on_refresh.clone();
+                    view! {
+                        <Show when=move || show.call(())>
+                            <button
+                                class="btn-inbox-refresh"
+                                title="Refresh inbox"
+                                aria-label="Refresh inbox"
+                                disabled=move || refreshing.as_ref().map(|r| r.call(())).unwrap_or(false)
+                                on:click=move |_| { if let Some(refresh) = on_refresh.as_ref() { refresh.call(()); } }
+                            >
+                                <Icon
+                                    name="refresh"
+                                    class=if refreshing.as_ref().map(|r| r.call(())).unwrap_or(false) { "spin" } else { "" }
+                                />
+                                <span>
+                                    {move || if refreshing.as_ref().map(|r| r.call(())).unwrap_or(false) { "Refreshing…" } else { "Refresh" }}
+                                </span>
+                            </button>
+                        </Show>
+                    }
+                })}
                 <button class="btn-filter"><Icon name="sliders"/>"Filter"</button>
             </div>
             <div class="filter-tabs">

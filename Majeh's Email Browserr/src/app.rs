@@ -391,6 +391,46 @@ pub fn App() -> impl IntoView {
         }
     };
 
+    // Mailbox "Refresh" button: re-fetch the active OAuth account's inbox and
+    // merge new messages into the cache (dedupe by `msg_id`). Unlike a plain
+    // account click, this always hits the network — the cache never expires
+    // on its own. Refresh is a no-op for mock (non-OAuth) accounts and while
+    // the same account's task is already running.
+    let on_refresh_inbox = move || {
+        let Some(acc) = active_account.get() else {
+            return;
+        };
+        if !connected_accounts
+            .get()
+            .iter()
+            .any(|t| t.email == acc.email)
+        {
+            return;
+        }
+        let inbox_key = format!("{}||", acc.email);
+        let already_running = fetch_tasks
+            .get()
+            .iter()
+            .any(|t| t.key == inbox_key && matches!(t.status, TaskStatus::Running));
+        if already_running {
+            return;
+        }
+        spawn_fetch(acc, None);
+    };
+
+    // Whether the active account's inbox fetch is running right now (drives
+    // the Refresh button's spinner/disabled state in the mailbox header).
+    let inbox_refreshing = move || {
+        let Some(acc) = active_account.get() else {
+            return false;
+        };
+        let inbox_key = format!("{}||", acc.email);
+        fetch_tasks
+            .get()
+            .iter()
+            .any(|t| t.key == inbox_key && matches!(t.status, TaskStatus::Running))
+    };
+
     // Fetch-panel "Fetch Range" button: one task per selected account+range.
     let on_fetch_range = move |from: String, to: String, account: String| {
         if from.is_empty() && to.is_empty() {
@@ -487,6 +527,9 @@ pub fn App() -> impl IntoView {
                                 query=query
                                 selected_id=selected_id
                                 on_select=select_email
+                                show_refresh=Callback::new(move |_| active_account.get().is_some())
+                                refreshing=Callback::new(move |_| inbox_refreshing())
+                                on_refresh=Callback::new(move |_| on_refresh_inbox())
                             />
                             <ReadingPane emails=emails_store selected_id=selected_id/>
                         </div>
