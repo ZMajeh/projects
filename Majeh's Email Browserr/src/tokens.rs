@@ -112,17 +112,6 @@ pub fn unlock_vault(password: &str) -> Result<Vec<OAuthToken>, String> {
     Ok(payload.tokens)
 }
 
-/// Create a new vault with `password`, storing an empty token list.
-/// Fails if a vault already exists.
-pub fn create_vault(password: &str) -> Result<(), String> {
-    if vault_exists() {
-        return Err("vault already exists".to_string());
-    }
-    save_vault(password, &[])?;
-    set_vault_password(Some(password.to_string()));
-    Ok(())
-}
-
 fn window_local_storage() -> Option<web_sys::Storage> {
     let window = web_sys::window()?;
     let storage = window.local_storage().ok()??;
@@ -214,23 +203,14 @@ pub fn TokenVault(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoVie
         let tokens = tokens;
         let is_unlocked = is_unlocked;
         move || {
-            match window_local_storage()
-                .and_then(|ls| ls.get_item(VAULT_KEY).ok().flatten())
-            {
-                Some(encrypted) => match decrypt(&encrypted, &password) {
-                    Ok(json) => {
-                        let payload: VaultPayload = serde_json::from_str(&json)
-                            .map_err(|e| format!("bad vault format: {e}"))
-                            .unwrap();
-                        tokens.set(payload.tokens);
-                        is_unlocked.set(true);
-                        // Publish to the shared session so every component
-                        // (and the pending-OAuth persist) uses this password.
-                        set_vault_password(Some(password.clone()));
-                    }
-                    Err(_) => is_unlocked.set(false),
-                },
-                None => is_unlocked.set(false),
+            // `unlock_vault` decrypts the vault and publishes the password to
+            // the shared session, so every component sees it as unlocked.
+            match unlock_vault(&password) {
+                Ok(decrypted) => {
+                    tokens.set(decrypted);
+                    is_unlocked.set(true);
+                }
+                Err(_) => is_unlocked.set(false),
             }
         }
     };
@@ -250,10 +230,13 @@ pub fn TokenVault(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoVie
         move || {
             match save_vault(&password, &new_tokens) {
                 Ok(()) => {
+                    // Publish the password first: the pending-OAuth effect
+                    // reacts to `is_unlocked` and needs the session password
+                    // to be there already.
+                    set_vault_password(Some(password));
                     tokens.set(new_tokens);
                     is_unlocked.set(true);
                     password_set.set(true);
-                    set_vault_password(Some(password));
                 }
                 Err(e) => leptos::logging::log!("encrypt failed: {e}"),
             }

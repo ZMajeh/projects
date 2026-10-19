@@ -29,12 +29,15 @@ fn SectionHead(
 /// Left sidebar: accounts, folders, labels, compose, settings/about links, quote.
 #[component]
 pub fn Sidebar(
+    active_tab: ReadSignal<Tab>,
     active_folder: RwSignal<Folder>,
     emails: RwSignal<Vec<Email>>,
     connected_accounts: RwSignal<Vec<OAuthToken>>,
     set_active_tab: WriteSignal<Tab>,
     set_drawer_open: WriteSignal<bool>,
     on_oauth_account_click: impl Fn(OAuthToken) + Copy + 'static,
+    /// Starts the Google OAuth flow to add a new account.
+    on_add_account: impl Fn() + Copy + 'static,
     email_cache: RwSignal<HashMap<String, Vec<Email>>>,
 ) -> impl IntoView {
     let folders = Folder::ALL;
@@ -52,6 +55,15 @@ pub fn Sidebar(
     view! {
         <aside class="sidebar">
             <div class="sidebar-scroll">
+                <button
+                    class="folder-item home-item"
+                    class:active=move || active_tab.get() == Tab::Home
+                    on:click=move |_| { set_active_tab.set(Tab::Home); set_drawer_open.set(false); }
+                >
+                    <Icon name="home"/>
+                    <span class="folder-label">"Home"</span>
+                </button>
+
                 <div
                     class="section-head"
                     class:collapsed=move || !show_accounts.get()
@@ -60,7 +72,15 @@ pub fn Sidebar(
                     on:click=move |_| set_show_accounts.update(|e| *e = !*e)
                 >
                     <span>"Accounts"</span>
-                    <button class="icon-btn sm" aria-label="Add account" on:click=move |ev| ev.stop_propagation()>
+                    <button
+                        class="icon-btn sm"
+                        aria-label="Add account"
+                        on:click=move |ev| {
+                            ev.stop_propagation();
+                            set_drawer_open.set(false);
+                            on_add_account();
+                        }
+                    >
                         <Icon name="plus"/>
                     </button>
                     <Icon name="chevron-down" class="chevron"/>
@@ -104,7 +124,15 @@ pub fn Sidebar(
                             }).collect_view().into_view()
                         }}
                     </ul>
-                    <button class="btn-add-account"><Icon name="plus"/>"Add Account"</button>
+                    <button
+                        class="btn-add-account"
+                        on:click=move |_| {
+                            set_drawer_open.set(false);
+                            on_add_account();
+                        }
+                    >
+                        <Icon name="plus"/>"Add Account"
+                    </button>
                 </Show>
 
                 <SectionHead title="Mail" expanded=show_mail set_expanded=set_show_mail/>
@@ -113,7 +141,9 @@ pub fn Sidebar(
                         {folders.into_iter().map(|f| view! {
                             <button
                                 class="folder-item"
-                                class:active=move || active_folder.get() == f
+                                class:active=move || {
+                                    active_tab.get() == Tab::Mailbox && active_folder.get() == f
+                                }
                                 on:click=move |_| { active_folder.set(f); set_active_tab.set(Tab::Mailbox); set_drawer_open.set(false); }
                             >
                                 <Icon name=f.icon()/>
@@ -141,9 +171,21 @@ pub fn Sidebar(
                 </Show>
 
                 <div class="sidebar-footer">
-                    <button class="folder-item" on:click=move |_| { set_active_tab.set(Tab::Tokens); set_drawer_open.set(false); }><Icon name="shield"/>"Tokens"</button>
-                    <button class="folder-item" on:click=move |_| { set_active_tab.set(Tab::Settings); set_drawer_open.set(false); }><Icon name="settings"/>"Settings"</button>
-                    <button class="folder-item" on:click=move |_| { set_active_tab.set(Tab::About); set_drawer_open.set(false); }><Icon name="info"/>"About"</button>
+                    <button
+                        class="folder-item"
+                        class:active=move || active_tab.get() == Tab::Tokens
+                        on:click=move |_| { set_active_tab.set(Tab::Tokens); set_drawer_open.set(false); }
+                    ><Icon name="shield"/>"Tokens"</button>
+                    <button
+                        class="folder-item"
+                        class:active=move || active_tab.get() == Tab::Settings
+                        on:click=move |_| { set_active_tab.set(Tab::Settings); set_drawer_open.set(false); }
+                    ><Icon name="settings"/>"Settings"</button>
+                    <button
+                        class="folder-item"
+                        class:active=move || active_tab.get() == Tab::About
+                        on:click=move |_| { set_active_tab.set(Tab::About); set_drawer_open.set(false); }
+                    ><Icon name="info"/>"About"</button>
                     <p class="quote">"A more organized you, a brighter tomorrow." <span>"— Majeh"</span></p>
                 </div>
             </div>

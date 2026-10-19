@@ -1,6 +1,7 @@
 pub mod about;
 pub mod email_list;
 pub mod fetch_panel;
+pub mod home;
 pub mod icons;
 pub mod navigation;
 pub mod reading_pane;

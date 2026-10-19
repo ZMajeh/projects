@@ -2,6 +2,7 @@ use leptos::*;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Tab {
+    Home,
     Mailbox,
     Tokens,
     Settings,
@@ -12,6 +13,7 @@ pub enum Tab {
 #[component]
 pub fn BottomNavigation(active: ReadSignal<Tab>, set_active_tab: WriteSignal<Tab>) -> impl IntoView {
     let items = [
+        (Tab::Home, "home", "Home"),
         (Tab::Mailbox, "mail", "Mailbox"),
         (Tab::Tokens, "shield", "Tokens"),
         (Tab::Settings, "settings", "Settings"),

@@ -4,7 +4,11 @@ use crate::tokens::{OAuthToken, TokenVault};
 
 /// Settings view: iOS-style grouped rows (Account, Notifications, Appearance, ...).
 #[component]
-pub fn Settings(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoView {
+pub fn Settings(
+    connected_accounts: RwSignal<Vec<OAuthToken>>,
+    /// Starts the Google OAuth flow to add a new account.
+    on_connect_google: impl Fn() + Copy + 'static,
+) -> impl IntoView {
     let (notifications, set_notifications) = create_signal(true);
 
     // Google OAuth client secret management (stored in localStorage, never committed).
@@ -120,9 +124,7 @@ pub fn Settings(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoView 
                         </div>
                         <button
                             class="btn-primary"
-                            on:click=move |_| {
-                            let _ = crate::oauth::start_google_oauth();
-                        }
+                            on:click=move |_| on_connect_google()
                         >
                             <Icon name="login"/>"Connect Gmail"
                         </button>

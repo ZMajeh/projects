@@ -55,24 +55,20 @@
 - Guard added: empty secret fails fast with "save it in Settings → Google Client Secret" instead of a cryptic Google error
 - All 3 call sites updated: `ensure_fresh_token()` (app.rs) + per-row and bulk refresh (tokens_page.rs)
 
-### Vault Unlock During Splash (bug fix — hard gate)
-- **Bug**: `TokenVault` only lived in the Settings tab, so `connected_accounts` stayed empty until the user manually unlocked there. No accounts showed in the sidebar, so no emails could be fetched without a trip to Settings first.
-- **Fix**: The splash screen is now a **hard gate** — it stays on screen until the user either:
-  - **Unlocks an existing vault** (enters password → `connected_accounts` populated immediately), or
-  - **Creates a new vault password** (first run → creates encrypted empty vault)
-- Only after success does the splash dismiss and the app appear.
-- Extracted `unlock_vault(password)` + `create_vault(password)` + `vault_exists()` as public functions in `src/tokens.rs`; `VaultPayload` is `pub`.
-- Removed the 3-second auto-dismiss timer; splash now waits indefinitely for user action.
+### Home Page (`src/components/home.rs`) — new public landing tab
+- **Home is the default tab** (replaces the old splash-as-gate flow). The app opens on Home with **no login required** — reviewers/users see the purpose, architecture and legal links immediately.
+- Content follows the Google Play **Mandatory Homepage Checklist**:
+  1. **Clear application purpose** — states the app needs `gmail.readonly` to display subjects, senders and bodies.
+  2. **Architecture & data handling disclosure** — "100% Private & Serverless Architecture" banner: static Firebase Hosting, fully client-side, no backend database, no third-party transmission. Wording is kept **accurate**: tokens live in an encrypted local vault, mail in localStorage (not "temporary memory only").
+  3. **Visible Privacy Policy link** — in the Home footer, opens `/privacy.html` in a new tab, no login needed.
+- Also explains the 3-step start flow: **create the vault in Settings → connect Gmail → read mail**, with a live status line (no vault / vault locked / N accounts connected) and CTAs to Settings and Mailbox.
+- Sidebar gets a **Home** entry (top of the list, new `home` icon) and a Home entry in the bottom navigation. Home highlights when active; Mail folder items only highlight while the Mailbox tab is open (no double-highlight).
 
-### Splash Screen (`src/components/splash.rs`)
-- Hard-gate splash: centered `logo.png`, app name, indefinite progress bar
-- **Large hero logo** — dedicated `.brand-logo.splash-logo` (156px, 36px radius, soft blue glow, artwork fills the box) instead of the shared 64px `.brand-logo.xl`; drops to 122px on narrow screens. About page logo unchanged
-- **No separate title text** — `logo.png` already contains the "Majeh's Email Browserr" wordmark + tagline, so the duplicate `<h1>` was removed (and the now-unused `.splash-title` CSS)
-- **Logo background made transparent** — `logo.png` was an opaque **RGB** image whose near-black surround (RGB 3,3,3) rendered as a dark frame around the artwork on the navy background. Fixed by flood-filling the border-connected near-black pixels to alpha 0 (icon interior untouched) and downscaling 1254→640px: **1.87 MB → 498 KB**. CSS `border-radius` now uses `22%` to match the artwork's own corner curve
-- When a vault exists: password input + "Unlock" button + error display
-- When no vault: "Create your vault password" (new + confirm fields)
-- Unlocking/creating dismisses the splash and reveals the app
-
+### Add Account — Google flow from the sidebar
+- The sidebar **"Add Account"** button and the **"+" icon** next to the *Accounts* heading now start the **Google OAuth (PKCE) flow** — they were previously dead buttons.
+- One shared handler `add_google_account` in `app.rs` is used by all three entry points: sidebar **Add Account**, sidebar **"+"**, and **Settings → Connect Gmail** (which previously called `start_google_oauth()` directly and swallowed errors).
+- Failures (e.g. missing Google Client ID/Secret) are surfaced in a **global dismissible error banner** at the top of the content area, visible on every tab (`oauth_error` signal + `.global-error` style). The old `fetch_error` banner stays scoped to the Mailbox fetch panel.
+- After the callback the app reopens on **Settings**, where the pending token is picked up by the vault effect and persisted (the session password is now published *before* the `is_unlocked` signal flips, so the pending-token effect can never miss it).
 
 ### Tokens Page (`src/components/tokens_page.rs`) — new tab
 - Reachable from the sidebar footer ("Tokens") and the bottom nav (4th tab)
@@ -118,6 +114,11 @@
 - `Email` gained `msg_id`, `to_field`, `timestamp_ms`; `next_email_id()` (session-unique ids); `format_email_time()` (local "10:24 AM" / "Yesterday" / "Mar 8" / "3/8/24")
 - `FetchTask` + `TaskStatus` with `progress_text()` ("Fetching 20 emails for x — 12/20") and `fraction()`
 
+### Google Play / Search Console compliance
+- **Verification tag** — `<meta name="google-site-verification" content="dY68mbC5...">` added to `index.html` `<head>` (must stay in the deployed HTML for verification to hold)
+- **Live domain**: the app is served from `https://majehsemailviewer.web.app` (Firebase project `majehs-email-browserr`, hosting **site id** `majehsemailviewer`). The default `majehs-email-browserr.web.app` domain does not exist — `OAUTH_CONFIG.md` corrected
+- **"Behind a login page" + "does not explain the purpose"** — the splash now renders a **public intro block above the vault form**: purpose line, three plain-English points (Google read-only sign-in, nothing leaves the device, AES-256-GCM local vault) and direct links to the Privacy Policy / Terms of Service. The description is therefore visible without unlocking, and the policy pages are one click away
+
 ### Privacy Policy & Terms of Service (new static pages)
 - `privacy.html` + `terms.html` — standalone, self-contained pages styled to match the app's dark theme (no external assets), copied into `dist/` via Trunk `copy-file` in `index.html`
 - **Contact: `zmajeh@gmail.com`** (used for all contact/privacy/terms questions in both pages)
@@ -132,9 +133,8 @@
 ---
 
 ## In Progress 🔄
-- Nothing currently in progress — vault persistence, backup dedupe, dummy-account removal and the email delete option are all implemented and building clean.
-
----
+- Home-page restructure (splash login removed, Home tab added) — **built and compiling, uncommitted for review**
+- Google Play "Mandatory Homepage Checklist" wording aligned on the Home tab and in `privacy.html` (new "How your data is used (limited use)" section)
 
 ## Todo Next 📋
 

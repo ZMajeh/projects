@@ -4,6 +4,7 @@ use crate::components::{
     about::About,
     email_list::{EmailList, ListFilter},
     fetch_panel::FetchPanel,
+    home::Home,
     navigation::{BottomNavigation, Tab},
     reading_pane::ReadingPane,
     settings::Settings,
@@ -505,9 +506,22 @@ pub fn App() -> impl IntoView {
     let initial_tab = if is_oauth_callback {
         Tab::Settings
     } else {
-        Tab::Mailbox
+        Tab::Home
     };
     let (active_tab, set_active_tab) = create_signal(initial_tab);
+
+    // One shared "add a Google account" entry point (sidebar "Add Account",
+    // the Accounts "+" button and Settings -> Connect Gmail). Failures are
+    // surfaced in a global banner so they are visible on every tab.
+    let oauth_error = create_rw_signal(Option::<String>::None);
+    let add_google_account = move || {
+        match crate::oauth::start_google_oauth() {
+            Ok(()) => {}
+            Err(e) => oauth_error.set(Some(format!(
+                "Could not start Google sign-in: {e}. Check Settings for the Google Client ID and Secret."
+            ))),
+        }
+    };
 
     // Handle OAuth callback after mount.
     if is_oauth_callback {
@@ -543,10 +557,11 @@ pub fn App() -> impl IntoView {
 
     view! {
         <div class="app-container" class:drawer-open=move || drawer_open.get()>
-            <Splash connected_accounts=connected_accounts/>
+            <Splash/>
             <TopBar query=query on_toggle_drawer=move || set_drawer_open.update(|d| *d = !*d)/>
             <div class="app-body">
                 <Sidebar
+                    active_tab=active_tab
                     active_folder=active_folder
                     emails=emails_store
                     connected_accounts=connected_accounts
@@ -554,9 +569,33 @@ pub fn App() -> impl IntoView {
                     set_active_tab=set_active_tab
                     set_drawer_open=set_drawer_open
                     on_oauth_account_click=on_account_click
+                    on_add_account=add_google_account
                 />
                 <div class="drawer-backdrop" on:click=move |_| set_drawer_open.set(false)></div>
                 <main class="content">
+                    {move || {
+                        oauth_error
+                            .get()
+                            .map(|e| view! {
+                                <div class="fetch-error global-error">
+                                    <span>{e}</span>
+                                    <button
+                                        class="icon-btn sm"
+                                        aria-label="Dismiss"
+                                        on:click=move |_| oauth_error.set(None)
+                                    >
+                                        "✕"
+                                    </button>
+                                </div>
+                            })
+                    }}
+                    <Show when=move || active_tab.get() == Tab::Home>
+                        <Home
+                            connected_accounts=connected_accounts
+                            vault_exists=crate::tokens::vault_exists()
+                            set_active_tab=set_active_tab
+                        />
+                    </Show>
                     <Show when=move || active_tab.get() == Tab::Mailbox>
                         <FetchPanel
                             connected_accounts=connected_accounts
@@ -583,7 +622,10 @@ pub fn App() -> impl IntoView {
                         <TokensPage connected_accounts=connected_accounts email_cache=email_cache emails_store=emails_store/>
                     </Show>
                     <Show when=move || active_tab.get() == Tab::Settings>
-                        <Settings connected_accounts=connected_accounts/>
+                        <Settings
+                            connected_accounts=connected_accounts
+                            on_connect_google=add_google_account
+                        />
                     </Show>
                     <Show when=move || active_tab.get() == Tab::About>
                         <About/>
