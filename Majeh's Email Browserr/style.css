@@ -1083,6 +1083,14 @@ input {
 
 .account-count { font-size: 11px; color: var(--text-2); }
 
+.account-empty {
+    list-style: none;
+    font-size: 12px;
+    color: var(--text-2);
+    padding: 8px 4px;
+    line-height: 1.5;
+}
+
 
 /* ---------- Splash screen ---------- */
 .gate-screen {

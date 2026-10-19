@@ -260,12 +260,9 @@ impl FetchTask {
 }
 
 pub fn accounts() -> Vec<Account> {
-    vec![
-        Account { name: "Gmail Personal".into(), email: "majeh@gmail.com".into(), initial: "G".into(), color: "#ea4335".into(), unread: 245 },
-        Account { name: "Outlook Work".into(), email: "majeh@company.com".into(), initial: "O".into(), color: "#0078d4".into(), unread: 27 },
-        Account { name: "Yahoo Backup".into(), email: "majeh@yahoo.com".into(), initial: "Y".into(), color: "#6001d2".into(), unread: 3 },
-        Account { name: "Custom IMAP".into(), email: "mail@majeh.io".into(), initial: "I".into(), color: "#2d8a4e".into(), unread: 0 },
-    ]
+    // No dummy accounts — the sidebar lists real connected OAuth accounts.
+    // Kept (returning empty) so any lingering callers don't break.
+    Vec::new()
 }
 
 macro_rules! email {

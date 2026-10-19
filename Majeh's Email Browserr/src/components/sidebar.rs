@@ -2,7 +2,7 @@ use leptos::*;
 use std::collections::HashMap;
 use crate::components::icons::Icon;
 use crate::components::navigation::Tab;
-use crate::data::{accounts, Email, Folder};
+use crate::data::{Email, Folder};
 use crate::tokens::OAuthToken;
 
 /// Clickable section header with a collapse chevron.
@@ -68,28 +68,29 @@ pub fn Sidebar(
                 <Show when=move || show_accounts.get()>
                     <ul class="account-list">
                         {move || {
-                            let mock_list = accounts();
                             let connected = connected_accounts.get();
                             let cache = email_cache.get();
-                            let all: Vec<_> = mock_list.iter().map(|a| {
-                                (a.name.to_string(), a.email.to_string(), a.initial.to_string(), a.color.to_string(), a.unread, false, None::<OAuthToken>, None::<usize>)
-                            }).chain(connected.iter().map(|t| {
+                            if connected.is_empty() {
+                                return view! {
+                                    <li class="account-empty">
+                                        "No accounts yet — connect one in Settings."
+                                    </li>
+                                }.into_view();
+                            }
+                            connected.iter().map(|t| {
                                 let initial = t.email.chars().next().unwrap_or('?').to_string();
                                 let count = cache.get(&t.email).map(|v| v.len());
-                                (t.email.clone(), t.email.clone(), initial, "#4285f4".to_string(), 0u32, true, Some(t.clone()), count)
-                            })).collect();
-                            all.into_iter().map(|(name, email, initial, color, unread, is_oauth, token, count)| {
-                                let email_clone = email.clone();
-                                let set_tab = set_active_tab.clone();
+                                let name = t.email.clone();
+                                let email_clone = t.email.clone();
+                                let token = t.clone();
+                                let set_tab = set_active_tab;
                                 let on_oauth = on_oauth_account_click;
                                 view! {
                                     <li class="account-item" on:click=move |_| {
                                         set_tab.set(Tab::Mailbox);
-                                        if let Some(t) = token.clone() {
-                                            on_oauth(t);
-                                        }
+                                        on_oauth(token.clone());
                                     }>
-                                        <div class="avatar" style=format!("background:{}", color)>{initial}</div>
+                                        <div class="avatar" style="background:#4285f4">{initial}</div>
                                         <div class="account-meta">
                                             <span class="account-name">{name}</span>
                                             <span class="account-email">{email_clone}</span>
@@ -97,15 +98,10 @@ pub fn Sidebar(
                                                 <span class="account-count">{format!("{n} emails")}</span>
                                             })}
                                         </div>
-                                        {if unread > 0 {
-                                            Some(view! { <span class="badge">{unread}</span> })
-                                        } else { None }}
-                                        {if is_oauth {
-                                            Some(view! { <span class="oauth-badge">"OAuth"</span> })
-                                        } else { None }}
+                                        <span class="oauth-badge">"OAuth"</span>
                                     </li>
                                 }
-                            }).collect_view()
+                            }).collect_view().into_view()
                         }}
                     </ul>
                     <button class="btn-add-account"><Icon name="plus"/>"Add Account"</button>
