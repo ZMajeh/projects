@@ -23,7 +23,7 @@
 3. `handle_google_callback()` — validates `state`, exchanges code, fetches userinfo
 4. `extract_google_tokens()`; `refresh_access_token()` now actively used by token auto-refresh
 5. **Gmail API functions**:
-   - `gmail_list_messages_query(access_token, q)` — always scoped to `labelIds=INBOX&maxResults=20`, optional Gmail search query (e.g. `after:<epoch_s> before:<epoch_s>` for date-range fetches)
+   - `gmail_list_messages_query(access_token, q, max_results)` — scoped to `labelIds=INBOX`, optional Gmail search query (e.g. `after:<epoch_s> before:<epoch_s>` for date-range fetches), and a caller-controlled page size (`maxResults`, clamped to 500). `DEFAULT_MAX_RESULTS = 20`, `MAX_RESULTS_LIMIT = 500`
    - `gmail_get_message()` — full message incl. `internalDate`, `mimeType`, headers, parts
    - `decode_b64url()` — Gmail base64url body decoding (padding-tolerant)
    - `gmail_extract_body()` — recursive `text/plain` extraction from `payload.parts` (skips HTML/attachments, snippet fallback)
@@ -94,6 +94,7 @@
 ### Fetch Panel (`src/components/fetch_panel.rs`)
 - Progress bars: **"Fetching 20 emails for x@gmail.com — 12/20"** (indeterminate bar while listing; green + auto-hide when done)
 - Collapsible **Fetch by date** controls: From / To date inputs + account select (single account or all) + "Fetch Range"
+- **"Max emails" field** — leave empty for **auto** (current behaviour: up to 20 emails), or type a number (1-500) to pull exactly that many emails for that range. Clamped to Gmail's 500-per-request ceiling; invalid input shows an inline error
 - Each **account + date combination** gets its own task and progress bar (queue several ranges by clicking again)
 - User-facing **error banner** with dismiss (medium-priority "Error UI" item)
 

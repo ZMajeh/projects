@@ -1011,6 +1011,7 @@ input {
 }
 
 .fetch-controls input[type="date"],
+.fetch-controls input[type="number"],
 .fetch-controls select {
     background: var(--bg-2);
     border: 1px solid var(--border);
@@ -1022,6 +1023,8 @@ input {
 }
 
 .fetch-controls select { max-width: 260px; }
+
+.fetch-controls input[type="number"] { width: 88px; }
 
 .btn-fetch {
     background: var(--accent);

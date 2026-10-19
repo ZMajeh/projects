@@ -12,7 +12,8 @@ pub fn FetchPanel(
     connected_accounts: RwSignal<Vec<OAuthToken>>,
     tasks: RwSignal<Vec<FetchTask>>,
     error: RwSignal<Option<String>>,
-    on_fetch_range: impl Fn(String, String, String) + Copy + 'static,
+    /// (from, to, account, max_emails) — max_emails empty = auto.
+    on_fetch_range: impl Fn(String, String, String, String) + Copy + 'static,
 ) -> impl IntoView {
     let (expanded, set_expanded) = create_signal(false);
 
@@ -56,6 +57,18 @@ pub fn FetchPanel(
                         "To"
                         <input type="date" id="fetch-to"/>
                     </label>
+                    <label class="fetch-field">
+                        "Max emails"
+                        <input
+                            type="number"
+                            id="fetch-limit"
+                            min="1"
+                            max="500"
+                            step="1"
+                            placeholder="Auto"
+                            title="Leave empty to auto-fetch (up to 20). Otherwise fetch up to this many emails."
+                        />
+                    </label>
                     <select id="fetch-account" aria-label="Account">
                         <option value="">"All connected accounts"</option>
                         {move || {
@@ -75,7 +88,8 @@ pub fn FetchPanel(
                             let from = read_input("fetch-from");
                             let to = read_input("fetch-to");
                             let account = read_select("fetch-account");
-                            on_fetch_range(from, to, account);
+                            let limit = read_input("fetch-limit");
+                            on_fetch_range(from, to, account, limit);
                         }
                     >
                         "Fetch Range"

@@ -309,16 +309,25 @@ pub struct GmailBody {
     pub size: u32,
 }
 
+/// Default number of messages fetched when the user doesn't specify a count.
+pub const DEFAULT_MAX_RESULTS: u32 = 20;
+/// Gmail's hard ceiling for `maxResults` on a single list call.
+pub const MAX_RESULTS_LIMIT: u32 = 500;
+
 /// List Gmail message IDs with an optional Gmail search query.
 /// Always scoped to `labelIds=INBOX` so folder contents stay consistent.
 /// `q` accepts Gmail search syntax, e.g. `after:<epoch_s> before:<epoch_s>`
 /// for manual date-range fetches.
+/// `max_results` caps how many message IDs are returned (clamped to Gmail's
+/// 500-per-request limit).
 pub async fn gmail_list_messages_query(
     access_token: &str,
     q: Option<&str>,
+    max_results: u32,
 ) -> Result<GmailListResponse, String> {
-    let mut url = String::from(
-        "https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=INBOX&maxResults=20",
+    let max = max_results.clamp(1, MAX_RESULTS_LIMIT);
+    let mut url = format!(
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=INBOX&maxResults={max}"
     );
     if let Some(q) = q.filter(|s| !s.is_empty()) {
         url.push_str("&q=");

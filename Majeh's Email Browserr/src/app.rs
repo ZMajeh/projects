@@ -16,7 +16,7 @@ use crate::util::sleep;
 use crate::data::{emails, format_email_time, init_email_id_counter, load_email_cache, next_email_id, save_email_cache, Email, FetchTask, Folder, TaskStatus};
 use crate::oauth::{
     config, gmail_extract_body, gmail_get_message, gmail_list_messages_query,
-    parse_address_header, refresh_access_token,
+    parse_address_header, refresh_access_token, DEFAULT_MAX_RESULTS, MAX_RESULTS_LIMIT,
 };
 use crate::tokens::OAuthToken;
 
@@ -101,6 +101,11 @@ fn gmail_msg_to_email(msg: &crate::oauth::GmailMessage) -> Email {
         folder,
         body,
     }
+}
+
+/// Unique key for a fetch task: account + date range + requested count.
+fn task_key(email: &str, from: &str, to: &str, max_results: u32) -> String {
+    format!("{email}|{from}|{to}|{max_results}")
 }
 
 /// Parse a `<input type="date">` value ("YYYY-MM-DD") into local-midnight epoch ms.
@@ -232,19 +237,26 @@ pub fn App() -> impl IntoView {
     // Fetch emails for an account via the Gmail API, with a per-task progress
     // bar. `range = Some((from, to))` applies a manual date filter (Gmail
     // `after:`/`before:` query); `None` fetches the latest inbox messages.
-    let spawn_fetch = move |token: OAuthToken, range: Option<(String, String)>| {
+    let spawn_fetch = move |token: OAuthToken, range: Option<(String, String)>, limit: Option<u32>| {
         let from = range.as_ref().map(|r| r.0.clone()).unwrap_or_default();
         let to = range.as_ref().map(|r| r.1.clone()).unwrap_or_default();
+        // `None` = auto (the current default of 20); `Some(n)` = fetch n emails.
+        let max_results = limit.unwrap_or(DEFAULT_MAX_RESULTS).clamp(1, MAX_RESULTS_LIMIT);
         let label = if from.is_empty() && to.is_empty() {
-            String::new()
+            if limit.is_some() {
+                format!("max {max_results}")
+            } else {
+                String::new()
+            }
         } else {
             format!(
-                "{} → {}",
+                "{} → {}{}",
                 if from.is_empty() { "…" } else { &from },
-                if to.is_empty() { "…" } else { &to }
+                if to.is_empty() { "…" } else { &to },
+                if limit.is_some() { format!(" · max {max_results}") } else { String::new() }
             )
         };
-        let key = format!("{}|{}|{}", token.email, from, to);
+        let key = task_key(&token.email, &from, &to, max_results);
         // Same account+range already fetching — don't start a duplicate.
         if fetch_tasks
             .get()
@@ -329,7 +341,7 @@ pub fn App() -> impl IntoView {
                 });
             };
 
-            match gmail_list_messages_query(&token.access_token, q.as_deref()).await {
+            match gmail_list_messages_query(&token.access_token, q.as_deref(), max_results).await {
                 Ok(list) => {
                     let total = list.messages.len();
                     set_task(Box::new(move |t| t.total = total));
@@ -393,7 +405,7 @@ pub fn App() -> impl IntoView {
         if let Some(cached) = email_cache.get().get(&token.email) {
             emails_store.set(cached.clone());
         } else {
-            spawn_fetch(token, None);
+            spawn_fetch(token, None, None);
         }
     };
 
@@ -413,7 +425,7 @@ pub fn App() -> impl IntoView {
         {
             return;
         }
-        let inbox_key = format!("{}||", acc.email);
+        let inbox_key = task_key(&acc.email, "", "", DEFAULT_MAX_RESULTS);
         let already_running = fetch_tasks
             .get()
             .iter()
@@ -421,7 +433,7 @@ pub fn App() -> impl IntoView {
         if already_running {
             return;
         }
-        spawn_fetch(acc, None);
+        spawn_fetch(acc, None, None);
     };
 
     // Whether the active account's inbox fetch is running right now (drives
@@ -430,7 +442,7 @@ pub fn App() -> impl IntoView {
         let Some(acc) = active_account.get() else {
             return false;
         };
-        let inbox_key = format!("{}||", acc.email);
+        let inbox_key = task_key(&acc.email, "", "", DEFAULT_MAX_RESULTS);
         fetch_tasks
             .get()
             .iter()
@@ -438,11 +450,28 @@ pub fn App() -> impl IntoView {
     };
 
     // Fetch-panel "Fetch Range" button: one task per selected account+range.
-    let on_fetch_range = move |from: String, to: String, account: String| {
+    let on_fetch_range = move |from: String, to: String, account: String, limit: String| {
         if from.is_empty() && to.is_empty() {
             fetch_error.set(Some("Pick at least one date for the range.".into()));
             return;
         }
+        // Empty count = auto (current behaviour: up to 20 emails). A number
+        // caps how many emails are pulled for that range.
+        let requested: Option<u32> = if limit.trim().is_empty() {
+            None
+        } else {
+            match limit.trim().parse::<u32>() {
+                Ok(n) if n == 0 => {
+                    fetch_error.set(Some("Number of emails must be at least 1.".into()));
+                    return;
+                }
+                Ok(n) => Some(n.min(MAX_RESULTS_LIMIT)),
+                Err(_) => {
+                    fetch_error.set(Some("Number of emails must be a whole number.".into()));
+                    return;
+                }
+            }
+        };
         if let (Some(f), Some(t)) = (date_input_to_ms(&from), date_input_to_ms(&to)) {
             if f > t {
                 fetch_error.set(Some("The from date is after the to date.".into()));
@@ -464,7 +493,7 @@ pub fn App() -> impl IntoView {
             return;
         }
         for token in targets {
-            spawn_fetch(token, Some((from.clone(), to.clone())));
+            spawn_fetch(token, Some((from.clone(), to.clone())), requested);
         }
     };
 
