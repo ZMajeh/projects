@@ -118,6 +118,14 @@
 - `Email` gained `msg_id`, `to_field`, `timestamp_ms`; `next_email_id()` (session-unique ids); `format_email_time()` (local "10:24 AM" / "Yesterday" / "Mar 8" / "3/8/24")
 - `FetchTask` + `TaskStatus` with `progress_text()` ("Fetching 20 emails for x — 12/20") and `fraction()`
 
+### Privacy Policy & Terms of Service (new static pages)
+- `privacy.html` + `terms.html` — standalone, self-contained pages styled to match the app's dark theme (no external assets), copied into `dist/` via Trunk `copy-file` in `index.html`
+- **Contact: `zmajeh@gmail.com`** (used for all contact/privacy/terms questions in both pages)
+- Privacy Policy (10 sections): no backend / no analytics / no tracking, exactly what is stored in `localStorage` (encrypted vault, email cache, client secret, vault password in memory only), what leaves the device (Google OAuth + Gmail API + Firebase Hosting), the read-only Gmail scope requested, user controls (revoke access, export, delete), security notes, children, policy changes, contact
+- Terms of Service (13 sections): acceptance, what the app does, account/credentials (vault password cannot be recovered), acceptable use, content & data ownership, third-party services (Google, Firebase), availability & changes, warranty disclaimer, liability limitation, indemnity, termination, severability, contact
+- Linked from the **About** page (Privacy Policy / Terms of Service rows are now real links, `target="_blank"`) and the **Settings** page (new "Legal" rows with one-line descriptions)
+- Each page cross-links the other and has a "Back to the app" link
+
 ### Logo (`index.html`)
 - **Fix**: `logo.png` was referenced by CSS but never copied to `dist/` (404) — added `<link data-trunk rel="copy-file" href="logo.png"/>`; verified `dist/logo.png` after build
 

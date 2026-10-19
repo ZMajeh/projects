@@ -4,13 +4,14 @@ use crate::components::icons::Icon;
 /// About view: hero with logo + link rows.
 #[component]
 pub fn About() -> impl IntoView {
-    let rows = [
-        ("book", "Features"),
-        ("globe", "Open Source"),
-        ("bug", "Report a Bug"),
-        ("mail", "Contact"),
-        ("shield", "Privacy Policy"),
-        ("info", "Terms of Service"),
+    // (icon, title, href) — rows with a href open the page in a new tab.
+    let rows: [(&str, &str, Option<&str>); 6] = [
+        ("book", "Features", None),
+        ("globe", "Open Source", None),
+        ("bug", "Report a Bug", None),
+        ("mail", "Contact", None),
+        ("shield", "Privacy Policy", Some("/privacy.html")),
+        ("info", "Terms of Service", Some("/terms.html")),
     ];
 
     view! {
@@ -23,12 +24,29 @@ pub fn About() -> impl IntoView {
                     <p class="version">"Version 1.0.0"</p>
                 </div>
                 <ul class="settings-list">
-                    {rows.into_iter().map(|(icon, title)| view! {
-                        <li class="settings-row">
-                            <span class="row-icon slate"><Icon name=icon/></span>
-                            <div class="row-text"><span class="row-title">{title}</span></div>
-                            <Icon name="chevron-right" class="chevron"/>
-                        </li>
+                    {rows.into_iter().map(|(icon, title, href)| {
+                        let row_title = view! {
+                            <>
+                                <span class="row-icon slate"><Icon name=icon/></span>
+                                <div class="row-text"><span class="row-title">{title}</span></div>
+                            </>
+                        };
+                        match href {
+                            Some(href) => view! {
+                                <li class="settings-row row-link-row">
+                                    <a class="row-link" href=href target="_blank" rel="noopener noreferrer">
+                                        {row_title}
+                                        <Icon name="chevron-right" class="chevron"/>
+                                    </a>
+                                </li>
+                            },
+                            None => view! {
+                                <li class="settings-row">
+                                    {row_title}
+                                    <Icon name="chevron-right" class="chevron"/>
+                                </li>
+                            },
+                        }
                     }).collect_view()}
                 </ul>
             </div>

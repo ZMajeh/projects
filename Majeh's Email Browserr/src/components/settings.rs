@@ -167,6 +167,26 @@ pub fn Settings(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoView 
                             }}
                         </div>
                     </li>
+                    <li class="settings-row row-link-row">
+                        <a class="row-link" href="/privacy.html" target="_blank" rel="noopener noreferrer">
+                            <span class="row-icon slate"><Icon name="shield"/></span>
+                            <div class="row-text">
+                                <span class="row-title">"Privacy Policy"</span>
+                                <span class="row-sub">"How the app handles your data"</span>
+                            </div>
+                            <Icon name="chevron-right" class="chevron"/>
+                        </a>
+                    </li>
+                    <li class="settings-row row-link-row">
+                        <a class="row-link" href="/terms.html" target="_blank" rel="noopener noreferrer">
+                            <span class="row-icon slate"><Icon name="info"/></span>
+                            <div class="row-text">
+                                <span class="row-title">"Terms of Service"</span>
+                                <span class="row-sub">"Rules for using the app"</span>
+                            </div>
+                            <Icon name="chevron-right" class="chevron"/>
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>

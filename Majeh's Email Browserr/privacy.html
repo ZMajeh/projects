@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<!--
+  Majeh's Email Browserr - Privacy Policy
+  Contact: zmajeh@gmail.com
+  OWNER: update "Last updated" whenever the app changes.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Privacy Policy - Majeh's Email Browserr</title>
+<meta name="description" content="Privacy Policy for Majeh's Email Browserr, a client-side email browser."/>
+<link rel="icon" href="logo.png"/>
+<style>
+:root{
+  --bg-0:#0b1020; --bg-1:#0f1629; --bg-2:#151d38; --border:#232c4f;
+  --text-0:#e8ecf8; --text-1:#93a0c2; --text-2:#5d6a8f; --accent:#3b82f6;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; padding:0; background:var(--bg-0); color:var(--text-0);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-size:15px; line-height:1.65;
+}
+.wrap{max-width:760px; margin:0 auto; padding:40px 22px 80px}
+header.hero{display:flex; align-items:center; gap:16px; margin-bottom:8px}
+.logo{width:64px;height:64px;border-radius:16px;background-image:url("logo.png");
+  background-size:contain;background-repeat:no-repeat;background-position:center;flex-shrink:0}
+h1{font-size:26px; margin:0}
+.sub{color:var(--text-2); font-size:13px; margin:2px 0 0}
+h2{font-size:18px; margin:34px 0 10px; color:var(--text-0)}
+h3{font-size:15px; margin:22px 0 6px; color:var(--text-1)}
+p,li{color:var(--text-1)}
+ul,ol{padding-left:22px}
+li{margin:6px 0}
+strong{color:var(--text-0)}
+a{color:var(--accent)}
+table{width:100%; border-collapse:collapse; margin:14px 0; font-size:14px}
+th,td{text-align:left; padding:9px 10px; border-bottom:1px solid var(--border); vertical-align:top}
+th{color:var(--text-0); font-weight:600}
+td{color:var(--text-1)}
+.note{background:rgba(59,130,246,.08); border:1px solid rgba(59,130,246,.35); border-radius:12px; padding:14px 16px; margin:18px 0; color:var(--text-1)}
+footer{margin-top:48px; padding-top:18px; border-top:1px solid var(--border); color:var(--text-2); font-size:13px}
+footer a{color:var(--accent)}
+.back{display:inline-flex; align-items:center; gap:6px; margin-top:14px; font-size:14px}
+@media (max-width:560px){ .wrap{padding:26px 16px 60px} .logo{width:52px;height:52px} h1{font-size:22px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="logo"></div>
+    <div>
+      <h1>Privacy Policy</h1>
+      <p class="sub">Majeh's Email Browserr &middot; Last updated: 21 October 2026</p>
+    </div>
+  </header>
+
+  <div class="note">
+    <strong>Short version:</strong> this app has no backend and no analytics. Your emails,
+    tokens and settings stay in your browser. The only data that leaves your device is
+    sent directly to Google, because that is where your mailbox lives.
+  </div>
+
+  <h2>1. Who we are</h2>
+  <p>
+    Majeh's Email Browserr ("the App") is a personal, client-side web application for
+    reading email. It is operated by the individual developer who distributes it. For
+    any privacy question, contact <a href="mailto:zmajeh@gmail.com">zmajeh@gmail.com</a>.
+  </p>
+
+  <h2>2. The App is client-side only</h2>
+  <p>
+    The App is a static website. It contains no application server, no database, and no
+    account system of its own. It is hosted on Firebase Hosting, which serves static
+    files only - Firebase does not receive a copy of your mail, and the App has no
+    server-side component that could collect it.
+  </p>
+  <p>
+    There is <strong>no analytics, telemetry, advertising, or user tracking</strong> in
+    the App. No cookies are set by the App, and no third-party trackers are embedded.
+  </p>
+
+  <h2>3. What the App stores, and where</h2>
+  <p>Everything the App keeps is stored in your browser's local storage on your own device:</p>
+  <table>
+    <thead><tr><th>Data</th><th>Where it lives</th><th>Protection</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>OAuth access &amp; refresh tokens</td>
+        <td>localStorage, in an encrypted "vault"</td>
+        <td>Encrypted with AES-256-GCM. The key is derived from your vault password
+            using PBKDF2 (100,000 iterations). It never leaves your device.</td>
+      </tr>
+      <tr>
+        <td>Fetched emails (headers, bodies, dates, read/starred state)</td>
+        <td>localStorage, per account</td>
+        <td>Stored in plain text on your device. Anyone with access to your device or
+            browser profile can read it. Use the "Delete Downloaded Emails" control to
+            clear it at any time.</td>
+      </tr>
+      <tr>
+        <td>Google OAuth client ID / client secret</td>
+        <td>localStorage (client secret) and the page markup (client ID)</td>
+        <td>Stored locally so you can supply your own credentials. The client secret is
+            never committed to source control.</td>
+      </tr>
+      <tr>
+        <td>Vault password</td>
+        <td>Memory only</td>
+        <td>Kept in memory for the current tab session and never written to disk.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>4. What leaves your device</h2>
+  <p>The App talks directly to Google, and only to Google:</p>
+  <ul>
+    <li><strong>Google OAuth sign-in</strong> - so you can grant permission to read your mailbox.</li>
+    <li><strong>Gmail API</strong> - to list and download the messages you ask for.</li>
+    <li><strong>Firebase Hosting</strong> - to deliver the App's own static files.</li>
+  </ul>
+  <p>
+    Google processes that data under its own privacy policy and terms. The App does not
+    proxy, copy, log or analyse your mail on any server it controls.
+  </p>
+
+  <h2>5. Permissions the App requests</h2>
+  <p>
+    The App requests read-only access to your Gmail mailbox
+    (<code>https://www.googleapis.com/auth/gmail.readonly</code>) plus your basic
+    profile (name, email address, profile picture). It cannot send, delete, or modify
+    your email, and it cannot read anything outside the mailbox you authorise.
+  </p>
+
+  <h2>6. Your choices and controls</h2>
+  <ul>
+    <li><strong>Revoke access</strong> - remove the App from your
+        <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener">Google account connections</a>.
+        This immediately stops all access.</li>
+    <li><strong>Export your data</strong> - the Tokens page can export your encrypted
+        vault, and the email cache can be downloaded as a JSON backup.</li>
+    <li><strong>Delete your data</strong> - use "Delete Downloaded Emails" to clear
+        cached mail, "Clear" next to the client secret to remove it, and clear your
+        browser's site data to remove everything the App has stored, including the vault.</li>
+  </ul>
+
+  <h2>7. Security</h2>
+  <p>
+    The App is served over HTTPS. Your vault is encrypted locally with a key derived
+    from your password via PBKDF2, and the password is never stored. As with any
+    software that keeps secrets on a device, a compromised device or browser profile
+    can expose locally stored data - keep your operating system and browser up to date,
+    and use a strong, unique vault password.
+  </p>
+
+  <h2>8. Children</h2>
+  <p>
+    The App is a general-purpose productivity tool and is not directed at children
+    under 13. If you believe a child has provided personal information, contact
+    <a href="mailto:zmajeh@gmail.com">zmajeh@gmail.com</a>.
+  </p>
+
+  <h2>9. Changes to this policy</h2>
+  <p>
+    If the App's data practices change, this page will be updated and the "Last updated"
+    date above will change. Continuing to use the App after an update means you accept
+    the revised policy.
+  </p>
+
+  <h2>10. Contact</h2>
+  <p>
+    Questions about this policy: <a href="mailto:zmajeh@gmail.com">zmajeh@gmail.com</a>.
+  </p>
+
+  <footer>
+    Majeh's Email Browserr &middot; <a href="/terms.html">Terms of Service</a> &middot;
+    <a href="/privacy.html">Privacy Policy</a>
+    <br/>
+    <a class="back" href="/">&larr; Back to the app</a>
+  </footer>
+
+</div>
+</body>
+</html>
