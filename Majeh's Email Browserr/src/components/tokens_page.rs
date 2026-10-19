@@ -57,6 +57,7 @@ fn apply_refresh(list: &mut Vec<OAuthToken>, email: &str, resp: &crate::oauth::T
 pub fn TokensPage(
     connected_accounts: RwSignal<Vec<OAuthToken>>,
     email_cache: RwSignal<HashMap<String, Vec<Email>>>,
+    emails_store: RwSignal<Vec<Email>>,
 ) -> impl IntoView {
     // Emails currently being refreshed (row spinners).
     let refreshing = create_rw_signal(Vec::<String>::new());
@@ -195,6 +196,13 @@ pub fn TokensPage(
                 <button class="btn-download" on:click=move |_| download_emails(email_cache.get())>
                     <Icon name="download"/>
                     "Download Emails Backup"
+                </button>
+                <button
+                    class="btn-delete-emails"
+                    on:click=move |_| clear_downloaded_emails(email_cache.clone(), emails_store.clone())
+                >
+                    <Icon name="trash"/>
+                    "Delete Downloaded Emails"
                 </button>
                 <label class="btn-upload" style="display:flex;align-items:center;gap:6px;">
                     <Icon name="file"/>
@@ -400,5 +408,16 @@ fn download_emails(cache: HashMap<String, Vec<Email>>) {
     window.document().unwrap().body().unwrap().append_child(&a).unwrap();
     a.unchecked_ref::<web_sys::HtmlAnchorElement>().click();
     let _ = window.document().unwrap().body().unwrap().remove_child(&a);
+}
+
+/// Delete every downloaded email: clears the persisted cache in localStorage
+/// and empties the mailbox list. The inverse of the backup download.
+fn clear_downloaded_emails(
+    email_cache: RwSignal<HashMap<String, Vec<Email>>>,
+    emails_store: RwSignal<Vec<Email>>,
+) {
+    crate::data::clear_email_cache();
+    email_cache.set(HashMap::new());
+    emails_store.set(Vec::new());
 }
 

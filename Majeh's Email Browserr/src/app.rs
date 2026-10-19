@@ -1,6 +1,5 @@
 use leptos::*;
 use serde_json;
-use std::collections::HashMap;
 use crate::components::{
     about::About,
     email_list::{EmailList, ListFilter},
@@ -552,7 +551,7 @@ pub fn App() -> impl IntoView {
                         </div>
                     </Show>
                     <Show when=move || active_tab.get() == Tab::Tokens>
-                        <TokensPage connected_accounts=connected_accounts email_cache=email_cache/>
+                        <TokensPage connected_accounts=connected_accounts email_cache=email_cache emails_store=emails_store/>
                     </Show>
                     <Show when=move || active_tab.get() == Tab::Settings>
                         <Settings connected_accounts=connected_accounts/>

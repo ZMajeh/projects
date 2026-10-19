@@ -48,15 +48,6 @@ impl Folder {
     ];
 }
 
-#[derive(Clone)]
-pub struct Account {
-    pub name: String,
-    pub email: String,
-    pub initial: String,
-    pub color: String,
-    pub unread: u32,
-}
-
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Email {
     pub id: usize,
@@ -82,7 +73,6 @@ pub struct Email {
 use leptos::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use wasm_bindgen::JsCast;
 
 const EMAIL_CACHE_KEY: &str = "mejeh_email_cache";
 const NEXT_ID_KEY: &str = "mejeh_next_email_id";
@@ -98,7 +88,15 @@ pub fn load_email_cache() -> HashMap<String, Vec<Email>> {
     serde_json::from_str(&json).unwrap_or_default()
 }
 
-/// Save email cache to localStorage.
+/// Remove the persisted email cache from localStorage entirely (wipes all
+/// downloaded emails across every account).
+pub fn clear_email_cache() {
+    if let Some(ls) = window_local_storage() {
+        let _ = ls.remove_item(EMAIL_CACHE_KEY);
+    }
+}
+
+/// Re-save the cache to localStorage (used after import/upload).
 pub fn save_email_cache(cache: &HashMap<String, Vec<Email>>) {
     let Ok(json) = serde_json::to_string(cache) else {
         return;
@@ -257,12 +255,6 @@ impl FetchTask {
             Some((self.fetched as f32 / self.total as f32).clamp(0.0, 1.0))
         }
     }
-}
-
-pub fn accounts() -> Vec<Account> {
-    // No dummy accounts — the sidebar lists real connected OAuth accounts.
-    // Kept (returning empty) so any lingering callers don't break.
-    Vec::new()
 }
 
 macro_rules! email {

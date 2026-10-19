@@ -81,6 +81,8 @@ impl OAuthProvider {
         }
     }
 
+    /// Phase 2 (Outlook) — kept for the multi-provider vault layout.
+    #[allow(dead_code)]
     pub fn vault_name(&self) -> &'static str {
         match self {
             OAuthProvider::Google => "gmail",

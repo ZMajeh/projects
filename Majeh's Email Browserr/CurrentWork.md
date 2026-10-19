@@ -35,7 +35,7 @@
 - Export/import secured through password
 - `OAuthToken` struct: `provider`, `email`, `access_token`, `refresh_token`, `expires_at`
 - Pending OAuth token auto-persistence from callback flow
-- **Shared vault session (uncommitted, in working tree)**: `vault_password()` (thread-local `Option<String>`) + `vault_epoch()` (reactive bump) + `vault_is_unlocked()`. Unlocking once (Splash *or* TokenVault) unlocks everywhere — no second prompt, and `save_vault()` always uses the real password. Replaced an earlier `OnceLock<RwSignal>` design that panicked with "already been disposed" because the signal was created outside any reactive owner.
+- **Shared vault session**: `vault_password()` (thread-local `Option<String>`) + `vault_is_unlocked()`. Unlocking once (Splash *or* TokenVault) unlocks everywhere — no second prompt, and `save_vault()` always uses the real password. Replaced an earlier `OnceLock<RwSignal>` design that panicked with "already been disposed" (signal created outside a reactive owner). A follow-up `vault_epoch()` global signal had the *same* disposal bug (blank Settings page on tab switch) — removed entirely; components now seed their own local `is_unlocked` signal from `vault_is_unlocked()` at mount.
 - **Single persistence choke point**: `save_vault(password, tokens)`; `persist_vault_now(tokens)` re-encrypts with the session password (no-op while locked). Called after *every* token refresh so a page reload restores fresh tokens instead of yesterday's copy.
 - `lock()` clears in-memory state only — the encrypted vault stays in localStorage (the old code *deleted* the vault on lock, which made accounts "vanish").
 
@@ -81,6 +81,13 @@
 - **Email backup download/upload** — download serializes the per-account email cache to `majeh-emails-backup.json`; upload reads a `.json` file via `FileReader`, merges into the cache by account, and re-saves. Fixed for Leptos 0.6 (`event_target::<HtmlInputElement>` + `files().get(0)` + `Closure::wrap`; added `File`/`FileList` web-sys features).
 - Summary header ("N connected — A active, E expired, U unknown"), empty state, responsive single-column layout under 900px
 
+### Email Data Management (`src/data.rs` + `src/components/tokens_page.rs`)
+- **Downloaded emails persist across sessions** — the per-account email cache is saved to `localStorage` (`mejeh_email_cache`) after every fetch and restored on mount
+- **Delete downloaded emails at once** — new "Delete Downloaded Emails" button on the Tokens page: removes the cache from localStorage (`clear_email_cache()`), empties the in-memory cache and the mailbox list. Inverse of the backup download
+- **Backup upload no longer duplicates** — merging uses the *same* dedupe rule as live fetches: Gmail `msg_id`, falling back to `sender + subject + timestamp` for entries without one. Reports "N new, M duplicates skipped"
+- **Dummy accounts removed** — "Gmail Personal", "Outlook Work", "Yahoo Backup", "Custom IMAP" deleted; the sidebar now lists only real connected OAuth accounts (with "No accounts yet — connect one in Settings" when none). Dead `Account` struct + `accounts()` removed
+- **Build is warning-free** — no dead code, no unused imports (`vault_name` kept with `#[allow(dead_code)]` for Phase 2 Outlook)
+
 ### Fetch Panel (`src/components/fetch_panel.rs`)
 - Progress bars: **"Fetching 20 emails for x@gmail.com — 12/20"** (indeterminate bar while listing; green + auto-hide when done)
 - Collapsible **Fetch by date** controls: From / To date inputs + account select (single account or all) + "Fetch Range"
@@ -113,10 +120,7 @@
 ---
 
 ## In Progress 🔄
-- **Vault persistence hardening (uncommitted, in working tree — `src/tokens.rs`, `src/app.rs`, `src/components/settings.rs`, `src/components/splash.rs`, `src/components/tokens_page.rs`)**
-  - Shared session (`vault_password` / `vault_epoch`), `save_vault` choke point, `persist_vault_now` on all refresh paths, non-destructive `lock()`, reactive settings fix, OAuth URL cleanup
-  - `cargo check --target wasm32-unknown-unknown` — PASSING (zero errors; only 3 pre-existing warnings)
-  - Still to do: `trunk build` + browser re-test (second-account add, reload-keeps-fresh-tokens, no "already been disposed" panic), then commit
+- Nothing currently in progress — vault persistence, backup dedupe, dummy-account removal and the email delete option are all implemented and building clean.
 
 ---
 
@@ -157,9 +161,7 @@
 - `logo.png` is 1.9 MB for a 32px icon — worth optimizing later
 
 ## Known Warnings (non-blocking)
-- `vault_name` never used (Phase 2 — Outlook support)
-- `.clone()` on `&str` in `reading_pane.rs` (pre-existing)
-- `HashMap` unused import in `app.rs`, `JsCast` unused import in `data.rs` (pre-existing, warned not denied)
+- **None** — the build is warning-free (only a third-party `proc-macro-error2` future-incompat notice from cargo)
 
 ---
 
