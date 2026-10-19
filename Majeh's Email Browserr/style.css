@@ -1113,6 +1113,55 @@ input {
     100% { left: 100%; }
 }
 
+/* ---------- Splash unlock form ---------- */
+.splash-unlock {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 320px;
+}
+
+.splash-password-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-2);
+    color: var(--text-0);
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+.splash-password-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.btn-unlock {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    font-size: 13px;
+    border-radius: var(--radius);
+    padding: 10px 16px;
+}
+
+.btn-unlock:hover:not(:disabled) { filter: brightness(1.12); }
+.btn-unlock:disabled { opacity: 0.6; cursor: default; }
+
+.splash-error {
+    color: var(--danger);
+    font-size: 11px;
+    margin-top: 4px;
+    text-align: center;
+}
+
+.splash-hint { color: var(--text-2); font-size: 11px; margin-top: 8px; }
+
 
 /* ---------- Tokens page ---------- */
 .tokens-page {

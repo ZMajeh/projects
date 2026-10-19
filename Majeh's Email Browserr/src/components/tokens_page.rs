@@ -1,7 +1,10 @@
 use leptos::*;
+use wasm_bindgen::JsCast;
 use crate::components::icons::Icon;
+use crate::data::{save_email_cache, Email};
 use crate::oauth::{config, refresh_access_token};
 use crate::tokens::OAuthToken;
+use std::collections::HashMap;
 
 fn now_ms() -> i64 {
     js_sys::Date::now() as i64
@@ -51,7 +54,10 @@ fn apply_refresh(list: &mut Vec<OAuthToken>, email: &str, resp: &crate::oauth::T
 /// refresh tokens, live active/expired state, a per-row refresh button, and a
 /// "Refresh all expired" action on top.
 #[component]
-pub fn TokensPage(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoView {
+pub fn TokensPage(
+    connected_accounts: RwSignal<Vec<OAuthToken>>,
+    email_cache: RwSignal<HashMap<String, Vec<Email>>>,
+) -> impl IntoView {
     // Emails currently being refreshed (row spinners).
     let refreshing = create_rw_signal(Vec::<String>::new());
     // Status/error line for the last action.
@@ -180,6 +186,39 @@ pub fn TokensPage(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoVie
                     <Icon name="refresh"/>
                     "Refresh all expired"
                 </button>
+                <button class="btn-download" on:click=move |_| download_emails(email_cache.get())>
+                    <Icon name="download"/>
+                    "Download Emails Backup"
+                </button>
+                <label class="btn-upload" style="display:flex;align-items:center;gap:6px;">
+                    <Icon name="file"/>
+                    "Upload Emails Backup"
+                    <input type="file" accept=".json" style="display:none" on:change=move |ev| {
+                        let files = event_target_files(&ev);
+                        if let Some(file) = files.get(0) {
+                            let reader = web_sys::FileReader::new().unwrap();
+                            let cache = email_cache.clone();
+                            let onload = Closure::wrap(Box::new(move |_event: web_sys::Event| {
+                                if let Ok(result) = reader.result().and_then(|r| r.dyn_into::<js_sys::JsString>()) {
+                                    if let Ok(imported) = serde_json::from_str::<HashMap<String, Vec<Email>>>(&result.into()) {
+                                        cache.update(|c| {
+                                            for (email, emails) in imported {
+                                                c.entry(email).or_insert_with(Vec::new).extend(emails);
+                                            }
+                                        });
+                                        save_email_cache(&cache.get());
+                                        status.set(Some("Emails backup imported ✓".to_string()));
+                                    } else {
+                                        status.set(Some("Invalid backup file".to_string()));
+                                    }
+                                }
+                            }) as Box<dyn FnMut(_)>);
+                            reader.set_onload(Some(onload.as_ref().unchecked_ref()));
+                            onload.forget();
+                            reader.read_as_text(&file).unwrap();
+                        }
+                    }/>
+                </label>
             </div>
             <p class="tokens-note">
                 "Tokens are sensitive — avoid sharing screenshots. Refreshes update this session; the encrypted vault is rewritten from Settings."
@@ -293,5 +332,22 @@ fn write_clipboard(text: &str) {
     if let Some(win) = web_sys::window() {
         let _ = win.navigator().clipboard().write_text(text);
     }
+}
+
+/// Serialize the email cache to JSON and trigger a browser download.
+fn download_emails(cache: HashMap<String, Vec<Email>>) {
+    let Ok(json) = serde_json::to_string_pretty(&cache) else {
+        return;
+    };
+    let window = web_sys::window().unwrap();
+    let encoded = js_sys::encode_uri_component(&json);
+    let url = format!("data:application/json;charset=utf-8,{encoded}");
+    let a = window.document().unwrap().create_element("a").unwrap();
+    a.set_attribute("href", &url).unwrap();
+    a.set_attribute("download", "majeh-emails-backup.json").unwrap();
+    a.set_attribute("style", "display:none").unwrap();
+    window.document().unwrap().body().unwrap().append_child(&a).unwrap();
+    a.unchecked_ref::<web_sys::HtmlAnchorElement>().click();
+    let _ = window.document().unwrap().body().unwrap().remove_child(&a);
 }
 

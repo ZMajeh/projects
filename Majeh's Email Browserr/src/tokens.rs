@@ -18,13 +18,49 @@ pub struct OAuthToken {
 
 /// Serialized shape of the vault we write to localStorage / export file.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct VaultPayload {
-    version: u32,
-    tokens: Vec<OAuthToken>,
+pub struct VaultPayload {
+    pub version: u32,
+    pub tokens: Vec<OAuthToken>,
 }
 
 const VAULT_KEY: &str = "mejeh_email_vault";
 const VAULT_VERSION: u32 = 1;
+
+/// Check whether an encrypted vault already exists in localStorage.
+pub fn vault_exists() -> bool {
+    window_local_storage()
+        .and_then(|ls| ls.get_item(VAULT_KEY).ok().flatten())
+        .is_some()
+}
+
+/// Decrypt the vault with `password` and return the stored tokens.
+pub fn unlock_vault(password: &str) -> Result<Vec<OAuthToken>, String> {
+    let encrypted = window_local_storage()
+        .and_then(|ls| ls.get_item(VAULT_KEY).ok().flatten())
+        .ok_or_else(|| "No vault found".to_string())?;
+    let json = decrypt(&encrypted, password)?;
+    let payload: VaultPayload = serde_json::from_str(&json)
+        .map_err(|e| format!("bad vault format: {e}"))?;
+    Ok(payload.tokens)
+}
+
+/// Create a new vault with `password`, storing an empty token list.
+/// Fails if a vault already exists.
+pub fn create_vault(password: &str) -> Result<(), String> {
+    if vault_exists() {
+        return Err("vault already exists".to_string());
+    }
+    let payload = VaultPayload {
+        version: VAULT_VERSION,
+        tokens: Vec::new(),
+    };
+    let json = serde_json::to_string(&payload).unwrap();
+    let encrypted = encrypt(&json, password)?;
+    window_local_storage()
+        .and_then(|ls| ls.set_item(VAULT_KEY, &encrypted).ok())
+        .ok_or_else(|| "failed to write vault to storage".to_string())?;
+    Ok(())
+}
 
 fn window_local_storage() -> Option<web_sys::Storage> {
     let window = web_sys::window()?;

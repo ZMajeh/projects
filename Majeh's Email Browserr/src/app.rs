@@ -14,7 +14,7 @@ use crate::components::{
     top_bar::TopBar,
 };
 use crate::util::sleep;
-use crate::data::{emails, format_email_time, next_email_id, Email, FetchTask, Folder, TaskStatus};
+use crate::data::{emails, format_email_time, init_email_id_counter, load_email_cache, next_email_id, save_email_cache, Email, FetchTask, Folder, TaskStatus};
 use crate::oauth::{
     config, gmail_extract_body, gmail_get_message, gmail_list_messages_query,
     parse_address_header, refresh_access_token,
@@ -186,17 +186,13 @@ pub fn App() -> impl IntoView {
     // The currently active OAuth account (when user clicks one in sidebar).
     let active_account = create_rw_signal::<Option<OAuthToken>>(None);
     // Fetched emails cached per account email — re-clicking shows them instantly.
-    let email_cache = create_rw_signal(HashMap::<String, Vec<Email>>::new());
+    let email_cache = create_rw_signal(load_email_cache());
+    // Persistent email id counter — seeded from localStorage on mount.
+    init_email_id_counter();
     // In-flight/finished fetch jobs, each with its own progress bar.
     let fetch_tasks = create_rw_signal(Vec::<FetchTask>::new());
     // Last user-facing fetch/OAuth error (dismissed by the user).
     let fetch_error = create_rw_signal(Option::<String>::None);
-    // Splash screen: shown for 3 seconds on launch, then dismissed.
-    let (splash_done, set_splash_done) = create_signal(false);
-    wasm_bindgen_futures::spawn_local(async move {
-        sleep(3000).await;
-        set_splash_done.set(true);
-    });
 
     // Selecting an email marks it read and (on mobile) opens the reading pane.
     let select_email = move |id: usize| {
@@ -227,6 +223,7 @@ pub fn App() -> impl IntoView {
                             }
                         }
                     });
+                    save_email_cache(&email_cache.get());
                 });
             }
         }
@@ -352,6 +349,7 @@ pub fn App() -> impl IntoView {
                         }
                         entry.sort_by(|a, b| b.timestamp_ms.cmp(&a.timestamp_ms));
                     });
+                    save_email_cache(&email_cache.get());
                     // Show immediately if this account is the active one.
                     let is_active = match active_account.get() {
                         Some(a) => a.email == token.email,
@@ -460,9 +458,7 @@ pub fn App() -> impl IntoView {
 
     view! {
         <div class="app-container" class:drawer-open=move || drawer_open.get()>
-            <Show when=move || !splash_done.get()>
-                <Splash/>
-            </Show>
+            <Splash connected_accounts=connected_accounts/>
             <TopBar query=query on_toggle_drawer=move || set_drawer_open.update(|d| *d = !*d)/>
             <div class="app-body">
                 <Sidebar
@@ -496,7 +492,7 @@ pub fn App() -> impl IntoView {
                         </div>
                     </Show>
                     <Show when=move || active_tab.get() == Tab::Tokens>
-                        <TokensPage connected_accounts=connected_accounts/>
+                        <TokensPage connected_accounts=connected_accounts email_cache=email_cache/>
                     </Show>
                     <Show when=move || active_tab.get() == Tab::Settings>
                         <Settings connected_accounts=connected_accounts/>

@@ -52,10 +52,21 @@
 - Guard added: empty secret fails fast with "save it in Settings → Google Client Secret" instead of a cryptic Google error
 - All 3 call sites updated: `ensure_fresh_token()` (app.rs) + per-row and bulk refresh (tokens_page.rs)
 
+### Vault Unlock During Splash (bug fix — hard gate)
+- **Bug**: `TokenVault` only lived in the Settings tab, so `connected_accounts` stayed empty until the user manually unlocked there. No accounts showed in the sidebar, so no emails could be fetched without a trip to Settings first.
+- **Fix**: The splash screen is now a **hard gate** — it stays on screen until the user either:
+  - **Unlocks an existing vault** (enters password → `connected_accounts` populated immediately), or
+  - **Creates a new vault password** (first run → creates encrypted empty vault)
+- Only after success does the splash dismiss and the app appear.
+- Extracted `unlock_vault(password)` + `create_vault(password)` + `vault_exists()` as public functions in `src/tokens.rs`; `VaultPayload` is `pub`.
+- Removed the 3-second auto-dismiss timer; splash now waits indefinitely for user action.
+
 ### Splash Screen (`src/components/splash.rs`)
-- Full-screen splash on every launch: centered `logo.png` (64px), app name, tagline, and an **indefinite sliding progress bar**; auto-dismisses after **3 seconds**
-- **Login/gate intentionally removed** — user decision: the app is fully client-side (each user's browser holds their own OAuth tokens), so a login page adds no real security. Earlier Firebase-Auth-gate scaffolding (`auth.rs`, `allowlist.rs`) was built then deleted; Firebase remains hosting-only
-- Shared `sleep()` helper moved to `src/util.rs`
+- Hard-gate splash: centered `logo.png`, app name, indefinite progress bar
+- When a vault exists: password input + "Unlock" button + error display
+- When no vault: "Create your vault password" (new + confirm fields)
+- Unlocking/creating dismisses the splash and reveals the app
+
 
 ### Tokens Page (`src/components/tokens_page.rs`) — new tab
 - Reachable from the sidebar footer ("Tokens") and the bottom nav (4th tab)

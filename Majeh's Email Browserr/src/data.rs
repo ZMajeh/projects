@@ -1,7 +1,7 @@
 //! Mock data models for the UI. Phase 2 will replace this with real
 //! Gmail/Outlook API data behind the same shapes.
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Folder {
     Inbox,
     Starred,
@@ -57,7 +57,7 @@ pub struct Account {
     pub unread: u32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Email {
     pub id: usize,
     /// Gmail message ID (empty for mock data) — used for cache dedupe.
@@ -79,12 +79,59 @@ pub struct Email {
     pub body: Vec<String>,
 }
 
-/// Session-global counter for unique `Email.id` values (fetched emails get
-/// ids that never collide with the mock ids or with other accounts).
+use leptos::*;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use wasm_bindgen::JsCast;
+
+const EMAIL_CACHE_KEY: &str = "mejeh_email_cache";
+const NEXT_ID_KEY: &str = "mejeh_next_email_id";
+
+/// Load persisted email cache from localStorage (per account).
+pub fn load_email_cache() -> HashMap<String, Vec<Email>> {
+    let Some(ls) = window_local_storage() else {
+        return HashMap::new();
+    };
+    let Some(json) = ls.get_item(EMAIL_CACHE_KEY).ok().flatten() else {
+        return HashMap::new();
+    };
+    serde_json::from_str(&json).unwrap_or_default()
+}
+
+/// Save email cache to localStorage.
+pub fn save_email_cache(cache: &HashMap<String, Vec<Email>>) {
+    let Ok(json) = serde_json::to_string(cache) else {
+        return;
+    };
+    if let Some(ls) = window_local_storage() {
+        let _ = ls.set_item(EMAIL_CACHE_KEY, &json);
+    }
+}
+
+fn window_local_storage() -> Option<web_sys::Storage> {
+    let window = web_sys::window()?;
+    let storage = window.local_storage().ok()??;
+    Some(storage)
+}
 pub fn next_email_id() -> usize {
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    static NEXT_ID: AtomicUsize = AtomicUsize::new(1000);
-    NEXT_ID.fetch_add(1, Ordering::Relaxed)
+    let ls = window_local_storage();
+    let mut next = ls
+        .as_ref()
+        .and_then(|l| l.get_item(NEXT_ID_KEY).ok().flatten())
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(1000);
+    let id = next;
+    next += 1;
+    if let Some(ls) = ls {
+        let _ = ls.set_item(NEXT_ID_KEY, &next.to_string());
+    }
+    id
+}
+
+/// Initialize the id counter from storage (call once on mount).
+pub fn init_email_id_counter() {
+    // Force a read+write so the persisted value is seeded if missing.
+    let _ = next_email_id();
 }
 
 /// Format an epoch-millis timestamp like the Gmail web UI:
