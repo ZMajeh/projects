@@ -1,5 +1,15 @@
 # Owning Your Domain — required for OAuth / Play verification
 
+> **STATUS: DEFERRED (owner decision, 2026-10-19).** No domain is being purchased
+> for now, so this migration is not scheduled. The app stays on
+> `https://majehsemailviewer.web.app`. Everything below stays accurate and
+> ready to execute whenever that changes — it is a ~30 minute job, run
+> `./scripts/update_domain.sh <domain>` for the code side.
+>
+> Until then, the Play/OAuth verification remains blocked on the
+> *"homepage website is not registered to you"* finding. The other two findings
+> (login gate, missing purpose) are already fixed and live.
+
 ## Current status of the three findings
 
 | Finding | Cause | Status |

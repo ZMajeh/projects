@@ -82,10 +82,11 @@ Audit of the live home page (`https://majehsemailviewer.web.app`) against the Pl
 
 ### OAuth / Play verification findings (Google homepage review)
 Three findings were returned on the last submission:
-1. **"The website of your home page URL is not registered to you"** — `web.app` is a shared Google domain; a registrable domain under the developer's own ownership is required (Search Console verification of `web.app` does **not** satisfy this — confirmed by developer-forum reports). **Open — needs a custom domain**, see `DOMAIN_SETUP.md`.
+1. **"The website of your home page URL is not registered to you"** — `web.app` is a shared Google domain; Google wants a registrable domain under the developer's own ownership (Search Console verification of `web.app` does **not** satisfy this — confirmed by developer-forum reports). **DEFERRED — owner decision (2026-10-19): no domain purchase for now.** The app stays on `https://majehsemailviewer.web.app`.
 2. **"Your home page is behind a login page"** — the reviewed build still had the splash unlock form. **Fixed**: the splash is now a 900 ms brand intro with a purpose line (no password field, no full-screen gate), and the Home tab + static block are public.
 3. **"Your home page does not explain the purpose of your app"** — **Fixed**: 407 words of static HTML including the purpose statement, the per-scope table and the policy link.
-- Added `scripts/update_domain.sh <domain>` — rewrites every hardcoded domain reference in one pass and prints the remaining manual steps (DNS → OAuth origin/redirect URI → consent screen → Search Console DNS-TXT ownership verification → 24 h wait → resubmit or reply to the Trust & Safety email).
+- **Consequence of the deferral:** findings 2 and 3 are done, but the OAuth/Play verification stays blocked on finding 1 — it cannot be cleared by editing the app. Nothing in the codebase needs to change for it; the whole remediation is in `DOMAIN_SETUP.md` + `scripts/update_domain.sh` and can be executed in one sitting whenever a domain becomes available.
+- `scripts/update_domain.sh <domain>` — rewrites every hardcoded domain reference in one pass and prints the remaining manual steps (DNS → OAuth origin/redirect URI → consent screen → Search Console DNS-TXT ownership verification → 24 h wait → resubmit or reply to the Trust & Safety email). Tested in a scratch copy: 6 files updated, 0 stale references left.
 
 ### Crawlability hardening (live-verified)
 - `curl` of the deployed homepage showed **22 words of body text (all of it JavaScript source)** and **zero** `privacy.html` links — the app was WASM-only, so any non-JS crawler (link-preview bots, validators, some automated Play checks) saw a blank page. Googlebot can render JS, but only via the deferred rendering queue, and it may capture the 1.5s splash.
@@ -189,6 +190,7 @@ Three findings were returned on the last submission:
 10. ~~Error UI~~ ✅ dismissible fetch-error banner
 
 ### Low Priority
+10b. **Own domain (DEFERRED)** — required to clear the Play/OAuth "homepage domain not registered to you" finding. Owner decided on 2026-10-19 not to buy one for now. Runbook: `DOMAIN_SETUP.md` + `scripts/update_domain.sh`.
 11. **Inbox refresh action** — cache never expires and re-click never refetches by design; add a manual "Refresh" button (or TTL) to pick up new mail
 12. **Outlook support (Phase 2)** — also clears the `vault_name` warning
 13. ~~Persist refreshed access tokens to the vault~~ ✅ `persist_vault_now()` on all 3 refresh paths (per-row, refresh-all, `ensure_fresh_token`); reload restores fresh tokens
