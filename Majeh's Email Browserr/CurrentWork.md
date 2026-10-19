@@ -8,10 +8,10 @@
 - Connected accounts appear in the **sidebar**; clicking one fetches and shows its emails
 
 ## Build Status
-- `cargo check` — **PASSING** (zero errors; only pre-existing `vault_name` dead-code warning)
-- `cargo check --target wasm32-unknown-unknown` — **PASSING** (zero errors)
-- `trunk build` — **PASSING** (dev; `dist/logo.png` now present ✅)
-- `trunk build --release` — verified this session
+- `cargo check` — **PASSING** (zero errors, zero warnings)
+- `cargo check --target wasm32-unknown-unknown` — **PASSING** (zero errors, zero warnings)
+- `trunk build` — **PASSING** (dev; `dist/logo.png` present ✅)
+- `trunk build --release` — **PASSING** (verified)
 
 ---
 
@@ -152,7 +152,11 @@
 14. **HTML-only emails** — body falls back to `snippet` when no `text/plain` part exists (consider a minimal HTML→text)
 15. **Page beyond 20 messages** — `maxResults=20`; `nextPageToken` parsed but unused (pagination)
 16. **Security** — `index.html` no longer contains client_secret (reads from localStorage at runtime)
-17. ~~Splash screen~~ ✅ 3s logo + indefinite progress bar (login intentionally skipped — see Splash section)
+17. ~~Splash screen~~ ✅ hard-gate splash (logo + indefinite progress bar, unlocks/creates the vault)
+18. ~~Persist emails + accounts + client secret across sessions~~ ✅ email cache in localStorage, encrypted vault auto-rewritten on every token refresh
+19. ~~Backup download/upload~~ ✅ JSON backup, upload dedupes by `msg_id` (no more duplicate emails)
+20. ~~Delete downloaded emails at once~~ ✅ "Delete Downloaded Emails" button on the Tokens page
+21. ~~Remove dummy accounts~~ ✅ "Gmail Personal"/"Outlook Work"/"Yahoo Backup"/"Custom IMAP" gone — real accounts only
 
 ---
 
@@ -342,12 +346,15 @@ For a personal email browser with 90 accounts, **Option A (localStorage)** is th
 
 ## Git Status
 - Branch: `main`
-- Last commit: `d2681b72` "Fetch email option added" (email backup download/upload + Leptos 0.6 fix)
-- **Uncommitted changes (this session, all in working tree):**
-  - `src/tokens.rs` — shared vault session (`vault_password`/`vault_epoch`/`vault_is_unlocked`), `save_vault` choke point, `persist_vault_now`, non-destructive `lock()`, pending-OAuth effect uses session password
-  - `src/app.rs` — OAuth URL cleanup (`replace_state`), `persist_vault_now` after `ensure_fresh_token`
+- **This session's changes:**
+  - `src/tokens.rs` — shared vault session (thread-local `vault_password`), `save_vault` choke point, `persist_vault_now`, non-destructive `lock()`, pending-OAuth effect uses the session password
+  - `src/app.rs` — OAuth URL cleanup (`replace_state`), `persist_vault_now` after `ensure_fresh_token`, `emails_store` passed to TokensPage
   - `src/components/splash.rs` — session published via `unlock_vault`/`create_vault`
   - `src/components/settings.rs` — reactive `move ||` fixes for `secret_saved`/`secret_error`
-  - `src/components/tokens_page.rs` — `persist_vault_now` on per-row + refresh-all paths
+  - `src/components/sidebar.rs` — dummy accounts removed, real OAuth accounts only + empty state
+  - `src/components/tokens_page.rs` — backup upload dedupe, `persist_vault_now` on refresh paths, **"Delete Downloaded Emails"** button
+  - `src/data.rs` — `clear_email_cache()`, dead `Account`/`accounts()` removed
+  - `style.css` — `.btn-delete-emails` (danger styling) + `.account-empty`
+  - `src/oauth.rs` — `vault_name` kept with `#[allow(dead_code)]` for Phase 2
   - `CurrentWork.md` — this update
 - Build artifacts (`dist/`, `target/`) untracked
