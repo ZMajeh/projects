@@ -167,6 +167,17 @@ pub fn Home(
                         .collect_view()}
                 </ol>
 
+                <p class="home-note">
+                    <Icon name="info"/>
+                    <span>
+                        "If Google shows \"Google hasn't verified this app\" while you connect an account, that is the normal consent screen for an app whose verification is still in progress. Click "
+                        <b>"Advanced"</b>
+                        " and then "
+                        <b>"Go to Majeh's Email Browserr (unsafe)"</b>
+                        " to continue - the app is your own and the sign-in works normally."
+                    </span>
+                </p>
+
                 <div class="home-status">
                     {move || {
                         let count = account_count();

@@ -88,6 +88,17 @@ Three findings were returned on the last submission:
 - **Consequence of the deferral:** findings 2 and 3 are done, but the OAuth/Play verification stays blocked on finding 1 — it cannot be cleared by editing the app. Nothing in the codebase needs to change for it; the whole remediation is in `DOMAIN_SETUP.md` + `scripts/update_domain.sh` and can be executed in one sitting whenever a domain becomes available.
 - `scripts/update_domain.sh <domain>` — rewrites every hardcoded domain reference in one pass and prints the remaining manual steps (DNS → OAuth origin/redirect URI → consent screen → Search Console DNS-TXT ownership verification → 24 h wait → resubmit or reply to the Trust & Safety email). Tested in a scratch copy: 6 files updated, 0 stale references left.
 
+### OAuth consent screen status — the "app is not verified" warning
+- **Expected behaviour, not a bug.** The app requests `gmail.readonly` (a *restricted* scope), so Google requires OAuth verification before the app can be marked verified. Until then, the consent screen shows **"Google hasn't verified this app"** with an *Advanced → Go to Majeh's Email Browserr (unsafe)* bypass.
+- **It will stay like this until verification completes** — and verification is currently blocked on the deferred domain finding (see above). The warning is **cosmetic**: token exchange, refresh and all Gmail API calls work normally (confirmed: sign-in succeeds).
+- The warning appears **only at consent time** (once per account), not on every use.
+- **Publishing status matters:**
+  - *Testing* → only listed test users can authorise, and **refresh tokens expire after 7 days** (the app would then need a weekly re-login). Bad for this app's core promise of persistent tokens.
+  - *Production* → anyone can authorise, refresh tokens do **not** expire, and every user sees the unverified warning. **Correct choice while verification is pending.**
+- **Limit to know about:** an unverified project has a **100-user lifetime authorisation quota** for sensitive/restricted scopes. After 100 accounts have authorised the project, new users get "This app is blocked" and the number cannot be reduced. Irrelevant for personal/small-scale use; relevant if the app is ever opened to the public.
+- `prompt=consent` is kept in the auth URL so a **refresh token** is always issued (`access_type=offline`) — that means the consent screen (and the warning) is shown on every "Add Account". Necessary trade-off.
+- Added an in-app note on the **Home** tab explaining the warning and the exact click-through, so users are not scared off by it.
+
 ### Crawlability hardening (live-verified)
 - `curl` of the deployed homepage showed **22 words of body text (all of it JavaScript source)** and **zero** `privacy.html` links — the app was WASM-only, so any non-JS crawler (link-preview bots, validators, some automated Play checks) saw a blank page. Googlebot can render JS, but only via the deferred rendering queue, and it may capture the 1.5s splash.
 - **Fix**: a static `#static-home` block in `index.html` with the brand, purpose, per-scope table, serverless disclosure, how-to-start and the absolute privacy link. The app removes it on boot (`src/main.rs`).

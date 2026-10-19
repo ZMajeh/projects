@@ -1549,6 +1549,24 @@ input {
 
 .home-step .row-sub { line-height: 1.55; }
 
+.home-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin: 18px 0 0;
+    padding: 11px 14px;
+    background: rgba(59, 130, 246, 0.07);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    color: var(--text-1);
+    font-size: 12.5px;
+    line-height: 1.6;
+}
+
+.home-note span { flex: 1; }
+.home-note b { color: var(--text-0); }
+
 .home-status {
     margin-top: 26px;
     padding: 16px 18px;
