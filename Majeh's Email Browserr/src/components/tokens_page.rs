@@ -212,13 +212,47 @@ pub fn TokensPage(
                                 if let Some(text) = result.as_string() {
                                     match serde_json::from_str::<HashMap<String, Vec<Email>>>(&text) {
                                         Ok(imported) => {
+                                            // Merge with the same dedupe rule as live
+                                            // fetches: Gmail `msg_id` wins; entries
+                                            // without one fall back to
+                                            // sender+subject+timestamp.
+                                            let mut added = 0usize;
+                                            let mut skipped = 0usize;
                                             cache.update(|c| {
                                                 for (email, emails) in imported {
-                                                    c.entry(email).or_insert_with(Vec::new).extend(emails);
+                                                    let entry = c
+                                                        .entry(email)
+                                                        .or_insert_with(Vec::new);
+                                                    for e in emails {
+                                                        let dup = entry.iter().any(|x| {
+                                                            if !x.msg_id.is_empty()
+                                                                && !e.msg_id.is_empty()
+                                                            {
+                                                                x.msg_id == e.msg_id
+                                                            } else {
+                                                                x.sender == e.sender
+                                                                    && x.subject
+                                                                        == e.subject
+                                                                    && x.timestamp_ms
+                                                                        == e.timestamp_ms
+                                                            }
+                                                        });
+                                                        if dup {
+                                                            skipped += 1;
+                                                        } else {
+                                                            entry.push(e);
+                                                            added += 1;
+                                                        }
+                                                    }
+                                                    entry.sort_by(|a, b| {
+                                                        b.timestamp_ms.cmp(&a.timestamp_ms)
+                                                    });
                                                 }
                                             });
                                             save_email_cache(&cache.get_untracked());
-                                            status.set(Some("Emails backup imported ✓".to_string()));
+                                            status.set(Some(format!(
+                                                "Emails backup imported ✓ ({added} new, {skipped} duplicates skipped)"
+                                            )));
                                         }
                                         Err(_) => {
                                             status.set(Some("Invalid backup file".to_string()));

@@ -53,24 +53,12 @@ fn set_vault_password(pw: Option<String>) {
         static PASSWORD: RefCell<Option<String>> = const { RefCell::new(None) };
     }
     PASSWORD.with(|p| *p.borrow_mut() = pw);
-    // Bump the epoch so UI tracking `vault_epoch()` re-renders.
-    vault_epoch().update(|e| *e = e.wrapping_add(1));
 }
 
-/// Reactive epoch bumped on every lock/unlock. Track this in components that
-/// must re-render when the session changes (the password itself is read via
-/// the non-reactive `vault_password()`).
-pub fn vault_epoch() -> RwSignal<u64> {
-    use std::sync::OnceLock;
-    static EPOCH: OnceLock<RwSignal<u64>> = OnceLock::new();
-    // Created once, the first time any component calls it — always inside a
-    // reactive owner (component body), so it is never disposed.
-    *EPOCH.get_or_init(|| create_rw_signal(0u64))
-}
-
-/// Convenience for templates: true once any successful unlock/create happened
-/// this page-load. Track `vault_epoch()` first (via this function's caller)
-/// — see TokenVault/Splash usage.
+/// True once any successful unlock/create happened this page-load.
+/// Components read this once at mount to seed their *own* local unlocked
+/// state (plain `bool` signals they own, so nothing can be disposed
+/// out from under them when tabs unmount/remount).
 pub fn vault_is_unlocked() -> bool {
     vault_password().is_some()
 }
@@ -216,8 +204,8 @@ pub fn TokenVault(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoVie
 
     // Seed local state from the shared session: if Splash already unlocked the
     // vault this page-load, show unlocked immediately — no second prompt.
-    // (`vault_epoch()` is tracked so a later unlock re-runs this path.)
-    vault_epoch().get();
+    // (`vault_is_unlocked()` is a plain thread-local read — no global signal,
+    // so remounting this component on tab switches can't hit a disposed one.)
     if vault_is_unlocked() {
         is_unlocked.set(true);
     }
