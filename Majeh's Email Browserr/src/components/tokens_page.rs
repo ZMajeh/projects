@@ -194,29 +194,40 @@ pub fn TokensPage(
                     <Icon name="file"/>
                     "Upload Emails Backup"
                     <input type="file" accept=".json" style="display:none" on:change=move |ev| {
-                        let files = event_target_files(&ev);
-                        if let Some(file) = files.get(0) {
-                            let reader = web_sys::FileReader::new().unwrap();
-                            let cache = email_cache.clone();
-                            let onload = Closure::wrap(Box::new(move |_event: web_sys::Event| {
-                                if let Ok(result) = reader.result().and_then(|r| r.dyn_into::<js_sys::JsString>()) {
-                                    if let Ok(imported) = serde_json::from_str::<HashMap<String, Vec<Email>>>(&result.into()) {
-                                        cache.update(|c| {
-                                            for (email, emails) in imported {
-                                                c.entry(email).or_insert_with(Vec::new).extend(emails);
-                                            }
-                                        });
-                                        save_email_cache(&cache.get());
-                                        status.set(Some("Emails backup imported ✓".to_string()));
-                                    } else {
-                                        status.set(Some("Invalid backup file".to_string()));
+            let file_input: web_sys::HtmlInputElement = event_target(&ev);
+            if let Some(files) = file_input.files() {
+                if let Some(file) = files.get(0) {
+                    let reader = web_sys::FileReader::new().unwrap();
+                    let reader_clone = reader.clone();
+                    let cache = email_cache;
+                    let onload = wasm_bindgen::closure::Closure::wrap(Box::new(
+                        move |_event: web_sys::Event| {
+                            if let Ok(result) = reader_clone.result() {
+                                if let Some(text) = result.as_string() {
+                                    match serde_json::from_str::<HashMap<String, Vec<Email>>>(&text) {
+                                        Ok(imported) => {
+                                            cache.update(|c| {
+                                                for (email, emails) in imported {
+                                                    c.entry(email).or_insert_with(Vec::new).extend(emails);
+                                                }
+                                            });
+                                            save_email_cache(&cache.get_untracked());
+                                            status.set(Some("Emails backup imported ✓".to_string()));
+                                        }
+                                        Err(_) => {
+                                            status.set(Some("Invalid backup file".to_string()));
+                                        }
                                     }
                                 }
-                            }) as Box<dyn FnMut(_)>);
-                            reader.set_onload(Some(onload.as_ref().unchecked_ref()));
-                            onload.forget();
-                            reader.read_as_text(&file).unwrap();
-                        }
+                            }
+                        },
+                    )
+                        as Box<dyn FnMut(web_sys::Event)>);
+                    reader.set_onload(Some(onload.as_ref().unchecked_ref()));
+                    onload.forget();
+                    let _ = reader.read_as_text(&file.unchecked_ref::<web_sys::Blob>());
+                }
+            }
                     }/>
                 </label>
             </div>

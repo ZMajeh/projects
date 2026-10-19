@@ -25,6 +25,8 @@ web-sys = { version = "0.3", features = [
     "Location",
     "History",
     "FileReader",
+    "File",
+    "FileList",
     "Blob",
     "Storage",
     "Crypto",
