@@ -1,8 +1,11 @@
 pub mod about;
 pub mod email_list;
+pub mod fetch_panel;
 pub mod icons;
 pub mod navigation;
 pub mod reading_pane;
 pub mod settings;
 pub mod sidebar;
+pub mod splash;
+pub mod tokens_page;
 pub mod top_bar;

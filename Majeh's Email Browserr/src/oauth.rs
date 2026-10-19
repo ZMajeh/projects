@@ -204,13 +204,22 @@ pub async fn exchange_code(
 }
 
 /// Silent refresh: swap a `refresh_token` for a fresh access token.
+/// Google requires the web-application `client_secret` here; it is the same
+/// secret stored in Settings → "Google Client Secret" (localStorage).
 pub async fn refresh_access_token(
     client_id: &str,
+    client_secret: &str,
     refresh_token: &str,
 ) -> Result<TokenResponse, String> {
+    if client_secret.is_empty() {
+        return Err(
+            "client_secret is missing — save it in Settings → Google Client Secret".into(),
+        );
+    }
     let body = form_body(&[
         ("grant_type", "refresh_token"),
         ("client_id", client_id),
+        ("client_secret", client_secret),
         ("refresh_token", refresh_token),
     ]);
     gloo_net::http::Request::post(OAuthProvider::Google.token_endpoint())
@@ -266,12 +275,16 @@ pub struct GmailMessage {
     pub label_ids: Vec<String>,
     #[serde(default)]
     pub snippet: String,
+    #[serde(default, rename = "internalDate")]
+    pub internal_date: Option<String>,
     #[serde(default)]
     pub payload: Option<GmailMessagePart>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GmailMessagePart {
+    #[serde(default, rename = "mimeType")]
+    pub mime_type: String,
     #[serde(default)]
     pub headers: Vec<GmailHeader>,
     #[serde(default)]
@@ -294,10 +307,22 @@ pub struct GmailBody {
     pub size: u32,
 }
 
-/// List Gmail message IDs (max 20 by default).
-pub async fn gmail_list_messages(access_token: &str) -> Result<GmailListResponse, String> {
-    let url = "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20";
-    let response = gloo_net::http::Request::get(url)
+/// List Gmail message IDs with an optional Gmail search query.
+/// Always scoped to `labelIds=INBOX` so folder contents stay consistent.
+/// `q` accepts Gmail search syntax, e.g. `after:<epoch_s> before:<epoch_s>`
+/// for manual date-range fetches.
+pub async fn gmail_list_messages_query(
+    access_token: &str,
+    q: Option<&str>,
+) -> Result<GmailListResponse, String> {
+    let mut url = String::from(
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=INBOX&maxResults=20",
+    );
+    if let Some(q) = q.filter(|s| !s.is_empty()) {
+        url.push_str("&q=");
+        url.push_str(&urlencoding::encode(q));
+    }
+    let response = gloo_net::http::Request::get(&url)
         .header("Authorization", &format!("Bearer {access_token}"))
         .send()
         .await
@@ -306,6 +331,71 @@ pub async fn gmail_list_messages(access_token: &str) -> Result<GmailListResponse
         .json::<GmailListResponse>()
         .await
         .map_err(|e| format!("gmail list parse failed: {e}"))
+}
+
+/// Decode base64url (Gmail body encoding, padding optional) into UTF-8 text.
+pub fn decode_b64url(data: &str) -> Result<String, String> {
+    let mut normalized = data.replace('-', "+").replace('_', "/");
+    while normalized.len() % 4 != 0 {
+        normalized.push('=');
+    }
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&normalized)
+        .map_err(|e| format!("base64 decode failed: {e}"))?;
+    String::from_utf8(bytes).map_err(|e| format!("body utf-8 decode failed: {e}"))
+}
+
+/// Recursively collect `text/plain` leaf bodies from a message part tree,
+/// skipping attachments, inline images, and HTML-only parts.
+fn collect_plain_text(part: &GmailMessagePart, out: &mut Vec<String>) {
+    if !part.parts.is_empty() {
+        for child in &part.parts {
+            collect_plain_text(child, out);
+        }
+        return;
+    }
+    let mime = part.mime_type.to_lowercase();
+    let is_plain = mime.is_empty() || mime.starts_with("text/plain");
+    if !is_plain {
+        return;
+    }
+    if let Some(data) = part.body.as_ref().and_then(|b| b.data.as_ref()) {
+        if let Ok(text) = decode_b64url(data) {
+            if !text.trim().is_empty() {
+                out.push(text);
+            }
+        }
+    }
+}
+
+/// Extract the full plain-text body of a Gmail message (base64url decoded).
+/// Falls back to the snippet when no text/plain part is present.
+pub fn gmail_extract_body(msg: &GmailMessage) -> String {
+    let mut parts = Vec::new();
+    if let Some(payload) = msg.payload.as_ref() {
+        collect_plain_text(payload, &mut parts);
+    }
+    if parts.is_empty() {
+        return msg.snippet.clone();
+    }
+    parts.join("\n")
+}
+
+/// Parse an RFC 5322 address header value like `Jane Doe <jane@x.com>`
+/// into a display name and bare address.
+pub fn parse_address_header(value: &str) -> (String, String) {
+    let trimmed = value.trim();
+    if let Some(open) = trimmed.rfind('<') {
+        if trimmed.ends_with('>') {
+            let name = trimmed[..open].trim().trim_matches('"').to_string();
+            let addr = trimmed[open + 1..trimmed.len() - 1].trim().to_string();
+            if !addr.is_empty() {
+                let display = if name.is_empty() { addr.clone() } else { name };
+                return (display, addr);
+            }
+        }
+    }
+    (trimmed.to_string(), trimmed.to_string())
 }
 
 /// Fetch a single Gmail message by ID.

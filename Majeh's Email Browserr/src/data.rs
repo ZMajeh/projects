@@ -60,17 +60,156 @@ pub struct Account {
 #[derive(Clone)]
 pub struct Email {
     pub id: usize,
+    /// Gmail message ID (empty for mock data) — used for cache dedupe.
+    pub msg_id: String,
     pub sender: String,
     pub address: String,
+    /// Raw `To` header value (empty for mock data).
+    pub to_field: String,
     pub subject: String,
     pub preview: String,
     pub time: String,
+    /// Epoch milliseconds from Gmail `internalDate` (0 for mock data).
+    pub timestamp_ms: i64,
     pub initial: String,
     pub color: String,
     pub unread: bool,
     pub starred: bool,
     pub folder: Folder,
     pub body: Vec<String>,
+}
+
+/// Session-global counter for unique `Email.id` values (fetched emails get
+/// ids that never collide with the mock ids or with other accounts).
+pub fn next_email_id() -> usize {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static NEXT_ID: AtomicUsize = AtomicUsize::new(1000);
+    NEXT_ID.fetch_add(1, Ordering::Relaxed)
+}
+
+/// Format an epoch-millis timestamp like the Gmail web UI:
+/// "10:24 AM" (today), "Yesterday", "Mar 8" (this year), "3/8/24" (older).
+pub fn format_email_time(ms: i64) -> String {
+    if ms <= 0 {
+        return String::new();
+    }
+    let date = js_sys::Date::new(&wasm_bindgen::JsValue::from_f64(ms as f64));
+    if date.get_time().is_nan() {
+        return String::new();
+    }
+    let now = js_sys::Date::new_0();
+
+    // Time-of-day part.
+    let h = date.get_hours();
+    let m = date.get_minutes();
+    let ampm = if h < 12 { "AM" } else { "PM" };
+    let h12 = match h {
+        0 => 12,
+        1..=12 => h,
+        _ => h - 12,
+    };
+    let clock = format!("{}:{:02} {}", h12, m, ampm);
+
+    // Day comparison (local time).
+    let same_day = date.get_full_year() == now.get_full_year()
+        && date.get_month() == now.get_month()
+        && date.get_date() == now.get_date();
+    if same_day {
+        return clock;
+    }
+    let yesterday = js_sys::Date::new(&wasm_bindgen::JsValue::from_f64(
+        now.get_time() - 86_400_000.0,
+    ));
+    if date.get_full_year() == yesterday.get_full_year()
+        && date.get_month() == yesterday.get_month()
+        && date.get_date() == yesterday.get_date()
+    {
+        return "Yesterday".to_string();
+    }
+    const MONTHS: [&str; 12] = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    let month = MONTHS.get(date.get_month() as usize).copied().unwrap_or("?");
+    if date.get_full_year() == now.get_full_year() {
+        format!("{} {}", month, date.get_date())
+    } else {
+        let yy = date.get_full_year() % 100;
+        format!("{}/{}/{}", date.get_month() + 1, date.get_date(), yy)
+    }
+}
+
+/// A single in-flight or finished email-fetch job (one account + one date
+/// range). Rendered by the fetch panel as its own progress bar.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FetchTask {
+    /// Unique per account+range: `{email}|{from}|{to}` (from/to empty = full inbox).
+    pub key: String,
+    pub account: String,
+    /// Human-readable range label, e.g. `2024-01-01 → 2024-02-01`.
+    pub label: String,
+    /// Total messages reported by Gmail (0 = still listing).
+    pub total: usize,
+    /// Messages fetched so far.
+    pub fetched: usize,
+    pub status: TaskStatus,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum TaskStatus {
+    Running,
+    Done,
+    Error(String),
+}
+
+impl FetchTask {
+    /// "Fetching 20 emails for x@gmail.com — 12/20"
+    pub fn progress_text(&self) -> String {
+        match &self.status {
+            TaskStatus::Error(e) => format!("Failed to fetch {}: {e}", self.account),
+            TaskStatus::Done => {
+                if self.total > 0 {
+                    format!("Fetched {} emails for {} — done", self.fetched, self.account)
+                } else {
+                    format!("Fetched 0 emails for {} — done", self.account)
+                }
+            }
+            TaskStatus::Running => {
+                if self.total > 0 {
+                    format!(
+                        "Fetching {} emails for {} — {}/{}{}",
+                        self.total,
+                        self.account,
+                        self.fetched,
+                        self.total,
+                        if self.label.is_empty() {
+                            String::new()
+                        } else {
+                            format!(" ({})", self.label)
+                        }
+                    )
+                } else {
+                    format!(
+                        "Fetching emails for {}{}…",
+                        self.account,
+                        if self.label.is_empty() {
+                            String::new()
+                        } else {
+                            format!(" ({})", self.label)
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    /// 0.0–1.0 progress; `None` while the total is unknown.
+    pub fn fraction(&self) -> Option<f32> {
+        if self.total == 0 {
+            None
+        } else {
+            Some((self.fetched as f32 / self.total as f32).clamp(0.0, 1.0))
+        }
+    }
 }
 
 pub fn accounts() -> Vec<Account> {
@@ -85,8 +224,13 @@ pub fn accounts() -> Vec<Account> {
 macro_rules! email {
     ($id:expr, $sender:expr, $addr:expr, $subj:expr, $prev:expr, $time:expr, $init:expr, $color:expr, $unread:expr, $starred:expr, [$($p:expr),+]) => {
         Email {
-            id: $id, sender: $sender.into(), address: $addr.into(), subject: $subj.into(), preview: $prev.into(),
-            time: $time.into(), initial: $init.into(), color: $color.into(), unread: $unread, starred: $starred,
+            id: $id,
+            msg_id: String::new(),
+            sender: $sender.into(), address: $addr.into(),
+            to_field: String::new(),
+            subject: $subj.into(), preview: $prev.into(),
+            time: $time.into(), timestamp_ms: 0,
+            initial: $init.into(), color: $color.into(), unread: $unread, starred: $starred,
             folder: Folder::Inbox, body: vec![$($p.into()),+],
         }
     };

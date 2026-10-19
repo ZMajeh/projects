@@ -8,9 +8,10 @@
 - Connected accounts appear in the **sidebar**; clicking one fetches and shows its emails
 
 ## Build Status
-- `cargo check` — **PASSING** (zero errors)
+- `cargo check` — **PASSING** (zero errors; only pre-existing `vault_name` dead-code warning)
 - `cargo check --target wasm32-unknown-unknown` — **PASSING** (zero errors)
-- `trunk build` — not yet verified after latest edits
+- `trunk build` — **PASSING** (dev; `dist/logo.png` now present ✅)
+- `trunk build --release` — verified this session
 
 ---
 
@@ -18,11 +19,15 @@
 
 ### OAuth PKCE Flow (`src/oauth.rs`)
 1. `config()` — reads `client_id`, `client_secret` from localStorage (fallback to meta tag), derives `redirect_uri`
-2. `start_google_oauth()` — generates PKCE `state` + `verifier`, stores in `sessionStorage`, computes `code_challenge(&verifier)`, builds consent URL with `access_type=offline`
-3. `handle_google_callback()` — validates `state`, exchanges code for tokens (sends `client_secret`), fetches userinfo
-4. `extract_google_tokens()` — WASM-safe timestamps
-5. `refresh_access_token()` — available for token refresh
-6. **Gmail API functions**: `gmail_list_messages()`, `gmail_get_message()` with full response models — **fixed camelCase serde renames** (`threadId`, `nextPageToken`, `labelIds`)
+2. `start_google_oauth()` — PKCE `state` + `verifier` in sessionStorage, `access_type=offline&prompt=consent`
+3. `handle_google_callback()` — validates `state`, exchanges code, fetches userinfo
+4. `extract_google_tokens()`; `refresh_access_token()` now actively used by token auto-refresh
+5. **Gmail API functions**:
+   - `gmail_list_messages_query(access_token, q)` — always scoped to `labelIds=INBOX&maxResults=20`, optional Gmail search query (e.g. `after:<epoch_s> before:<epoch_s>` for date-range fetches)
+   - `gmail_get_message()` — full message incl. `internalDate`, `mimeType`, headers, parts
+   - `decode_b64url()` — Gmail base64url body decoding (padding-tolerant)
+   - `gmail_extract_body()` — recursive `text/plain` extraction from `payload.parts` (skips HTML/attachments, snippet fallback)
+   - `parse_address_header()` — `Jane Doe <jane@x.com>` → (display name, address)
 
 ### Token Vault (`src/tokens.rs`)
 - `TokenVault` component with unlock/lock/save/export/import
@@ -31,26 +36,61 @@
 - `OAuthToken` struct: `provider`, `email`, `access_token`, `refresh_token`, `expires_at`
 - Pending OAuth token auto-persistence from callback flow
 
-### App (`src/app.rs`)
-- OAuth callback detection and handling
-- `connected_accounts` shared signal passed to Sidebar and Settings
-- `active_account` signal for tracking selected OAuth account
-- `fetch_emails_for_account()` — calls Gmail API to list + fetch messages, converts to `Email` structs
-- Loading state during email fetch
+### Fetch Pipeline (`src/app.rs`)
+- **Per-account email cache** (`email_cache: HashMap<account_email, Vec<Email>>`) — re-clicking a fetched account shows emails **instantly, no refetch**
+- **Fetch tasks** (`FetchTask` + `TaskStatus` in `data.rs`) — one task per account(+date-range) with live `fetched/total` progress; duplicate-running guard; auto-hide when done
+- **Token auto-refresh** — `ensure_fresh_token()` refreshes 60s before expiry and writes the fresh token back into `connected_accounts` + `active_account` (session level)
+- **Cache merge with dedupe by Gmail `msg_id`** — date-range fetches extend the cache without duplicates; sorted by `internalDate` desc
+- **Star/read write-through** — guarded, untracked `create_effect` syncs selection/star toggles back into the active account's cache
+- `gmail_msg_to_email()` — Subject/From/**To** headers, `internalDate` → formatted time, full body → paragraphs, `labelIds` → folder/unread/starred
+- Account switch resets selection + folder (no stale reading pane)
+- Helpers: `date_input_to_ms()` (local midnight from `<input type=date>`), `sleep()` via JS timer (no new crate)
+
+### Token Refresh — Bug Fix (client_secret)
+- **Bug**: Google's token endpoint rejected refreshes with `invalid_request: "client_secret is missing."` — `refresh_access_token()` sent only `client_id` + `refresh_token`
+- **Fix**: `refresh_access_token(client_id, client_secret, refresh_token)` now includes `client_secret` — the same secret stored in **Settings → Google Client Secret** (`localStorage.oauth_client_secret`, read via `config()`)
+- Guard added: empty secret fails fast with "save it in Settings → Google Client Secret" instead of a cryptic Google error
+- All 3 call sites updated: `ensure_fresh_token()` (app.rs) + per-row and bulk refresh (tokens_page.rs)
+
+### Splash Screen (`src/components/splash.rs`)
+- Full-screen splash on every launch: centered `logo.png` (64px), app name, tagline, and an **indefinite sliding progress bar**; auto-dismisses after **3 seconds**
+- **Login/gate intentionally removed** — user decision: the app is fully client-side (each user's browser holds their own OAuth tokens), so a login page adds no real security. Earlier Firebase-Auth-gate scaffolding (`auth.rs`, `allowlist.rs`) was built then deleted; Firebase remains hosting-only
+- Shared `sleep()` helper moved to `src/util.rs`
+
+### Tokens Page (`src/components/tokens_page.rs`) — new tab
+- Reachable from the sidebar footer ("Tokens") and the bottom nav (4th tab)
+- One row per connected account: **email + provider, full access token, full refresh token (or "— none —"), status, action**
+- **Status**: "Active — expires in 3h 20m" (green) / "Expired 12m ago" (red, row highlighted) / "No expiry info" (gray) — computed live from `expires_at`
+- **Per-row "Refresh" button** — spins while running, calls Google's refresh endpoint, updates the token + expiry in the shared account list; disabled when already refreshing or no refresh token
+- **Top "Refresh all expired" button** — sequentially refreshes every expired token with per-step status ("Refreshing 2/3 (x@y.com)…") and a final "Done — refreshed N of M"
+- **Copy buttons** for both tokens (system clipboard)
+- Summary header ("N connected — A active, E expired, U unknown"), empty state, responsive single-column layout under 900px
+- Note: refreshed tokens update the session list; the encrypted vault is still only rewritten from Settings (password needed)
+
+### Fetch Panel (`src/components/fetch_panel.rs`)
+- Progress bars: **"Fetching 20 emails for x@gmail.com — 12/20"** (indeterminate bar while listing; green + auto-hide when done)
+- Collapsible **Fetch by date** controls: From / To date inputs + account select (single account or all) + "Fetch Range"
+- Each **account + date combination** gets its own task and progress bar (queue several ranges by clicking again)
+- User-facing **error banner** with dismiss (medium-priority "Error UI" item)
 
 ### Sidebar (`src/components/sidebar.rs`)
-- Displays mock accounts + connected OAuth accounts (with "OAuth" badge)
-- Clicking an OAuth account switches to Mailbox tab AND fetches emails via Gmail API
-- Loading state available
+- Mock + connected OAuth accounts ("OAuth" badge); clicking an OAuth account switches to Mailbox and loads/fetches its emails
+- **Per-account fetched-email count** ("142 emails") shown under the address, driven by the cache
+- Removed unused `loading` prop
+
+### Reading Pane (`src/components/reading_pane.rs`)
+- **Real `To` field** from the Gmail `To` header ("To me" only as empty fallback)
+- Sender shows `Name <addr>` only when they differ (no duplicate `x <x>`)
 
 ### Settings UI (`src/components/settings.rs`)
-- Added **"Google Client Secret"** input field with Save/Change buttons
-- Secret stored in `localStorage.oauth_client_secret` (never committed)
-- Auto-loads existing secret on mount
-- Shows error messages for save failures
+- "Google Client Secret" input with Save/Change; stored in `localStorage.oauth_client_secret` (never committed)
 
 ### Data (`src/data.rs`)
-- `Email` and `Account` structs changed from `&'static str` to `String` for dynamic API data
+- `Email` gained `msg_id`, `to_field`, `timestamp_ms`; `next_email_id()` (session-unique ids); `format_email_time()` (local "10:24 AM" / "Yesterday" / "Mar 8" / "3/8/24")
+- `FetchTask` + `TaskStatus` with `progress_text()` ("Fetching 20 emails for x — 12/20") and `fraction()`
+
+### Logo (`index.html`)
+- **Fix**: `logo.png` was referenced by CSS but never copied to `dist/` (404) — added `<link data-trunk rel="copy-file" href="logo.png"/>`; verified `dist/logo.png` after build
 
 ---
 
@@ -62,41 +102,43 @@
 ## Todo Next 📋
 
 ### High Priority (blocking core UX)
-
-1. **Progress bar during email fetch** — Show how many emails are being fetched and for which account (e.g., "Fetching 20 emails for mundhe.anand.anand@gmail.com — 12/20"). Currently there's only a loading state with no progress feedback.
-
-2. **Date/time of fetched emails** — Gmail API returns `internalDate` (epoch ms) per message. Currently not parsed or displayed. Need to extract and format date/time in the email list and reading pane.
-
-3. **To field always shows "me"** — The `To` header from Gmail API is not being parsed/displayed correctly. Currently reading pane shows "To me" hardcoded. Need to extract the actual `To` header from `payload.headers`.
-
-4. **Email fetch caching** — Re-clicking an already-fetched account re-fetches all emails from Gmail API. Need to cache fetched emails per account (by email address) so re-clicking shows cached results instantly without re-fetching.
-
-5. **Email body not completely fetched** — Gmail API `snippet` only shows partial body. Need to fetch full body from `payload.parts` or `payload.body.data` (base64url encoded) and populate `Email.body` completely.
-
-6. **App logo not visible** — The app logo/brand image is not showing on the page. Need to verify the logo asset path and `brand-logo` div styling.
-
-7. **Per-account email count** — Maintain a count of how many emails have been fetched for each connected email account (e.g., "Gmail Personal: 142 emails"). Display in sidebar next to each account.
-
-8. **Manual date/time filter for fetching** — User can manually specify date/time ranges for which they want to fetch emails, supporting multiple accounts and multiple dates. Each account+date combination needs its own progress bar showing fetch status.
+1. ~~Progress bar during email fetch~~ ✅ FetchPanel + `FetchTask`
+2. ~~Date/time of fetched emails~~ ✅ `internalDate` → `format_email_time()`
+3. ~~To field always shows "me"~~ ✅ parsed from `payload.headers`
+4. ~~Email fetch caching~~ ✅ per-account cache, instant re-click
+5. ~~Email body not completely fetched~~ ✅ `gmail_extract_body()` plain-text recursion
+6. ~~App logo not visible~~ ✅ Trunk `copy-file` → `dist/logo.png`
+7. ~~Per-account email count~~ ✅ sidebar "N emails"
+8. ~~Manual date/time filter with per-combination progress~~ ✅ Fetch by date
 
 ### Medium Priority
-
-7. **Email-wise Mail/Labels subsections** — When clicking an email in the reading pane, it should expand and show 2 subsections:
-   - **Mail subsection** — emails from/to that specific email address
-   - **Labels subsection** — labels applied to that email's thread
-   - Global Mail and Labels sections should remain and fetch from all emails across all accounts
-
-8. **Account switching** — When clicking a different OAuth account, properly refresh emails without stale data mixing
-
-9. **Token auto-refresh** — Use `refresh_access_token()` when access token is near expiry before Gmail API calls
-
-10. **Error UI** — Show user-facing error messages when OAuth or Gmail API fails (currently only console logs)
+7. **Email-wise Mail/Labels subsections** — clicking an email expands:
+   - **Mail subsection** — emails from/to that specific address
+   - **Labels subsection** — labels on that email's thread
+   - Global Mail and Labels sections remain (all emails across all accounts)
+8. ~~Account switching without stale data~~ ✅ selection/folder reset + cache
+9. ~~Token auto-refresh~~ ✅ session level (see Known Limitations)
+10. ~~Error UI~~ ✅ dismissible fetch-error banner
 
 ### Low Priority
+11. **Inbox refresh action** — cache never expires and re-click never refetches by design; add a manual "Refresh" button (or TTL) to pick up new mail
+12. **Outlook support (Phase 2)** — also clears the `vault_name` warning
+13. **Persist refreshed access tokens to the vault** — refresh updates in-memory tokens only; writing to the encrypted vault requires the vault password (held inside `TokenVault`). Refresh tokens don't expire, so unlock + next fetch recovers automatically
+14. **HTML-only emails** — body falls back to `snippet` when no `text/plain` part exists (consider a minimal HTML→text)
+15. **Page beyond 20 messages** — `maxResults=20`; `nextPageToken` parsed but unused (pagination)
+16. **Security** — `index.html` no longer contains client_secret (reads from localStorage at runtime)
+17. ~~Splash screen~~ ✅ 3s logo + indefinite progress bar (login intentionally skipped — see Splash section)
 
-11. **Outlook support (Phase 2)**
-12. **Trunk build verification** — Run `trunk build --release`
-13. **Security** — `index.html` no longer contains client_secret (reads from localStorage at runtime)
+---
+
+## Known Limitations (non-blocking)
+- Refreshed access tokens live in memory for the session only (see todo 13)
+- Default fetch returns the 20 most recent INBOX messages (`labelIds=INBOX`)
+- `logo.png` is 1.9 MB for a 32px icon — worth optimizing later
+
+## Known Warnings (non-blocking)
+- `vault_name` never used (Phase 2 — Outlook support)
+- `.clone()` on `&str` in `reading_pane.rs` (pre-existing)
 
 ---
 
@@ -275,16 +317,10 @@ For a personal email browser with 90 accounts, **Option A (localStorage)** is th
 
 ---
 
-## Known Warnings (non-blocking)
-- `vault_name` never used (Phase 2 — Outlook support)
-- `refresh_access_token` never used (will be used when token refresh is implemented)
-- `.clone()` on `&str` in `reading_pane.rs` (pre-existing)
-
----
-
 ## Git Status
-- Branch: `main` — pushed to `origin/main` ✅
-- Last commit: `06e99035` "Fetch emails via Gmail API with OAuth PKCE"
-- Modified: `.gitignore`, `Cargo.toml`, `index.html`, `src/app.rs`, `src/oauth.rs`, `src/tokens.rs`, `src/components/settings.rs`, `src/components/sidebar.rs`, `src/components/reading_pane.rs`, `src/data.rs`, `src/main.rs`, `run.sh`, `Trunk.toml`
-- New: `CurrentWork.md`
-- Build artifacts (`dist/`, `target/`) removed from tracking
+- Branch: `main`
+- Last commit before this session: `2c0ea90a` "Updating todo list"
+- **Uncommitted changes from this session:**
+  - Modified: `Cargo.toml` (HtmlSelectElement/Navigator/Clipboard web-sys features), `index.html` (logo `copy-file`), `style.css` (fetch panel, splash, tokens styles), `src/app.rs` (fetch pipeline rewrite + splash + Tokens tab), `src/oauth.rs` (query list, body decode, address parse), `src/data.rs` (Email fields, time formatting, FetchTask), `src/components/sidebar.rs` (counts + Tokens link), `src/components/reading_pane.rs` (To field), `src/components/mod.rs`, `src/components/navigation.rs` (Tokens tab), `src/main.rs` (util mod)
+  - New: `src/components/fetch_panel.rs`, `src/components/splash.rs`, `src/components/tokens_page.rs`, `src/util.rs`, `CurrentWork.md` updates
+- Build artifacts (`dist/`, `target/`) untracked

@@ -1,4 +1,5 @@
 use leptos::*;
+use std::collections::HashMap;
 use crate::components::icons::Icon;
 use crate::components::navigation::Tab;
 use crate::data::{accounts, Email, Folder};
@@ -34,7 +35,7 @@ pub fn Sidebar(
     set_active_tab: WriteSignal<Tab>,
     set_drawer_open: WriteSignal<bool>,
     on_oauth_account_click: impl Fn(OAuthToken) + Copy + 'static,
-    loading: RwSignal<bool>,
+    email_cache: RwSignal<HashMap<String, Vec<Email>>>,
 ) -> impl IntoView {
     let folders = Folder::ALL;
     let labels = [("Work", "#22c55e"), ("Personal", "#eab308"), ("Projects", "#3b82f6"), ("Newsletters", "#a855f7"), ("Important", "#ef4444")];
@@ -69,13 +70,15 @@ pub fn Sidebar(
                         {move || {
                             let mock_list = accounts();
                             let connected = connected_accounts.get();
+                            let cache = email_cache.get();
                             let all: Vec<_> = mock_list.iter().map(|a| {
-                                (a.name.to_string(), a.email.to_string(), a.initial.to_string(), a.color.to_string(), a.unread, false, None::<OAuthToken>)
+                                (a.name.to_string(), a.email.to_string(), a.initial.to_string(), a.color.to_string(), a.unread, false, None::<OAuthToken>, None::<usize>)
                             }).chain(connected.iter().map(|t| {
                                 let initial = t.email.chars().next().unwrap_or('?').to_string();
-                                (t.email.clone(), t.email.clone(), initial, "#4285f4".to_string(), 0u32, true, Some(t.clone()))
+                                let count = cache.get(&t.email).map(|v| v.len());
+                                (t.email.clone(), t.email.clone(), initial, "#4285f4".to_string(), 0u32, true, Some(t.clone()), count)
                             })).collect();
-                            all.into_iter().map(|(name, email, initial, color, unread, is_oauth, token)| {
+                            all.into_iter().map(|(name, email, initial, color, unread, is_oauth, token, count)| {
                                 let email_clone = email.clone();
                                 let set_tab = set_active_tab.clone();
                                 let on_oauth = on_oauth_account_click;
@@ -90,6 +93,9 @@ pub fn Sidebar(
                                         <div class="account-meta">
                                             <span class="account-name">{name}</span>
                                             <span class="account-email">{email_clone}</span>
+                                            {count.map(|n| view! {
+                                                <span class="account-count">{format!("{n} emails")}</span>
+                                            })}
                                         </div>
                                         {if unread > 0 {
                                             Some(view! { <span class="badge">{unread}</span> })
@@ -139,6 +145,7 @@ pub fn Sidebar(
                 </Show>
 
                 <div class="sidebar-footer">
+                    <button class="folder-item" on:click=move |_| { set_active_tab.set(Tab::Tokens); set_drawer_open.set(false); }><Icon name="shield"/>"Tokens"</button>
                     <button class="folder-item" on:click=move |_| { set_active_tab.set(Tab::Settings); set_drawer_open.set(false); }><Icon name="settings"/>"Settings"</button>
                     <button class="folder-item" on:click=move |_| { set_active_tab.set(Tab::About); set_drawer_open.set(false); }><Icon name="info"/>"About"</button>
                     <p class="quote">"A more organized you, a brighter tomorrow." <span>"— Majeh"</span></p>

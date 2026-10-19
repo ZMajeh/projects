@@ -30,8 +30,15 @@ pub fn ReadingPane(
                         <div class="reading-header">
                             <div class="avatar lg" style=format!("background:{}", e.color)>{e.initial}</div>
                             <div class="reading-from">
-                                <span class="sender">{e.sender.clone()} <span class="addr">{format!("<{}>", e.address)}</span></span>
-                                <span class="to">"To me"</span>
+                                <span class="sender">
+                                    {e.sender.clone()}
+                                    {if !e.address.is_empty() && e.address != e.sender {
+                                        Some(view! { <span class="addr">{format!("<{}>", e.address)}</span> })
+                                    } else {
+                                        None
+                                    }}
+                                </span>
+                                <span class="to">{format!("To {}", if e.to_field.is_empty() { "me".to_string() } else { e.to_field.clone() })}</span>
                             </div>
                             <span class="time">{e.time.clone()}</span>
                         </div>

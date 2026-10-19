@@ -6,6 +6,7 @@ mod crypto;
 mod data;
 mod oauth;
 mod tokens;
+mod util;
 use app::App;
 
 fn main() {
