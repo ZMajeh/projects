@@ -1,81 +1,120 @@
-# Owning Your Domain (required by the Google Play "App Homepage" review)
+# Owning Your Domain — required for OAuth / Play verification
 
-## Why this matters
+## Current status of the three findings
 
-Google Play's *App Homepage* guidance says:
+| Finding | Cause | Status |
+|---|---|---|
+| "The website of your home page URL is not registered to you" | `majehsemailviewer.web.app` is a **shared Google domain** — the registrable domain (`web.app`) belongs to Google, so you cannot prove ownership | ❌ **Needs a custom domain** |
+| "Your home page is behind a login page" | The reviewed build still had the **splash unlock form** | ✅ Fixed (splash is now a 900 ms brand intro; Home tab + static block are public) |
+| "Your home page does not explain the purpose of your app" | The homepage had **no HTML text** — only WASM | ✅ Fixed (static `#static-home` block: 407 words, purpose + per-scope table + policy link) |
 
-> Your homepage and privacy policy should not be hosted on a third-party platform
-> where you can't verify that you own your subdomain.
+## Why waiting will not fix the ownership finding
 
-The current home is `https://majehsemailviewer.web.app`. `web.app` is a **shared
-Google/Firebase domain** — the project owns the subdomain, but the registrable
-domain belongs to Google. That is the one item on the checklist that is still
-exposed. Everything else (purpose, functionality, data transparency, privacy
-link, no-login visibility) is implemented in the app.
+Google's Trust & Safety team requires the homepage **and** the privacy policy to
+live on *"a verified domain that you own"*, and explicitly warns against
+third-party platforms where subdomain ownership cannot be verified
+(`google sites`, `facebook`, `github.io`, and by the same rule `web.app`).
 
-**Fix:** point the app at a domain you registered yourself (e.g.
-`majehsemailviewer.com`). Firebase Hosting supports custom domains for free —
-you only pay the registrar for the domain (~$10/yr).
+Developer-forum reports confirm that **verifying the `web.app`/hosting domain
+in Search Console is not sufficient** — the team still asks for a domain under
+your own ownership. Waiting 24 hours only helps *after* ownership of a
+registrable domain has been verified. Retrying tomorrow with the same
+`web.app` URL will be rejected again.
 
----
+## What to do
 
-## Migration steps
+### 1. Register a domain you own
+Any registrar. Avoid the `.app` TLD unless you also enable **HSTS** on the
+custom domain (mandatory for `.app`, one extra DNS step). `.com`/`.dev`/`.net`
+are fine.
 
-### 1. Register a domain
-Any registrar works (Namecheap, Cloudflare Registrar, Porkbun, Google Domains).
-Avoid a `.app` TLD unless you enable **HSTS** on the custom domain (it is
-mandatory for `.app` and adds a setup step).
+### 2. Point it at Firebase Hosting
+Firebase console → **Project settings → General → Add custom domain** →
+enter `yourdomain.com` (and `www` if you want both). Firebase prints the DNS
+records — typically:
+- `A` → `199.36.153.4`
+- `AAAA` → `2001:4860:4802:32::a`
+- `CNAME` → `yourdomain.com` → `your-project.web.app`
 
-### 2. Connect it to Firebase Hosting
-1. Firebase console → **Project settings** → **General** → **Add custom domain**.
-2. Enter `yourdomain.com` (and `www.yourdomain.com` if you want both).
-3. Firebase prints the DNS records — typically:
-   - `A` record → `199.36.153.4`
-   - `AAAA` record → `2001:4860:4802:32::a`
-   - `CNAME` → `yourdomain.com` → `your-project.web.app`
-4. Add the records at your registrar and wait for the certificate to be issued
-   (automatic, usually minutes).
+The TLS certificate is issued automatically (minutes, occasionally up to 24 h).
 
-### 3. Update the app
-Only **one line of code** depends on the domain — `src/util.rs`:
-
-```rust
-pub const SITE_URL: &str = "https://majehsemailviewer.web.app";  // -> your domain
+### 3. Update the code
+```bash
+./scripts/update_domain.sh yourdomain.com
 ```
-
-This drives every public link (homepage privacy link, in-app privacy/terms
-links). Then also update:
-- `index.html` → `<link rel="canonical">`, `og:url`, and the static homepage's
-  absolute policy links
-- `privacy.html` / `terms.html` → `<link rel="canonical">`
-- `index.html` → the `google-site-verification` meta tag (re-verify the new
-  domain in Search Console)
+This rewrites every hardcoded occurrence of the old domain in `index.html`,
+`privacy.html`, `terms.html`, `robots.txt`, `sitemap.xml`, `src/util.rs` and
+the docs, then prints the remaining manual steps. The single source of truth
+is `util::SITE_URL` — everything else derives from it.
 
 ### 4. Update Google Cloud OAuth
-In **Google Cloud Console → APIs & Services → Credentials → your OAuth client**:
+**APIs & Services → Credentials → your OAuth client**
 - **Authorized JavaScript origins**: `https://yourdomain.com`
 - **Authorized redirect URIs**: `https://yourdomain.com/auth/callback/google`
-  (keep the old `web.app` one only if you still serve the app there)
 
 ### 5. Update the OAuth consent screen
-In **Google Cloud Console → OAuth consent screen → App information**:
+**OAuth consent screen → App information**
 - **Homepage**: `https://yourdomain.com`
 - **Privacy policy**: `https://yourdomain.com/privacy.html`
-  → this must be **identical** to the link on the app homepage
-- **Application home page** / support email as well
+  → must be **identical** to the link on the app homepage
 
-### 6. Re-verify in Play Console
-Add the new domain in Play Console → **App content → App access** and re-run the
-homepage review.
+### 6. Verify domain ownership (Search Console)
 
----
+**What you have today is not enough.** The property in your screenshot —
+`https://majehsemailviewer.web.app/` — is a **URL-prefix property**, verified
+with the `google-site-verification` meta tag. That proves *"you can edit this
+exact page"*. The Play/OAuth ownership check asks a different question: *"do
+you own the registrable domain?"* — for that Google requires a **Domain
+property** (not a URL-prefix property), proved with a **DNS TXT record**.
+
+A `web.app` URL-prefix property can never be upgraded to a Domain property:
+Domain properties are verified by adding a DNS TXT record, and you do not
+control the DNS zone for `web.app` (Google does). That is precisely why the
+ownership check fails.
+
+**The correct flow with your own domain:**
+
+1. Search Console → **Add property** → the **Domain** tab (not URL prefix).
+2. Enter `yourdomain.com` with **no** `https://` and no `www.`.
+3. Google shows a TXT record: `google-site-verification=XXXXXXXX`.
+4. Add that TXT record at your **registrar** (Namecheap / Cloudflare /
+   Porkbun) on the root domain (`@` host). Cloudflare: DNS → Records → Add →
+   Type `TXT`, Name `@`, Content the token.
+5. Click **Verify** — usually minutes, occasionally up to 48 h.
+6. Use the **same Google account** that owns the GCP project and the Play
+   developer account, so the verified domain is associated with your account.
+
+Keep the existing `web.app` URL-prefix property as well — it is still valid for
+`google-site-verification` if you keep serving the fallback, but the
+**custom-domain** property is the one that satisfies the ownership check.
+
+**Tip while you are in Search Console:** use **URL Inspection** on
+`https://majehsemailviewer.web.app/` to see the *rendered* HTML Google
+retrieves. It should show the static homepage block (brand, purpose, the
+per-scope table, the privacy link) — that is the same content the Play
+reviewer sees.
+
+### 7. Resubmit
+Two routes — either is valid:
+- **Reply to the email** from Google's Third Party Data Safety Team. Their
+  standard template asks you to reply with:
+  > "Move your application homepage and privacy policy to domain under your
+  > ownership / Update the homepage and privacy policy URLs in your Cloud
+  > Console / Verify your domain ownership"
+  and then confirm the homepage has been updated. Replying to the existing
+  thread is usually **faster** than starting a new submission.
+- **Or** update the homepage URL in the consent screen and press
+  **Prepare for verification → Submit for verification**.
+
+Then wait the 24 hours Google's notice mentions (it starts from the moment
+ownership is verified) before retrying.
 
 ## Notes
-- The **Google Client Secret** is stored per-browser in `localStorage`. After the
-  migration, each user must re-enter it once in **Settings → Google Client
-  Secret** on the new domain (that is by design — the secret never ships in the
-  app).
+- The **Google Client Secret** is stored per-browser in `localStorage`. After
+  the migration each user must re-enter it once in **Settings → Google Client
+  Secret** on the new domain — that is by design, the secret never ships in
+  the app.
 - `firebase.json` needs no change: Firebase serves the custom domain from the
   same `public` directory.
-- Keep the `web.app` URL alive as a fallback, but make the **custom domain** the
-  one registered with Google (OAuth + Play Console + consent screen).
+- Keep the `web.app` URL alive as a fallback, but make the **custom domain**
+  the one registered with Google (OAuth, consent screen, Play Console).

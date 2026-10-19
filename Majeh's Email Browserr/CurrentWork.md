@@ -80,6 +80,13 @@ Audit of the live home page (`https://majehsemailviewer.web.app`) against the Pl
 - **Single source of truth for the domain**: `util::SITE_URL` + `util::site_url(path)` drive every public link (Home, About, canonical tags, static block). Changing the domain is a one-line code change.
 - `index.html` gained a meta description, Open Graph tags and a canonical-friendly title; `privacy.html` / `terms.html` gained meta descriptions and `<link rel="canonical">`.
 
+### OAuth / Play verification findings (Google homepage review)
+Three findings were returned on the last submission:
+1. **"The website of your home page URL is not registered to you"** — `web.app` is a shared Google domain; a registrable domain under the developer's own ownership is required (Search Console verification of `web.app` does **not** satisfy this — confirmed by developer-forum reports). **Open — needs a custom domain**, see `DOMAIN_SETUP.md`.
+2. **"Your home page is behind a login page"** — the reviewed build still had the splash unlock form. **Fixed**: the splash is now a 900 ms brand intro with a purpose line (no password field, no full-screen gate), and the Home tab + static block are public.
+3. **"Your home page does not explain the purpose of your app"** — **Fixed**: 407 words of static HTML including the purpose statement, the per-scope table and the policy link.
+- Added `scripts/update_domain.sh <domain>` — rewrites every hardcoded domain reference in one pass and prints the remaining manual steps (DNS → OAuth origin/redirect URI → consent screen → Search Console DNS-TXT ownership verification → 24 h wait → resubmit or reply to the Trust & Safety email).
+
 ### Crawlability hardening (live-verified)
 - `curl` of the deployed homepage showed **22 words of body text (all of it JavaScript source)** and **zero** `privacy.html` links — the app was WASM-only, so any non-JS crawler (link-preview bots, validators, some automated Play checks) saw a blank page. Googlebot can render JS, but only via the deferred rendering queue, and it may capture the 1.5s splash.
 - **Fix**: a static `#static-home` block in `index.html` with the brand, purpose, per-scope table, serverless disclosure, how-to-start and the absolute privacy link. The app removes it on boot (`src/main.rs`).
