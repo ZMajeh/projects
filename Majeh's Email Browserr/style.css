@@ -1107,22 +1107,22 @@ input {
     padding: 24px;
 }
 
-.splash-title { margin: 0; font-size: 22px; }
-
-/* Splash hero logo — much larger than the 64px .brand-logo.xl used elsewhere */
+/* Splash hero logo — much larger than the 64px .brand-logo.xl used elsewhere.
+   The artwork already includes the "Majeh's Email Browserr" wordmark, so no
+   separate title text is rendered. */
 .brand-logo.splash-logo {
-    width: 148px;
-    height: 148px;
-    border-radius: 34px;
-    background-size: 88%;
+    width: 156px;
+    height: 156px;
+    border-radius: 36px;
+    background-size: 100%;
     box-shadow: 0 18px 50px rgba(59, 130, 246, 0.28);
 }
 
 @media (max-width: 480px) {
     .brand-logo.splash-logo {
-        width: 116px;
-        height: 116px;
-        border-radius: 28px;
+        width: 122px;
+        height: 122px;
+        border-radius: 30px;
     }
 }
 
