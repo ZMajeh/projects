@@ -80,6 +80,14 @@ Audit of the live home page (`https://majehsemailviewer.web.app`) against the Pl
 - **Single source of truth for the domain**: `util::SITE_URL` + `util::site_url(path)` drive every public link (Home, About, canonical tags, static block). Changing the domain is a one-line code change.
 - `index.html` gained a meta description, Open Graph tags and a canonical-friendly title; `privacy.html` / `terms.html` gained meta descriptions and `<link rel="canonical">`.
 
+### Crawlability hardening (live-verified)
+- `curl` of the deployed homepage showed **22 words of body text (all of it JavaScript source)** and **zero** `privacy.html` links — the app was WASM-only, so any non-JS crawler (link-preview bots, validators, some automated Play checks) saw a blank page. Googlebot can render JS, but only via the deferred rendering queue, and it may capture the 1.5s splash.
+- **Fix**: a static `#static-home` block in `index.html` with the brand, purpose, per-scope table, serverless disclosure, how-to-start and the absolute privacy link. The app removes it on boot (`src/main.rs`).
+- **Verified live after deploy** (`ad43a580`): body text **22 → 407 words**, privacy link in raw HTML **0 → 1**.
+- **New `robots.txt` + `sitemap.xml`** (copied into `dist` via Trunk `copy-file`): before this, `/robots.txt` and `/sitemap.xml` returned the *homepage HTML* because of the catch-all rewrite — an invalid robots.txt that crawlers ignore. Both are now real files; sitemap XML validated.
+- Homepage `<link rel="canonical">` added.
+- **Known tradeoff**: `firebase.json` rewrites `**` → `/index.html`, so any unknown URL returns **200 with the homepage** (a soft 404). Kept deliberately — the app has exactly one non-file route (`/auth/callback/google`) and the catch-all guarantees the OAuth callback can never 404. To serve real 404s instead, replace the catch-all with a single rewrite for `/auth/callback/google` and add a `404.html` (Firebase serves it with a 404 status).
+
 ### Add Account — Google flow from the sidebar
 - The sidebar **"Add Account"** button and the **"+" icon** next to the *Accounts* heading now start the **Google OAuth (PKCE) flow** — they were previously dead buttons.
 - One shared handler `add_google_account` in `app.rs` is used by all three entry points: sidebar **Add Account**, sidebar **"+"**, and **Settings → Connect Gmail** (which previously called `start_google_oauth()` directly and swallowed errors).

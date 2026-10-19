@@ -1,0 +1,8 @@
+# Majeh's Email Browserr - https://majehsemailviewer.web.app
+# The app runs entirely in the browser; there is nothing private to hide and
+# no login-gated content that should be excluded from indexing.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://majehsemailviewer.web.app/sitemap.xml
