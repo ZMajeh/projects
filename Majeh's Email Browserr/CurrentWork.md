@@ -35,6 +35,9 @@
 - Export/import secured through password
 - `OAuthToken` struct: `provider`, `email`, `access_token`, `refresh_token`, `expires_at`
 - Pending OAuth token auto-persistence from callback flow
+- **Shared vault session (uncommitted, in working tree)**: `vault_password()` (thread-local `Option<String>`) + `vault_epoch()` (reactive bump) + `vault_is_unlocked()`. Unlocking once (Splash *or* TokenVault) unlocks everywhere — no second prompt, and `save_vault()` always uses the real password. Replaced an earlier `OnceLock<RwSignal>` design that panicked with "already been disposed" because the signal was created outside any reactive owner.
+- **Single persistence choke point**: `save_vault(password, tokens)`; `persist_vault_now(tokens)` re-encrypts with the session password (no-op while locked). Called after *every* token refresh so a page reload restores fresh tokens instead of yesterday's copy.
+- `lock()` clears in-memory state only — the encrypted vault stays in localStorage (the old code *deleted* the vault on lock, which made accounts "vanish").
 
 ### Fetch Pipeline (`src/app.rs`)
 - **Per-account email cache** (`email_cache: HashMap<account_email, Vec<Email>>`) — re-clicking a fetched account shows emails **instantly, no refetch**
@@ -72,11 +75,11 @@
 - Reachable from the sidebar footer ("Tokens") and the bottom nav (4th tab)
 - One row per connected account: **email + provider, full access token, full refresh token (or "— none —"), status, action**
 - **Status**: "Active — expires in 3h 20m" (green) / "Expired 12m ago" (red, row highlighted) / "No expiry info" (gray) — computed live from `expires_at`
-- **Per-row "Refresh" button** — spins while running, calls Google's refresh endpoint, updates the token + expiry in the shared account list; disabled when already refreshing or no refresh token
-- **Top "Refresh all expired" button** — sequentially refreshes every expired token with per-step status ("Refreshing 2/3 (x@y.com)…") and a final "Done — refreshed N of M"
+- **Per-row "Refresh" button** — spins while running, calls Google's refresh endpoint, updates the token + expiry in the shared account list **and persists to the encrypted vault** (`persist_vault_now`); disabled when already refreshing or no refresh token
+- **Top "Refresh all expired" button** — sequentially refreshes every expired token with per-step status ("Refreshing 2/3 (x@y.com)…"), persists each success immediately, and a final "Done — refreshed N of M"
 - **Copy buttons** for both tokens (system clipboard)
+- **Email backup download/upload** — download serializes the per-account email cache to `majeh-emails-backup.json`; upload reads a `.json` file via `FileReader`, merges into the cache by account, and re-saves. Fixed for Leptos 0.6 (`event_target::<HtmlInputElement>` + `files().get(0)` + `Closure::wrap`; added `File`/`FileList` web-sys features).
 - Summary header ("N connected — A active, E expired, U unknown"), empty state, responsive single-column layout under 900px
-- Note: refreshed tokens update the session list; the encrypted vault is still only rewritten from Settings (password needed)
 
 ### Fetch Panel (`src/components/fetch_panel.rs`)
 - Progress bars: **"Fetching 20 emails for x@gmail.com — 12/20"** (indeterminate bar while listing; green + auto-hide when done)
@@ -95,6 +98,10 @@
 
 ### Settings UI (`src/components/settings.rs`)
 - "Google Client Secret" input with Save/Change; stored in `localStorage.oauth_client_secret` (never committed)
+- **Leptos reactivity fix (uncommitted)**: `secret_saved` / `secret_error` reads inside `view!` wrapped in `move ||` closures (lines ~135/146/161) — previously read signals outside a tracking context, causing "signal accessed outside reactive tracking context" console warnings.
+
+### OAuth Callback (`src/app.rs`)
+- After a successful token exchange, the single-use `?code=`/`state=` query is stripped from the URL via `history.replace_state` — a later browser refresh can no longer re-trigger the callback and fail with `state mismatch` on the already-consumed auth code.
 
 ### Data (`src/data.rs`)
 - `Email` gained `msg_id`, `to_field`, `timestamp_ms`; `next_email_id()` (session-unique ids); `format_email_time()` (local "10:24 AM" / "Yesterday" / "Mar 8" / "3/8/24")
@@ -106,7 +113,10 @@
 ---
 
 ## In Progress 🔄
-- Nothing currently in progress.
+- **Vault persistence hardening (uncommitted, in working tree — `src/tokens.rs`, `src/app.rs`, `src/components/settings.rs`, `src/components/splash.rs`, `src/components/tokens_page.rs`)**
+  - Shared session (`vault_password` / `vault_epoch`), `save_vault` choke point, `persist_vault_now` on all refresh paths, non-destructive `lock()`, reactive settings fix, OAuth URL cleanup
+  - `cargo check --target wasm32-unknown-unknown` — PASSING (zero errors; only 3 pre-existing warnings)
+  - Still to do: `trunk build` + browser re-test (second-account add, reload-keeps-fresh-tokens, no "already been disposed" panic), then commit
 
 ---
 
@@ -134,7 +144,7 @@
 ### Low Priority
 11. **Inbox refresh action** — cache never expires and re-click never refetches by design; add a manual "Refresh" button (or TTL) to pick up new mail
 12. **Outlook support (Phase 2)** — also clears the `vault_name` warning
-13. **Persist refreshed access tokens to the vault** — refresh updates in-memory tokens only; writing to the encrypted vault requires the vault password (held inside `TokenVault`). Refresh tokens don't expire, so unlock + next fetch recovers automatically
+13. ~~Persist refreshed access tokens to the vault~~ ✅ `persist_vault_now()` on all 3 refresh paths (per-row, refresh-all, `ensure_fresh_token`); reload restores fresh tokens
 14. **HTML-only emails** — body falls back to `snippet` when no `text/plain` part exists (consider a minimal HTML→text)
 15. **Page beyond 20 messages** — `maxResults=20`; `nextPageToken` parsed but unused (pagination)
 16. **Security** — `index.html` no longer contains client_secret (reads from localStorage at runtime)
@@ -143,13 +153,13 @@
 ---
 
 ## Known Limitations (non-blocking)
-- Refreshed access tokens live in memory for the session only (see todo 13)
 - Default fetch returns the 20 most recent INBOX messages (`labelIds=INBOX`)
 - `logo.png` is 1.9 MB for a 32px icon — worth optimizing later
 
 ## Known Warnings (non-blocking)
 - `vault_name` never used (Phase 2 — Outlook support)
 - `.clone()` on `&str` in `reading_pane.rs` (pre-existing)
+- `HashMap` unused import in `app.rs`, `JsCast` unused import in `data.rs` (pre-existing, warned not denied)
 
 ---
 
@@ -330,8 +340,12 @@ For a personal email browser with 90 accounts, **Option A (localStorage)** is th
 
 ## Git Status
 - Branch: `main`
-- Last commit before this session: `2c0ea90a` "Updating todo list"
-- **Uncommitted changes from this session:**
-  - Modified: `Cargo.toml` (HtmlSelectElement/Navigator/Clipboard web-sys features), `index.html` (logo `copy-file`), `style.css` (fetch panel, splash, tokens styles), `src/app.rs` (fetch pipeline rewrite + splash + Tokens tab), `src/oauth.rs` (query list, body decode, address parse), `src/data.rs` (Email fields, time formatting, FetchTask), `src/components/sidebar.rs` (counts + Tokens link), `src/components/reading_pane.rs` (To field), `src/components/mod.rs`, `src/components/navigation.rs` (Tokens tab), `src/main.rs` (util mod)
-  - New: `src/components/fetch_panel.rs`, `src/components/splash.rs`, `src/components/tokens_page.rs`, `src/util.rs`, `CurrentWork.md` updates
+- Last commit: `d2681b72` "Fetch email option added" (email backup download/upload + Leptos 0.6 fix)
+- **Uncommitted changes (this session, all in working tree):**
+  - `src/tokens.rs` — shared vault session (`vault_password`/`vault_epoch`/`vault_is_unlocked`), `save_vault` choke point, `persist_vault_now`, non-destructive `lock()`, pending-OAuth effect uses session password
+  - `src/app.rs` — OAuth URL cleanup (`replace_state`), `persist_vault_now` after `ensure_fresh_token`
+  - `src/components/splash.rs` — session published via `unlock_vault`/`create_vault`
+  - `src/components/settings.rs` — reactive `move ||` fixes for `secret_saved`/`secret_error`
+  - `src/components/tokens_page.rs` — `persist_vault_now` on per-row + refresh-all paths
+  - `CurrentWork.md` — this update
 - Build artifacts (`dist/`, `target/`) untracked

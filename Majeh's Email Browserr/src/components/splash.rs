@@ -39,6 +39,9 @@ pub fn Splash(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoView {
 
             match result {
                 Ok(()) => {
+                    // `unlock_vault`/`create_vault` already published the
+                    // verified password to the shared session — TokenVault and
+                    // the pending-OAuth persist pick it up from there.
                     set_dismissed.set(true);
                     set_unlocking.set(false);
                 }

@@ -26,6 +26,84 @@ pub struct VaultPayload {
 const VAULT_KEY: &str = "mejeh_email_vault";
 const VAULT_VERSION: u32 = 1;
 
+/// In-memory session: holds the verified vault password after any successful
+/// unlock/create (Splash or TokenVault). Shared across components so unlocking
+/// once unlocks everywhere — no second prompt, and the pending-OAuth effect
+/// always persists with the *real* password (never an empty one).
+/// `None` = vault currently locked; cleared on lock or full page reload
+/// (page reload → Splash gate asks again, as before).
+///
+/// Implemented as a plain thread-local `String` (NOT a Leptos signal): the old
+/// version used `create_rw_signal` inside a `OnceLock`, but that signal was
+/// created outside any reactive owner, so Leptos disposed it and every later
+/// access panicked ("already been disposed"). Components that need to *react*
+/// to lock/unlock changes should track `vault_epoch()` below; persistence
+/// paths just call `vault_password()` directly.
+pub fn vault_password() -> Option<String> {
+    use std::cell::RefCell;
+    thread_local! {
+        static PASSWORD: RefCell<Option<String>> = const { RefCell::new(None) };
+    }
+    PASSWORD.with(|p| p.borrow().clone())
+}
+
+fn set_vault_password(pw: Option<String>) {
+    use std::cell::RefCell;
+    thread_local! {
+        static PASSWORD: RefCell<Option<String>> = const { RefCell::new(None) };
+    }
+    PASSWORD.with(|p| *p.borrow_mut() = pw);
+    // Bump the epoch so UI tracking `vault_epoch()` re-renders.
+    vault_epoch().update(|e| *e = e.wrapping_add(1));
+}
+
+/// Reactive epoch bumped on every lock/unlock. Track this in components that
+/// must re-render when the session changes (the password itself is read via
+/// the non-reactive `vault_password()`).
+pub fn vault_epoch() -> RwSignal<u64> {
+    use std::sync::OnceLock;
+    static EPOCH: OnceLock<RwSignal<u64>> = OnceLock::new();
+    // Created once, the first time any component calls it — always inside a
+    // reactive owner (component body), so it is never disposed.
+    *EPOCH.get_or_init(|| create_rw_signal(0u64))
+}
+
+/// Convenience for templates: true once any successful unlock/create happened
+/// this page-load. Track `vault_epoch()` first (via this function's caller)
+/// — see TokenVault/Splash usage.
+pub fn vault_is_unlocked() -> bool {
+    vault_password().is_some()
+}
+
+/// Encrypt `tokens` with `password` and write to localStorage.
+/// Single choke point for all vault persistence.
+pub fn save_vault(password: &str, tokens: &[OAuthToken]) -> Result<(), String> {
+    let payload = VaultPayload {
+        version: VAULT_VERSION,
+        tokens: tokens.to_vec(),
+    };
+    let json =
+        serde_json::to_string(&payload).map_err(|e| format!("serialize failed: {e}"))?;
+    let encrypted = encrypt(&json, password)?;
+    window_local_storage()
+        .and_then(|ls| ls.set_item(VAULT_KEY, &encrypted).ok())
+        .ok_or_else(|| "failed to write vault to storage".to_string())?;
+    Ok(())
+}
+
+/// Re-encrypt the current vault contents with the session password and write
+/// to localStorage. Called after any token refresh so a page reload restores
+/// the *fresh* tokens instead of rolling back to the stale stored copy.
+/// No-op when the vault is locked (no session password yet).
+pub fn persist_vault_now(tokens: &[OAuthToken]) {
+    let Some(pw) = vault_password() else {
+        return;
+    };
+    if let Err(e) = save_vault(&pw, tokens) {
+        leptos::logging::log!("vault auto-persist failed: {e}");
+    }
+}
+
 /// Check whether an encrypted vault already exists in localStorage.
 pub fn vault_exists() -> bool {
     window_local_storage()
@@ -34,6 +112,7 @@ pub fn vault_exists() -> bool {
 }
 
 /// Decrypt the vault with `password` and return the stored tokens.
+/// On success the password is published to the shared session.
 pub fn unlock_vault(password: &str) -> Result<Vec<OAuthToken>, String> {
     let encrypted = window_local_storage()
         .and_then(|ls| ls.get_item(VAULT_KEY).ok().flatten())
@@ -41,6 +120,7 @@ pub fn unlock_vault(password: &str) -> Result<Vec<OAuthToken>, String> {
     let json = decrypt(&encrypted, password)?;
     let payload: VaultPayload = serde_json::from_str(&json)
         .map_err(|e| format!("bad vault format: {e}"))?;
+    set_vault_password(Some(password.to_string()));
     Ok(payload.tokens)
 }
 
@@ -50,15 +130,8 @@ pub fn create_vault(password: &str) -> Result<(), String> {
     if vault_exists() {
         return Err("vault already exists".to_string());
     }
-    let payload = VaultPayload {
-        version: VAULT_VERSION,
-        tokens: Vec::new(),
-    };
-    let json = serde_json::to_string(&payload).unwrap();
-    let encrypted = encrypt(&json, password)?;
-    window_local_storage()
-        .and_then(|ls| ls.set_item(VAULT_KEY, &encrypted).ok())
-        .ok_or_else(|| "failed to write vault to storage".to_string())?;
+    save_vault(password, &[])?;
+    set_vault_password(Some(password.to_string()));
     Ok(())
 }
 
@@ -87,59 +160,71 @@ pub fn TokenVault(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoVie
     let tokens = connected_accounts;
     let is_unlocked = create_rw_signal(false);
     let password_set = create_rw_signal(false);
-    let vault_password = create_rw_signal(String::new());
 
     let existing = window_local_storage()
         .and_then(|ls| ls.get_item(VAULT_KEY).ok().flatten());
     password_set.set(existing.is_some());
 
     // When vault unlocks, check for a pending OAuth token from the callback flow
-    // and add it to the vault automatically (encrypted with the vault password).
-    let tokens_clone = tokens.clone();
-    let is_unlocked_clone = is_unlocked.clone();
-    let vault_password_clone = vault_password.clone();
+    // and append it to the account list. Persistence uses the shared session
+    // password via `save_vault` — never a component-local (possibly empty) one.
+    let tokens_clone = tokens;
+    let is_unlocked_clone = is_unlocked;
     create_effect(move |_| {
-        if is_unlocked_clone.get() {
-            if let Ok(Some(storage)) = web_sys::window().unwrap().session_storage() {
-                if let Ok(Some(pending)) = storage.get_item("pending_oauth_token") {
-                    if !pending.is_empty() {
-                        if let Ok(token) = serde_json::from_str::<OAuthToken>(&pending) {
-                            let mut current = tokens_clone.get();
-                            if !current.iter().any(|t| t.email == token.email) {
-                                current.push(token.clone());
-                                tokens_clone.set(current.clone());
-                                // Persist to vault immediately
-                                let pw = vault_password_clone.get();
-                                if !pw.is_empty() {
-                                    let payload = VaultPayload {
-                                        version: VAULT_VERSION,
-                                        tokens: current.clone(),
-                                    };
-                                    if let Ok(json) = serde_json::to_string(&payload) {
-                                        if let Ok(encrypted) = crate::crypto::encrypt(&json, &pw) {
-                                            if let Some(ls) = window_local_storage() {
-                                                let _ = ls.set_item(VAULT_KEY, &encrypted);
-                                            }
-                                        }
-                                    }
-                                }
-                                leptos::logging::log!(
-                                    "OAuth token saved to vault for {}",
-                                    token.email
-                                );
-                            }
-                            let _ = storage.remove_item("pending_oauth_token");
+        // Track both signals so this re-runs when the vault unlocks AND when
+        // the account list changes (e.g. a second OAuth callback arrives while
+        // already unlocked — the in-memory list alone wouldn't retrigger it).
+        let unlocked = is_unlocked_clone.get();
+        let _accounts = tokens_clone.get();
+        if !unlocked {
+            return;
+        }
+        let Some(session_pw) = vault_password() else {
+            return;
+        };
+        if let Ok(Some(storage)) = web_sys::window().unwrap().session_storage() {
+            if let Ok(Some(pending)) = storage.get_item("pending_oauth_token") {
+                if pending.is_empty() {
+                    return;
+                }
+                // Consume the pending token FIRST so a failure below can't
+                // loop forever re-processing the same token.
+                let _ = storage.remove_item("pending_oauth_token");
+                match serde_json::from_str::<OAuthToken>(&pending) {
+                    Ok(token) => {
+                        let email = token.email.clone();
+                        let mut current = tokens_clone.get_untracked();
+                        if !current.iter().any(|t| t.email == email) {
+                            current.push(token);
+                            tokens_clone.set(current.clone());
                         }
+                        // Persist the full list (old + new) with the session
+                        // password through the single choke point.
+                        if let Err(e) = save_vault(&session_pw, &current) {
+                            leptos::logging::log!("vault persist failed for {email}: {e}");
+                        } else {
+                            leptos::logging::log!("OAuth token saved to vault for {email}");
+                        }
+                    }
+                    Err(e) => {
+                        leptos::logging::log!("pending token parse failed: {e}");
                     }
                 }
             }
         }
     });
 
+    // Seed local state from the shared session: if Splash already unlocked the
+    // vault this page-load, show unlocked immediately — no second prompt.
+    // (`vault_epoch()` is tracked so a later unlock re-runs this path.)
+    vault_epoch().get();
+    if vault_is_unlocked() {
+        is_unlocked.set(true);
+    }
+
     let unlock = move |password: String| {
-        let tokens = tokens.clone();
-        let is_unlocked = is_unlocked.clone();
-        let vault_password = vault_password.clone();
+        let tokens = tokens;
+        let is_unlocked = is_unlocked;
         move || {
             match window_local_storage()
                 .and_then(|ls| ls.get_item(VAULT_KEY).ok().flatten())
@@ -151,7 +236,9 @@ pub fn TokenVault(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoVie
                             .unwrap();
                         tokens.set(payload.tokens);
                         is_unlocked.set(true);
-                        vault_password.set(password);
+                        // Publish to the shared session so every component
+                        // (and the pending-OAuth persist) uses this password.
+                        set_vault_password(Some(password.clone()));
                     }
                     Err(_) => is_unlocked.set(false),
                 },
@@ -163,29 +250,22 @@ pub fn TokenVault(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoVie
     let lock = move || {
         tokens.set(Vec::new());
         is_unlocked.set(false);
-        vault_password.set(String::new());
-        if let Some(ls) = window_local_storage() {
-            let _ = ls.remove_item(VAULT_KEY);
-        }
+        set_vault_password(None);
+        // NOTE: lock only clears in-memory state — the encrypted vault stays
+        // in localStorage so the next unlock restores the accounts. (The old
+        // code deleted the vault here, which is another way accounts "vanished".)
     };
 
     let save = move |new_tokens: Vec<OAuthToken>, password: String| {
-        let tokens = tokens.clone();
-        let is_unlocked = is_unlocked.clone();
+        let tokens = tokens;
+        let is_unlocked = is_unlocked;
         move || {
-            let payload = VaultPayload {
-                version: VAULT_VERSION,
-                tokens: new_tokens.clone(),
-            };
-            let json = serde_json::to_string(&payload).unwrap();
-            match encrypt(&json, &password) {
-                Ok(encrypted) => {
-                    if let Some(ls) = window_local_storage() {
-                        let _ = ls.set_item(VAULT_KEY, &encrypted);
-                    }
+            match save_vault(&password, &new_tokens) {
+                Ok(()) => {
                     tokens.set(new_tokens);
                     is_unlocked.set(true);
                     password_set.set(true);
+                    set_vault_password(Some(password));
                 }
                 Err(e) => leptos::logging::log!("encrypt failed: {e}"),
             }

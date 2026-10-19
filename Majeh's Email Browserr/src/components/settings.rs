@@ -132,7 +132,7 @@ pub fn Settings(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoView 
                         <div class="row-text">
                             <span class="row-title">"Google Client Secret"</span>
                             <span class="row-sub">
-                                {if secret_saved.get() { "Saved in browser" } else { "Required for OAuth token exchange" }}
+                                {move || if secret_saved.get() { "Saved in browser" } else { "Required for OAuth token exchange" }}
                             </span>
                         </div>
                         <div class="secret-input-wrap">
@@ -143,7 +143,7 @@ pub fn Settings(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoView 
                                 on:input=move |ev| client_secret.set(event_target_value(&ev))
                                 disabled=move || secret_saved.get()
                             />
-                            {if secret_saved.get() {
+                            {move || if secret_saved.get() {
                                 view! {
                                     <button class="btn-secondary sm" on:click=clear_secret>"Change"</button>
                                 }
@@ -158,7 +158,7 @@ pub fn Settings(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoView 
                                     </button>
                                 }
                             }}
-                            {if !secret_error.get().is_empty() {
+                            {move || if !secret_error.get().is_empty() {
                                 view! {
                                     <span class="error-text">{secret_error.get()}</span>
                                 }

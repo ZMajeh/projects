@@ -282,6 +282,13 @@ pub fn App() -> impl IntoView {
                     }
                 }
             });
+            // Persist the fresh token to the encrypted vault so a page reload
+            // restores it instead of yesterday's stored copy.
+            crate::tokens::persist_vault_now(&connected_accounts.get_untracked());
+            // Auto-persist the refreshed tokens to the encrypted vault so a
+            // page reload restores them instead of rolling back to the stale
+            // stored copy (no-op while the vault is locked).
+            crate::tokens::persist_vault_now(&connected_accounts.get_untracked());
             active_account.update(|acc| {
                 if let Some(t) = acc.as_mut() {
                     if t.email == token.email {
@@ -487,6 +494,16 @@ pub fn App() -> impl IntoView {
                             "pending_oauth_token",
                             &serde_json::to_string(&token).unwrap_or_default(),
                         );
+                    }
+                    // Strip the single-use `?code=`/`state=` from the URL so a
+                    // later browser refresh can't re-trigger this callback and
+                    // re-consume (or fail on) the already-used auth code.
+                    if let Some(window) = web_sys::window() {
+                        if let Ok(path) = window.location().pathname() {
+                            let _ = window
+                                .history()
+                                .map(|h| h.replace_state_with_url(&wasm_bindgen::JsValue::NULL, "", Some(&path)));
+                        }
                     }
                     set_active_tab.set(Tab::Settings);
                 }

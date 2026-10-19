@@ -92,6 +92,9 @@ pub fn TokensPage(
             match result {
                 Ok(resp) => {
                     connected_accounts.update(|list| apply_refresh(list, &email, &resp));
+                    // Persist the fresh tokens to the encrypted vault so a
+                    // page reload doesn't roll back to yesterday's copy.
+                    crate::tokens::persist_vault_now(&connected_accounts.get_untracked());
                     status.set(Some(format!("{email}: token refreshed ✓")));
                 }
                 Err(e) => status.set(Some(format!("{email}: refresh failed — {e}"))),
@@ -146,6 +149,9 @@ pub fn TokensPage(
                         connected_accounts.update(|list| {
                             apply_refresh(list, &token.email, &resp)
                         });
+                        // Persist each success so a mid-batch reload keeps
+                        // the tokens refreshed so far.
+                        crate::tokens::persist_vault_now(&connected_accounts.get_untracked());
                         ok_count += 1;
                     }
                     Err(e) => status.set(Some(format!("{} failed: {e}", token.email))),
