@@ -257,8 +257,11 @@ Console and filter for `majeh`. Covered:
 ---
 
 ## In Progress 🔄
-- Home-page restructure (splash login removed, Home tab added) — **built and compiling, uncommitted for review**
-- Google Play "Mandatory Homepage Checklist" wording aligned on the Home tab and in `privacy.html` (new "How your data is used (limited use)" section)
+- *(none — the last two items were finished and committed)*:
+  - ~~Home-page restructure (splash login removed, Home tab added)~~ ✅ committed
+    ("Static page", "Splash screen fix")
+  - ~~Google Play "Mandatory Homepage Checklist" wording aligned on the Home tab
+    and in `privacy.html`~~ ✅ committed ("Adding policy Messsage")
 
 ## Todo Next 📋
 
@@ -280,14 +283,31 @@ Console and filter for `majeh`. Covered:
 8. ~~Account switching without stale data~~ ✅ selection/folder reset + cache
 9. ~~Token auto-refresh~~ ✅ session level (see Known Limitations)
 10. ~~Error UI~~ ✅ dismissible fetch-error banner
+10b. **"Connect 90 accounts" batch flow** — the goal is 90+ accounts, but each
+   one still needs its own Google consent screen. A guided flow (one popup after
+   the next, with a progress counter and a "skip" button) would make the
+   90-account setup bearable instead of 90 manual round trips.
+10c. **Settings → Manage accounts** — a list of every connected account with
+   **Disconnect** (drop the token from the vault) and **Reconnect** (re-run the
+   sign-in for a revoked `invalid_grant` refresh token). Today a revoked
+   account can only be removed by hand-editing the vault.
 
 ### Low Priority
-10b. **Own domain (DEFERRED)** — required to clear the Play/OAuth "homepage domain not registered to you" finding. Owner decided on 2026-10-19 not to buy one for now. Runbook: `DOMAIN_SETUP.md` + `scripts/update_domain.sh`.
-11. **Inbox refresh action** — cache never expires and re-click never refetches by design; add a manual "Refresh" button (or TTL) to pick up new mail
+10d. **Own domain (DEFERRED)** — required to clear the Play/OAuth "homepage domain not registered to you" finding. Owner decided on 2026-10-19 not to buy one for now. Runbook: `DOMAIN_SETUP.md` + `scripts/update_domain.sh`.
+11. ~~Inbox refresh action~~ ✅ manual **Refresh** button in the mailbox header
+    (`btn-inbox-refresh` + spinner, merges by `msg_id`; `on_refresh_inbox` in `app.rs`)
 12. **Outlook support (Phase 2)** — also clears the `vault_name` warning
 13. ~~Persist refreshed access tokens to the vault~~ ✅ `persist_vault_now()` on all 3 refresh paths (per-row, refresh-all, `ensure_fresh_token`); reload restores fresh tokens
 14. **HTML-only emails** — body falls back to `snippet` when no `text/plain` part exists (consider a minimal HTML→text)
 15. **Page beyond 20 messages** — `maxResults=20`; `nextPageToken` parsed but unused (pagination)
+15b. **Fetch the other folders** — every fetch is hard-scoped to `labelIds=INBOX`,
+    so *Sent* / *Drafts* / *Archive* / *Trash* in the sidebar are always empty
+    (only *Starred* works, because it filters the in-memory list). Needs the
+    folder → Gmail label mapping plus a per-folder fetch.
+15c. **Dead UI to either wire up or remove** — the **"Filter"** button
+    (`email_list.rs`), the **"Add Label"** row and the hardcoded label list
+    (Work/Personal/Projects/Newsletters/Important) in `sidebar.rs`. There is no
+    Compose button yet either.
 16. **Security** — `index.html` no longer contains client_secret (reads from localStorage at runtime)
 17. ~~Splash screen~~ ✅ hard-gate splash (logo + indefinite progress bar, unlocks/creates the vault)
 18. ~~Persist emails + accounts + client secret across sessions~~ ✅ email cache in localStorage, encrypted vault auto-rewritten on every token refresh
@@ -299,6 +319,15 @@ Console and filter for `majeh`. Covered:
 
 ## Known Limitations (non-blocking)
 - Default fetch returns the 20 most recent INBOX messages (`labelIds=INBOX`)
+- Only the Inbox is actually fetched — the other sidebar folders are empty
+  (see todo 15b)
+- The vault is **per-browser**: the password is in memory only, so a page
+  reload locks it again (the pending-token stash covers the reload, but the
+  accounts are not listed until you unlock)
+- `Folder::Snoozed` has no Gmail API equivalent for regular accounts — it
+  would need its own mapping if the other folders are ever fetched
+- `src/data.rs` still says "Mock data models … Phase 2 will replace this" —
+  a stale comment; the models now hold real Gmail data
 
 ## Known Warnings (non-blocking)
 - **None** — the build is warning-free (only a third-party `proc-macro-error2` future-incompat notice from cargo)
