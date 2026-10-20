@@ -111,7 +111,88 @@ Three findings were returned on the last submission:
 - The sidebar **"Add Account"** button and the **"+" icon** next to the *Accounts* heading now start the **Google OAuth (PKCE) flow** — they were previously dead buttons.
 - One shared handler `add_google_account` in `app.rs` is used by all three entry points: sidebar **Add Account**, sidebar **"+"**, and **Settings → Connect Gmail** (which previously called `start_google_oauth()` directly and swallowed errors).
 - Failures (e.g. missing Google Client ID/Secret) are surfaced in a **global dismissible error banner** at the top of the content area, visible on every tab (`oauth_error` signal + `.global-error` style). The old `fetch_error` banner stays scoped to the Mailbox fetch panel.
-- After the callback the app reopens on **Settings**, where the pending token is picked up by the vault effect and persisted (the session password is now published *before* the `is_unlocked` signal flips, so the pending-token effect can never miss it).
+
+### 🐛 FIX — "New Account doesn't add the account" (2026-10-20)
+
+**Symptom**: clicking *Add Account* completed the Google sign-in (console showed
+`OAuth callback: got token for …`) but the account never appeared — the vault
+stayed empty and the Tokens page showed nothing. `sessionStorage` kept a
+`pending_oauth_token` entry that was never consumed.
+
+**Root cause #1 — the vault session was never actually shared** (`src/tokens.rs`).
+`vault_password()` and `set_vault_password()` each declared their **own**
+`thread_local!` block *inside the function body*:
+
+```rust
+pub fn vault_password() -> Option<String> {
+    thread_local! { static PASSWORD: … }   // ← static A
+    PASSWORD.with(|p| p.borrow().clone())
+}
+fn set_vault_password(pw: Option<String>) {
+    thread_local! { static PASSWORD: … }   // ← static B — a DIFFERENT static
+    PASSWORD.with(|p| *p.borrow_mut() = pw);
+}
+```
+
+Each `thread_local!` invocation creates a *separate* static, so the write went
+to B and the read came from A: **`vault_password()` always returned `None`**.
+Everything gated on it was dead code:
+- the pending-OAuth pickup bailed at `let Some(session_pw) = vault_password() else { return; }`
+  → the `pending_oauth_token` was **never** consumed (exactly the reported symptom);
+- `persist_vault_now()` was a permanent no-op → refreshed tokens were never written back;
+- `vault_is_unlocked()` was always `false`.
+
+**Fix**: one module-level `thread_local!` (`SESSION_PASSWORD`) shared by the
+getter and the setter. Proven with a standalone Rust program that reproduces
+both patterns (old → `None`, new → `Some("hunter2")`).
+
+**Root cause #2 — the OAuth flow wiped the vault session**. `start_google_oauth()`
+did a **full-page redirect** to Google, so the app reloaded and the in-memory
+vault session (the password) was gone. Even with #1 fixed, the returning page
+had a locked vault, and the account could only be saved after the user
+re-entered the vault password.
+
+**Fix**: the sign-in now runs in a **popup window**, so the app never unloads
+and the vault stays unlocked:
+- `start_google_oauth_popup()` opens the consent screen in a popup; the `state`
+  is prefixed `p|` so the callback page knows it is the popup.
+- The popup only **relays the code back** — the token exchange always happens in
+  the opener, where the PKCE verifier and the unlocked vault live.
+- The hand-off is written to `localStorage` (key `mejeh_oauth_result_<state>`),
+  which every same-origin window shares and which is **not** affected by
+  `Cross-Origin-Opener-Policy` severing `window.opener`. A `postMessage` is
+  sent as a fast path; the opener polls localStorage as the reliable path.
+- `index.html` contains a tiny inline script that performs the hand-off
+  **before the WASM is even downloaded**, so the popup never boots the app.
+- If the popup is blocked, the flow falls back to the old same-tab redirect
+  (state prefixed `t|`), which still works: the token is stashed and merged
+  into the vault on the next unlock.
+
+**Supporting changes**
+- Pending tokens moved from a single `pending_oauth_token` to a
+  `mejeh_pending_tokens` **list** in sessionStorage (so several accounts can
+  wait at once). The legacy single-token key is still read **and cleared**, so
+  a token orphaned by the old build is recovered instead of being lost.
+- The pending-token merge moved from the Settings-tab component to the **app
+  level** (`src/app.rs`), so it runs no matter which tab is open.
+- A token that arrives while the vault is locked is **stashed, never dropped**;
+  it is merged and encrypted into the vault the moment the vault is unlocked
+  (both in the `unlock` handler and in the app-level effect).
+- `lock()` now clears the session password **first**, so nothing can write the
+  vault again after the accounts were dropped.
+- The `unlock` handler now reports failures instead of failing silently.
+
+### 📋 Console diagnostics (`src/util.rs`)
+`log_info` / `log_error` / `log_kv` write `[majeh] …` lines to the browser
+console, so a failed sign-in can be diagnosed without guesswork. Open DevTools →
+Console and filter for `majeh`. Covered:
+- **startup snapshot** — vault exists? vault unlocked? accounts in memory? OAuth
+  client id / secret / redirect uri? pending tokens?
+- the whole OAuth flow — popup opened → code relayed → code exchanged → signed in
+  as → account added to the vault (or stashed because the vault was locked);
+- vault unlock / lock and pending-token merges;
+- every failure, with the reason (state mismatch, missing secret, blocked popup,
+  closed window, …).
 
 ### Tokens Page (`src/components/tokens_page.rs`) — new tab
 - Reachable from the sidebar footer ("Tokens") and the bottom nav (4th tab)
@@ -401,7 +482,37 @@ For a personal email browser with 90 accounts, **Option A (localStorage)** is th
 
 ## Git Status
 - Branch: `main`
-- **This session's changes:**
+- **This session's changes (the "New Account doesn't add the account" fix):**
+  - `src/tokens.rs` — **fixed the shared vault session**: one module-level
+    `thread_local!` (`SESSION_PASSWORD`) for `vault_password()` /
+    `set_vault_password()` (they used two separate statics, so the session
+    password was never read back). Added `stash_pending_token()` /
+    `take_pending_tokens()` / `pending_token_count()` (a *list* of pending
+    tokens in sessionStorage; the legacy `pending_oauth_token` key is still
+    read and cleared). `unlock` merges pending tokens and persists; `lock`
+    clears the password first; failures are logged.
+  - `src/oauth.rs` — popup-based OAuth (`start_google_oauth_popup`,
+    `await_popup_result`, `relay_code_to_opener`, `peek/clear_popup_result`,
+    `install_popup_listener`, `oauth_result_key`); `state` prefixes `p|`
+    (popup) and `t|` (same-tab); `callback_params()` now also returns the
+    Google `error` param; `exchange_with_code()` is the single exchange path.
+  - `src/app.rs` — `add_google_account` uses the popup and falls back to the
+    redirect; `add_account` adds the token to the shared list and persists it
+    (or stashes it when the vault is locked); app-level pending-token merge
+    effect; startup diagnostics.
+  - `src/main.rs` — the popup page relays the code and closes instead of
+    booting the whole app.
+  - `src/util.rs` — `log_info` / `log_error` / `log_kv` console diagnostics.
+  - `index.html` — inline popup hand-off script (runs before the WASM loads).
+  - `Cargo.toml` — web-sys `console` feature.
+  - `CurrentWork.md` — this update.
+- **Verification** — `cargo check --target wasm32-unknown-unknown` clean (0
+  warnings), `trunk build --release` OK, and a headless-Chrome end-to-end suite
+  (12/12 passing) covering: popup sign-in → account in the sidebar → persisted
+  to the encrypted vault → survives a reload; the user's exact stuck
+  `pending_oauth_token` state being recovered; adding while the vault is locked
+  (stashed, then merged on unlock); and the popup-blocked same-tab fallback.
+- **Previous session's changes:**
   - `src/tokens.rs` — shared vault session (thread-local `vault_password`), `save_vault` choke point, `persist_vault_now`, non-destructive `lock()`, pending-OAuth effect uses the session password
   - `src/app.rs` — OAuth URL cleanup (`replace_state`), `persist_vault_now` after `ensure_fresh_token`, `emails_store` passed to TokensPage
   - `src/components/splash.rs` — session published via `unlock_vault`/`create_vault`
@@ -413,3 +524,13 @@ For a personal email browser with 90 accounts, **Option A (localStorage)** is th
   - `src/oauth.rs` — `vault_name` kept with `#[allow(dead_code)]` for Phase 2
   - `CurrentWork.md` — this update
 - Build artifacts (`dist/`, `target/`) untracked
+
+## Known Issues / Next Steps
+- The **popup** is the primary sign-in path. If a browser blocks it, the flow
+  falls back to a same-tab redirect — that reloads the app, so the vault is
+  locked again and the new account is only encrypted into the vault after the
+  user unlocks it (the token is stashed, never lost).
+- `mejeh_next_email_id` in localStorage is the email-id counter, unrelated to
+  the vault.
+- Not yet done: a **"Connect 90 accounts"** batch flow, and a
+  *Settings → Manage accounts* screen with per-account revoke.

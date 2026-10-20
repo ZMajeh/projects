@@ -26,41 +26,111 @@ pub struct VaultPayload {
 const VAULT_KEY: &str = "mejeh_email_vault";
 const VAULT_VERSION: u32 = 1;
 
-/// In-memory session: holds the verified vault password after any successful
-/// unlock/create (Splash or TokenVault). Shared across components so unlocking
-/// once unlocks everywhere — no second prompt, and the pending-OAuth effect
-/// always persists with the *real* password (never an empty one).
-/// `None` = vault currently locked; cleared on lock or full page reload
-/// (page reload → Splash gate asks again, as before).
-///
-/// Implemented as a plain thread-local `String` (NOT a Leptos signal): the old
-/// version used `create_rw_signal` inside a `OnceLock`, but that signal was
-/// created outside any reactive owner, so Leptos disposed it and every later
-/// access panicked ("already been disposed"). Components that need to *react*
-/// to lock/unlock changes should track `vault_epoch()` below; persistence
-/// paths just call `vault_password()` directly.
-pub fn vault_password() -> Option<String> {
-    use std::cell::RefCell;
-    thread_local! {
-        static PASSWORD: RefCell<Option<String>> = const { RefCell::new(None) };
-    }
-    PASSWORD.with(|p| p.borrow().clone())
+/// sessionStorage key holding OAuth tokens that arrived while the vault was
+/// locked. They are merged into the vault the moment it is unlocked.
+const PENDING_TOKENS_KEY: &str = "mejeh_pending_tokens";
+
+/// Legacy single-token key written by older builds. Still read (and cleared)
+/// so tokens captured by an older session are not lost.
+const LEGACY_PENDING_TOKEN_KEY: &str = "pending_oauth_token";
+
+// The verified vault password for this page load, shared by every component.
+//
+// NOTE: this MUST be a single module-level `thread_local!`. An earlier
+// version declared the `thread_local!` *inside* `vault_password()` and
+// *inside* `set_vault_password()`, which silently created two independent
+// statics — the write went to one and the read came from the other, so
+// `vault_password()` always returned `None` and every session-gated code
+// path (pending-OAuth pickup, `persist_vault_now`) was dead.
+thread_local! {
+    static SESSION_PASSWORD: std::cell::RefCell<Option<String>> = const { std::cell::RefCell::new(None) };
 }
 
-fn set_vault_password(pw: Option<String>) {
-    use std::cell::RefCell;
-    thread_local! {
-        static PASSWORD: RefCell<Option<String>> = const { RefCell::new(None) };
-    }
-    PASSWORD.with(|p| *p.borrow_mut() = pw);
+/// The verified vault password for this page load (`None` = locked).
+pub fn vault_password() -> Option<String> {
+    SESSION_PASSWORD.with(|p| p.borrow().clone())
+}
+
+/// Publish (or clear) the verified vault password for this page load.
+pub fn set_vault_password(pw: Option<String>) {
+    SESSION_PASSWORD.with(|p| *p.borrow_mut() = pw);
 }
 
 /// True once any successful unlock/create happened this page-load.
-/// Components read this once at mount to seed their *own* local unlocked
-/// state (plain `bool` signals they own, so nothing can be disposed
-/// out from under them when tabs unmount/remount).
 pub fn vault_is_unlocked() -> bool {
     vault_password().is_some()
+}
+
+/// Stash an OAuth token that could not be persisted yet because the vault
+/// was locked. The token is merged into the vault the moment it is unlocked.
+pub fn stash_pending_token(token: &OAuthToken) {
+    let Some(storage) = session_storage() else {
+        return;
+    };
+    let mut pending = read_pending_tokens(&storage);
+    if !pending.iter().any(|t| t.email == token.email) {
+        pending.push(token.clone());
+    }
+    if let Ok(json) = serde_json::to_string(&pending) {
+        let _ = storage.set_item(PENDING_TOKENS_KEY, &json);
+    }
+    crate::util::log_info(&format!(
+        "vault is locked — stashed the token for {} until it is unlocked",
+        token.email
+    ));
+}
+
+/// Take every stashed pending token and clear the stash.
+///
+/// Also reads the legacy single-token key (`pending_oauth_token`) so tokens
+/// captured by an older build are not lost.
+pub fn take_pending_tokens() -> Vec<OAuthToken> {
+    let Some(storage) = session_storage() else {
+        return Vec::new();
+    };
+    let mut pending = read_pending_tokens(&storage);
+    if let Ok(Some(raw)) = storage.get_item(LEGACY_PENDING_TOKEN_KEY) {
+        if !raw.is_empty() {
+            if let Ok(token) = serde_json::from_str::<OAuthToken>(&raw) {
+                if !pending.iter().any(|t| t.email == token.email) {
+                    pending.push(token);
+                }
+            }
+        }
+        let _ = storage.remove_item(LEGACY_PENDING_TOKEN_KEY);
+    }
+    let _ = storage.remove_item(PENDING_TOKENS_KEY);
+    pending
+}
+
+/// How many OAuth tokens are waiting for the vault to be unlocked.
+pub fn pending_token_count() -> usize {
+    let Some(storage) = session_storage() else {
+        return 0;
+    };
+    let count = read_pending_tokens(&storage).len();
+    let legacy = storage
+        .get_item(LEGACY_PENDING_TOKEN_KEY)
+        .ok()
+        .flatten()
+        .filter(|raw| !raw.is_empty())
+        .is_some();
+    count + usize::from(legacy)
+}
+
+/// Read the stashed pending tokens without clearing them.
+fn read_pending_tokens(storage: &web_sys::Storage) -> Vec<OAuthToken> {
+    storage
+        .get_item(PENDING_TOKENS_KEY)
+        .ok()
+        .flatten()
+        .and_then(|raw| serde_json::from_str::<Vec<OAuthToken>>(&raw).ok())
+        .unwrap_or_default()
+}
+
+/// sessionStorage of the current window, if available.
+fn session_storage() -> Option<web_sys::Storage> {
+    web_sys::window()?.session_storage().ok().flatten()
 }
 
 /// Encrypt `tokens` with `password` and write to localStorage.
@@ -142,55 +212,6 @@ pub fn TokenVault(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoVie
         .and_then(|ls| ls.get_item(VAULT_KEY).ok().flatten());
     password_set.set(existing.is_some());
 
-    // When vault unlocks, check for a pending OAuth token from the callback flow
-    // and append it to the account list. Persistence uses the shared session
-    // password via `save_vault` — never a component-local (possibly empty) one.
-    let tokens_clone = tokens;
-    let is_unlocked_clone = is_unlocked;
-    create_effect(move |_| {
-        // Track both signals so this re-runs when the vault unlocks AND when
-        // the account list changes (e.g. a second OAuth callback arrives while
-        // already unlocked — the in-memory list alone wouldn't retrigger it).
-        let unlocked = is_unlocked_clone.get();
-        let _accounts = tokens_clone.get();
-        if !unlocked {
-            return;
-        }
-        let Some(session_pw) = vault_password() else {
-            return;
-        };
-        if let Ok(Some(storage)) = web_sys::window().unwrap().session_storage() {
-            if let Ok(Some(pending)) = storage.get_item("pending_oauth_token") {
-                if pending.is_empty() {
-                    return;
-                }
-                // Consume the pending token FIRST so a failure below can't
-                // loop forever re-processing the same token.
-                let _ = storage.remove_item("pending_oauth_token");
-                match serde_json::from_str::<OAuthToken>(&pending) {
-                    Ok(token) => {
-                        let email = token.email.clone();
-                        let mut current = tokens_clone.get_untracked();
-                        if !current.iter().any(|t| t.email == email) {
-                            current.push(token);
-                            tokens_clone.set(current.clone());
-                        }
-                        // Persist the full list (old + new) with the session
-                        // password through the single choke point.
-                        if let Err(e) = save_vault(&session_pw, &current) {
-                            leptos::logging::log!("vault persist failed for {email}: {e}");
-                        } else {
-                            leptos::logging::log!("OAuth token saved to vault for {email}");
-                        }
-                    }
-                    Err(e) => {
-                        leptos::logging::log!("pending token parse failed: {e}");
-                    }
-                }
-            }
-        }
-    });
-
     // Seed local state from the shared session: if Splash already unlocked the
     // vault this page-load, show unlocked immediately — no second prompt.
     // (`vault_is_unlocked()` is a plain thread-local read — no global signal,
@@ -206,19 +227,39 @@ pub fn TokenVault(connected_accounts: RwSignal<Vec<OAuthToken>>) -> impl IntoVie
             // `unlock_vault` decrypts the vault and publishes the password to
             // the shared session, so every component sees it as unlocked.
             match unlock_vault(&password) {
-                Ok(decrypted) => {
+                Ok(mut decrypted) => {
+                    // Merge any OAuth token that arrived while the vault was
+                    // locked, then write the merged list back.
+                    let pending = take_pending_tokens();
+                    if !pending.is_empty() {
+                        for token in pending {
+                            let email = token.email.clone();
+                            decrypted.retain(|t| t.email != email);
+                            decrypted.push(token);
+                        }
+                        if let Err(e) = save_vault(&password, &decrypted) {
+                            crate::util::log_error(&format!("vault persist failed: {e}"));
+                        }
+                    }
                     tokens.set(decrypted);
                     is_unlocked.set(true);
+                    crate::util::log_info("vault unlocked");
                 }
-                Err(_) => is_unlocked.set(false),
+                Err(e) => {
+                    crate::util::log_error(&format!("vault unlock failed: {e}"));
+                    is_unlocked.set(false);
+                }
             }
         }
     };
 
     let lock = move || {
+        // Clear the session password FIRST so nothing tries to write the
+        // vault again after the accounts were dropped.
+        set_vault_password(None);
         tokens.set(Vec::new());
         is_unlocked.set(false);
-        set_vault_password(None);
+        crate::util::log_info("vault locked");
         // NOTE: lock only clears in-memory state — the encrypted vault stays
         // in localStorage so the next unlock restores the accounts. (The old
         // code deleted the vault here, which is another way accounts "vanished".)

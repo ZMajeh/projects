@@ -1,5 +1,4 @@
 use leptos::*;
-use serde_json;
 use crate::components::{
     about::About,
     email_list::{EmailList, ListFilter},
@@ -198,6 +197,39 @@ pub fn App() -> impl IntoView {
     let fetch_tasks = create_rw_signal(Vec::<FetchTask>::new());
     // Last user-facing fetch/OAuth error (dismissed by the user).
     let fetch_error = create_rw_signal(Option::<String>::None);
+
+    // Startup diagnostics — a snapshot of everything that decides whether an
+    // account can be added and shown. Open the browser console and look for
+    // the `[majeh]` lines to see exactly where a flow stopped.
+    wasm_bindgen_futures::spawn_local(async move {
+        crate::util::log_info("--- app startup ---");
+        crate::util::log_kv(
+            "vault exists (localStorage)",
+            &crate::tokens::vault_exists().to_string(),
+        );
+        crate::util::log_kv(
+            "vault unlocked (this tab)",
+            &crate::tokens::vault_is_unlocked().to_string(),
+        );
+        crate::util::log_kv(
+            "accounts loaded in memory",
+            &connected_accounts.get_untracked().len().to_string(),
+        );
+        match crate::oauth::config() {
+            Ok((id, secret, redirect)) => {
+                crate::util::log_kv("oauth client id", &id);
+                crate::util::log_kv(
+                    "oauth client secret",
+                    if secret.is_empty() { "MISSING" } else { "set" },
+                );
+                crate::util::log_kv("oauth redirect uri", &redirect);
+            }
+            Err(e) => crate::util::log_error(&format!("oauth config is incomplete: {e}")),
+        }
+        let pending = crate::tokens::pending_token_count();
+        crate::util::log_kv("pending (unsaved) oauth tokens", &pending.to_string());
+        crate::util::log_info("--- end startup ---");
+    });
 
     // Selecting an email marks it read and (on mobile) opens the reading pane.
     let select_email = move |id: usize| {
@@ -498,6 +530,43 @@ pub fn App() -> impl IntoView {
         }
     };
 
+    // Merge any OAuth token that arrived while the vault was locked into the
+    // account list and persist the vault. This lives at the app level (not
+    // inside the Settings tab) so it runs no matter which tab is open.
+    // The pending tokens live in sessionStorage, so they survive a page reload.
+    create_effect(move |_| {
+        // Track the account list so this re-runs when it changes (which
+        // includes the moment the vault is unlocked and its accounts load).
+        let _accounts = connected_accounts.get();
+        if !crate::tokens::vault_is_unlocked() {
+            return;
+        }
+        let Some(session_pw) = crate::tokens::vault_password() else {
+            return;
+        };
+        let pending = crate::tokens::take_pending_tokens();
+        if pending.is_empty() {
+            return;
+        }
+        let mut current = connected_accounts.get_untracked();
+        let mut added = 0usize;
+        for token in pending {
+            let email = token.email.clone();
+            current.retain(|t| t.email != email);
+            current.push(token);
+            added += 1;
+        }
+        connected_accounts.set(current.clone());
+        // Persist the full list (old + new) with the session password through
+        // the single choke point.
+        match crate::tokens::save_vault(&session_pw, &current) {
+            Ok(()) => {
+                crate::util::log_info(&format!("saved {added} pending account(s) to the vault"));
+            }
+            Err(e) => crate::util::log_error(&format!("vault persist failed: {e}")),
+        }
+    });
+
     // Detect OAuth callback on mount and route to Settings tab.
     let href = web_sys::window()
         .and_then(|w| w.location().href().ok())
@@ -514,29 +583,80 @@ pub fn App() -> impl IntoView {
     // the Accounts "+" button and Settings -> Connect Gmail). Failures are
     // surfaced in a global banner so they are visible on every tab.
     let oauth_error = create_rw_signal(Option::<String>::None);
-    let add_google_account = move || {
-        match crate::oauth::start_google_oauth() {
-            Ok(()) => {}
-            Err(e) => oauth_error.set(Some(format!(
-                "Could not start Google sign-in: {e}. Check Settings for the Google Client ID and Secret."
-            ))),
+    // The popup writes its result into localStorage; this listener picks it up
+    // instantly when the browser kept the `window.opener` link alive.
+    if let Err(e) = crate::oauth::install_popup_listener() {
+        crate::util::log_error(&format!("could not install the popup listener: {e}"));
+    }
+
+    // Add a freshly obtained token to the shared account list and persist it.
+    // The vault must be unlocked to write it; when it is locked the token is
+    // stashed and merged into the vault on the next unlock.
+    let add_account = move |token: OAuthToken| {
+        let email = token.email.clone();
+        let mut list = connected_accounts.get_untracked();
+        // Replace an existing entry for the same address (re-connecting an
+        // account refreshes its tokens).
+        list.retain(|t| t.email != email);
+        list.push(token.clone());
+        connected_accounts.set(list.clone());
+        if crate::tokens::vault_is_unlocked() {
+            crate::tokens::persist_vault_now(&list);
+            crate::util::log_info(&format!("added {email} to the vault"));
+        } else {
+            crate::tokens::stash_pending_token(&token);
+            crate::util::log_info(&format!(
+                "added {email} to the account list — unlock the vault to save it"
+            ));
         }
     };
 
-    // Handle OAuth callback after mount.
+    let add_google_account = move || {
+        // Prefer the popup flow: the app stays loaded, so the unlocked vault
+        // and the account list survive the sign-in.
+        match crate::oauth::start_google_oauth_popup() {
+            Ok(popup) => {
+                let add_account = add_account;
+                let oauth_error = oauth_error;
+                wasm_bindgen_futures::spawn_local(async move {
+                    match crate::oauth::await_popup_result(&popup, 300_000).await {
+                        Ok(token) => add_account(token),
+                        Err(e) => {
+                            crate::util::log_error(&format!("Google sign-in failed: {e}"));
+                            oauth_error.set(Some(format!(
+                                "Google sign-in failed: {e}. Check Settings for the Google Client ID and Secret."
+                            )));
+                        }
+                    }
+                });
+            }
+            Err(e) => {
+                // The popup was blocked - fall back to a full-page redirect.
+                crate::util::log_error(&format!(
+                    "could not open the sign-in popup ({e}) - falling back to a redirect"
+                ));
+                match crate::oauth::start_google_oauth() {
+                    Ok(()) => {}
+                    Err(e2) => oauth_error.set(Some(format!(
+                        "Could not start Google sign-in: {e2}. Check Settings for the Google Client ID and Secret."
+                    ))),
+                }
+            }
+        }
+    };
+
+    // Handle OAuth callback after mount (the same-tab fallback flow).
     if is_oauth_callback {
         let set_active_tab = set_active_tab.clone();
+        let add_account = add_account;
         wasm_bindgen_futures::spawn_local(async move {
             match crate::oauth::handle_google_callback().await {
                 Ok((token, _user_info)) => {
-                    leptos::logging::log!("OAuth callback: got token for {}", token.email);
-                    // Save token to sessionStorage so TokenVault can pick it up and persist to vault.
-                    if let Ok(Some(storage)) = web_sys::window().unwrap().session_storage() {
-                        let _ = storage.set_item(
-                            "pending_oauth_token",
-                            &serde_json::to_string(&token).unwrap_or_default(),
-                        );
-                    }
+                    crate::util::log_info(&format!(
+                        "OAuth callback: got token for {}",
+                        token.email
+                    ));
+                    add_account(token);
                     // Strip the single-use `?code=`/`state=` from the URL so a
                     // later browser refresh can't re-trigger this callback and
                     // re-consume (or fail on) the already-used auth code.
@@ -549,7 +669,10 @@ pub fn App() -> impl IntoView {
                     }
                     set_active_tab.set(Tab::Settings);
                 }
-                Err(e) => leptos::logging::log!("OAuth callback error: {e}"),
+                Err(e) => {
+                    crate::util::log_error(&format!("OAuth callback error: {e}"));
+                    oauth_error.set(Some(format!("Google sign-in failed: {e}")));
+                }
             }
         });
     }

@@ -25,3 +25,23 @@ pub async fn sleep(ms: i32) {
     });
     let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
 }
+
+/// Console logging used to trace the OAuth / vault flow.
+///
+/// Every step writes a `[majeh] ...` line to the browser console so a failed
+/// sign-in can be diagnosed without guesswork. `console.error` is used for
+/// failures so they stand out in the console filter.
+pub fn log_info(msg: &str) {
+    web_sys::console::log_1(&wasm_bindgen::JsValue::from_str(&format!("[majeh] {msg}")));
+}
+
+/// Log a failure (shown in red in the browser console).
+pub fn log_error(msg: &str) {
+    web_sys::console::error_1(&wasm_bindgen::JsValue::from_str(&format!("[majeh] {msg}")));
+}
+
+/// Log a labelled value, e.g. `log_kv("state", &state)`.
+#[allow(dead_code)]
+pub fn log_kv(label: &str, value: &str) {
+    log_info(&format!("{label} = {value}"));
+}

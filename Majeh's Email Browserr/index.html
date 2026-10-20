@@ -81,5 +81,51 @@
             <a href="mailto:zmajeh@gmail.com">Contact</a>
         </p>
     </div>
+
+    <!--
+      OAuth popup hand-off. The sign-in popup lands on
+      /auth/callback/google?code=...&state=p|... — this page is served by the
+      same catch-all rewrite as the app, so the popup would boot the whole
+      WASM app just to pass one value back. This tiny script does the
+      hand-off immediately, before the WASM is even downloaded, and closes the
+      window. The opener picks the result up from localStorage (shared by every
+      same-origin window) or from the postMessage below.
+    -->
+    <script>
+      (function () {
+        try {
+          var params = new URLSearchParams(window.location.search);
+          var code = params.get("code");
+          var state = params.get("state") || "";
+          // Only the popup flow is handled here; a same-tab redirect (state
+          // starts with "t|") must boot the real app.
+          if (state.indexOf("p|") !== 0) return;
+          var payload = {
+            type: "majeh-oauth-callback",
+            state: state,
+            code: code,
+            error: params.get("error")
+          };
+          var json = JSON.stringify(payload);
+          // localStorage is shared by every same-origin window, so this
+          // hand-off survives the browser severing `window.opener` via
+          // Cross-Origin-Opener-Policy.
+          try {
+            window.localStorage.setItem("mejeh_oauth_result_" + state, json);
+          } catch (e) { /* storage may be blocked; postMessage still applies */ }
+          try {
+            if (window.opener) {
+              window.opener.postMessage(json, window.location.origin);
+            }
+          } catch (e) { /* the opener link may be severed; localStorage covers it */ }
+          console.log("[majeh] popup relayed the authorization code back");
+          // The popup has nothing to show - hide the page and close.
+          try { document.body.style.display = "none"; } catch (e) {}
+          window.close();
+        } catch (e) {
+          console.error("[majeh] popup hand-off failed", e);
+        }
+      })();
+    </script>
 </body>
 </html>
