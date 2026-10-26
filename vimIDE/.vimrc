@@ -39,7 +39,29 @@ let g:netrw_winsize = 20     " Set explorer width to 20% of the screen
 let g:netrw_altv = 1         " Open splits to the right
 
 " Keybinding: Press Ctrl+N to toggle the file tree on the left (like VS Code)
-nnoremap <C-n> :Lexplore<CR>
+"nnoremap <C-n> :Lexplore %:p:h<CR>
+" Function to smartly toggle Netrw
+function! ToggleNetrw()
+    let l:netrw_is_open = 0
+    " Check all open windows to see if one is Netrw
+    for i in range(1, winnr('$'))
+        if getbufvar(winbufnr(i), '&filetype') ==# 'netrw'
+            let l:netrw_is_open = 1
+            break
+        endif
+    endfor
+
+    " If it is open, standard :Lexplore will toggle it closed
+    if l:netrw_is_open
+        Lexplore
+    else
+        " If closed, open it to the current file's directory
+        execute 'Lexplore ' . expand('%:p:h')
+    endif
+endfunction
+
+" Keybinding: Press Ctrl+N to smart-toggle the file tree
+nnoremap <C-n> :call ToggleNetrw()<CR>
 
 " Keybinding: Clear highlighted search results with Ctrl+L
 nnoremap <C-L> :nohlsearch<CR><C-L>
@@ -63,7 +85,8 @@ set updatetime=300           " Milliseconds of idle time before highlighting tri
 augroup HighlightWord
     autocmd!
     " Automatically match and highlight the word under the cursor using the 'Search' color group
-    autocmd CursorHold * let w = expand('<cword>') | exe (w != '' ? 'match Search /\V\<' . escape(w, '\') . '\>/' : 'match none')
+    "autocmd CursorHold * let w = expand('<cword>') | exe (w != '' ? 'match Search /\V\<' . escape(w, '\') . '\>/' : 'match none')
+    autocmd CursorHold * let w = expand('<cword>') | exe (w != '' ? 'match Search /\V\<' . escape(w, '/\') . '\>/' : 'match none')
 augroup END
 
 
@@ -105,10 +128,10 @@ function! FetchLineBlameAsync()
   " Run git blame asynchronously so it doesn't freeze Vim
   if exists('*job_start')
     let l:cmd = ['git', 'blame', '-L', l:line . ',' . l:line, '--', l:file]
-    call job_start(l:cmd, {\
-          \ 'cwd': l:dir,\
-          \ 'out_cb': 'BlameOutHandler',\
-          \ 'err_cb': 'BlameErrHandler'\
+    call job_start(l:cmd, {
+          \ 'cwd': l:dir,
+          \ 'out_cb': 'BlameOutHandler',
+          \ 'err_cb': 'BlameErrHandler'
           \ })
   endif
 endfunction

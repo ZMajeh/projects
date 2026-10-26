@@ -119,7 +119,7 @@ alias fgrep   'fgrep --color=auto -i'
 alias diff    'diff --color=auto -u'
 alias less    'less -R'
 alias more    'less'
-alias cat     'bat --style=plain --paging=never 2>/dev/null || cat'
+alias scat    'bat --style=plain --paging=never 2>/dev/null || cat'
 alias head    'head -n 20'
 alias tail    'tail -n 20'
 
