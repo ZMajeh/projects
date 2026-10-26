@@ -35,6 +35,9 @@ setenv LESS "-R -i -M -x4"
 setenv LANG en_US.UTF-8
 setenv LC_ALL en_US.UTF-8
 
+# Ensure essential system paths are in PATH
+setenv PATH "/usr/bin:/usr/local/bin:/bin:/usr/sbin:/sbin:${PATH}"
+
 # =============================================================================
 # PROMPT - Professional colored prompt with git info
 # =============================================================================
