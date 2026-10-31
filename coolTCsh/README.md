@@ -46,14 +46,15 @@ source ~/.cshrc
 
 ### Prompt
 ```
-┌─user@hostname:~/projects/coolTCsh (main)
-└─>                                    [14:32:45]
+┌─[14:32:45] user@hostname:~/projects/coolTCsh (main)
+└─>
 ```
+- **Gray**: time in pre-prompt (first line)
 - **Green**: username
 - **Cyan**: hostname
 - **Yellow**: current directory
 - **Magenta**: git branch (when in repo)
-- **Gray**: time in right prompt
+- **Gray**: box-drawing characters and separators
 - **Unicode box-drawing** for clean visual separation
 
 ### Modern `ls` (with eza)
