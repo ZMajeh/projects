@@ -43,32 +43,33 @@ setenv PATH "/usr/bin:/usr/local/bin:/bin:/usr/sbin:/sbin:${PATH}"
 # =============================================================================
 
 # Define colors for prompt
-set red="%{\033[1;31m%}"
-set green="%{\033[1;32m%}"
-set yellow="%{\033[1;33m%}"
-set blue="%{\033[1;34m%}"
-set magenta="%{\033[1;35m%}"
-set cyan="%{\033[1;36m%}"
-set white="%{\033[1;37m%}"
-set gray="%{\033[0;90m%}"
-set reset="%{\033[0m%}"
-set bold="%{\033[1m%}"
-set dim="%{\033[2m%}"
+set red='%{\033[1;31m%}'
+set green='%{\033[1;32m%}'
+set yellow='%{\033[1;33m%}'
+set blue='%{\033[1;34m%}'
+set magenta='%{\033[1;35m%}'
+set cyan='%{\033[1;36m%}'
+set white='%{\033[1;37m%}'
+set gray='%{\033[0;90m%}'
+set reset='%{\033[0m%}'
+set bold='%{\033[1m%}'
+set dim='%{\033[2m%}'
 
 
-# Build the prompt - using Unicode box drawing characters
-# Define prompt without git branch (git branch added via precmd)
-set prompt = "${gray}┌─${reset}${green}%n${reset}${gray}@${reset}${cyan}%m${reset}${gray}:${reset}${yellow}%~${reset}\n${gray}└─${reset}${bold}\$${reset} "
 
+# Main prompt (second line): just the arrow
+set prompt = "${gray}└─${reset}${bold}%#${reset} "
 
-# Right prompt (shows time)
-set rprompt = "${gray}[%T]${reset}"
+# Right prompt (empty - time is now in pre-prompt)
+set rprompt = ""
 
+# Source pre-prompt module (prints first line: ┌─[time] user@host:path (gitbranch))
+if ( -f ~/.cshrc.preprompt ) then
+    source ~/.cshrc.preprompt
+endif
 
-# Update prompt with git branch before each prompt
-#alias precmd 'set gitbr = `git branch 2>/dev/null | grep "^\*" | sed "s/^\* //"`; if ("$gitbr" != "") set prompt = "${gray}┌─${reset}${green}%n${reset}${gray}@${reset}${cyan}%m${reset}${gray}:${reset}${yellow}%~${reset} ${gray}(${reset}${magenta}$gitbr${reset}${gray})${reset}\n${gray}└─${reset}${bold}>${reset} "; if ("$gitbr" == "") set prompt = "${gray}┌─${reset}${green}%n${reset}${gray}@${reset}${cyan}%m${reset}${gray}:${reset}${yellow}%~${reset}\n${gray}└─${reset}${bold}>${reset} "'
-
-alias precmd 'set gitbr = `git branch |& grep "^\*" | sed "s/^\* //"`; if ("$gitbr" != "") set prompt = "${gray}┌─${reset}${green}%n${reset}${gray}@${reset}${cyan}%m${reset}${gray}:${reset}${yellow}%~${reset} ${gray}(${reset}${magenta}$gitbr${reset}${gray})${reset}\n${gray}└─${reset}${bold}>${reset} "; if ("$gitbr" == "") set prompt = "${gray}┌─${reset}${green}%n${reset}${gray}@${reset}${cyan}%m${reset}${gray}:${reset}${yellow}%~${reset}\n${gray}└─${reset}${bold}>${reset} "'
+# Main precmd - calls pre-prompt then does other things
+alias precmd '_precmd_preprompt'
 
 # =============================================================================
 # ALIASES - Modern replacements and shortcuts
